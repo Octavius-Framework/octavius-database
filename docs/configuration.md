@@ -12,6 +12,7 @@ This guide covers all configuration options for Octavius Database, including ini
 - [DynamicDto Serialization Strategy](#dynamicdto-serialization-strategy)
 - [Schema Configuration](#schema-configuration)
 - [Using Existing DataSource](#using-existing-datasource)
+- [Listener Connection Factory](#listener-connection-factory)
 
 ---
 
@@ -388,3 +389,81 @@ When using `fromConfig()`, Octavius creates a HikariCP pool with:
 - `connectionInitSql` set to `SET search_path TO ...` if enabled
 
 When using `fromDataSource()`, you manage the pool configuration yourself.
+
+---
+
+## Listener Connection Factory
+
+PostgreSQL's `LISTEN`/`NOTIFY` mechanism requires a dedicated, long-lived connection that stays open while waiting for notifications. This connection must not come from the regular HikariCP pool, because holding a pool connection idle would permanently reduce available capacity for queries.
+
+The `listenerConnectionFactory` parameter is a `() -> Connection` lambda invoked each time `dataAccess.createChannelListener()` is called. It should return a fresh, raw JDBC connection - not one borrowed from a pool.
+
+### Behavior by Initialization Method
+
+**`fromConfig()`** — handled automatically. Octavius creates a `DriverManager` factory that opens connections directly using the credentials from `DatabaseConfig`, with `search_path` applied if configured. No action needed.
+
+**`fromDataSource(dataSource = ...)`** — auto-resolved based on the `DataSource` type:
+
+| DataSource type | Default behavior |
+|---|---|
+| `HikariDataSource` | Uses `DriverManager` with the pool's URL/credentials (bypasses pool) |
+| Any other type | Falls back to `dataSource.connection` with a warning - should provide a custom factory |
+
+### Providing a Custom Factory
+
+Pass a custom factory when using a non-HikariCP `DataSource`, or when you need specific connection settings for listener connections:
+
+```kotlin
+val dataAccess = OctaviusDatabase.fromDataSource(
+    dataSource = existingDataSource,
+    packagesToScan = listOf("com.myapp.domain"),
+    dbSchemas = listOf("public"),
+    listenerConnectionFactory = {
+        DriverManager.getConnection("jdbc:postgresql://localhost:5432/mydb", "postgres", "secret")
+    }
+)
+```
+
+### Spring Boot
+
+Spring Boot's default auto-configured `DataSource` is a `HikariDataSource`, so auto-detection works out of the box - no custom factory needed:
+
+```kotlin
+@Bean
+fun dataAccess(dataSource: DataSource): DataAccess {
+    return OctaviusDatabase.fromDataSource(
+        dataSource = dataSource,
+        packagesToScan = listOf("com.myapp.domain"),
+        dbSchemas = listOf("public"),
+        disableFlyway = true
+        // listenerConnectionFactory auto-resolved from HikariDataSource
+    )
+}
+```
+
+A custom factory is only needed if you explicitly replace the default pool (e.g., Tomcat JDBC, DBCP2):
+
+```kotlin
+OctaviusDatabase.fromDataSource(
+    dataSource = tomcatDataSource,
+    // ...
+    listenerConnectionFactory = {
+        DriverManager.getConnection(url, username, password)
+    }
+)
+```
+
+### Connection Lifecycle
+
+Each `PgChannelListener` holds exactly one connection opened by the factory. The connection is closed when the listener is closed:
+
+```kotlin
+dataAccess.createChannelListener().use { listener ->
+    listener.listen("orders")
+    listener.notifications()
+        .collect { notification -> handleNotification(notification) }
+}
+// Connection is closed here
+```
+
+> **Note:** Listener connections are intentionally outside HikariCP management. They will not appear in pool metrics and are not subject to pool timeouts or eviction.

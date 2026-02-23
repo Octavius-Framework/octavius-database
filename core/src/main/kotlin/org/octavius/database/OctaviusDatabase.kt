@@ -55,13 +55,6 @@ object OctaviusDatabase {
         val dataSource = HikariDataSource(hikariConfig)
         logger.debug { "HikariCP datasource initialized with pool size: ${hikariConfig.maximumPoolSize}" }
 
-        val searchPathSql = connectionInitSql
-        val listenerConnectionFactory: () -> Connection = {
-            DriverManager.getConnection(config.dbUrl, config.dbUsername, config.dbPassword).also { conn ->
-                searchPathSql?.let { sql -> conn.createStatement().use { it.execute(sql) } }
-            }
-        }
-
         return fromDataSource(
             dataSource = dataSource,
             packagesToScan = config.packagesToScan,
@@ -69,8 +62,7 @@ object OctaviusDatabase {
             dynamicDtoStrategy = config.dynamicDtoStrategy,
             flywayBaselineVersion = config.flywayBaselineVersion,
             disableFlyway = config.disableFlyway,
-            disableCoreTypeInitialization = config.disableCoreTypeInitialization,
-            listenerConnectionFactory = listenerConnectionFactory
+            disableCoreTypeInitialization = config.disableCoreTypeInitialization
         )
     }
 

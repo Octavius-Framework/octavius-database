@@ -29,10 +29,9 @@ internal class DatabaseCallQueryBuilder(
         return try {
             val outValues = jdbcTemplate.execute(ConnectionCallback { connection ->
                 connection.prepareStatement(plan.sql).use { ps ->
-                    for ((position, value) in plan.inParams) {
-                        ps.setObject(position, value)
+                    plan.bindValues.forEachIndexed { index, value ->
+                        ps.setObject(index + 1, value)
                     }
-                    // OUT params are not bound — they use literal NULL::type in SQL
 
                     val hasResultSet = ps.execute()
 
@@ -47,8 +46,7 @@ internal class DatabaseCallQueryBuilder(
                                 "Procedure '$procedureName' returned an empty ResultSet"
                             }
                             plan.outParamNames.mapIndexed { index, name ->
-                                val columnIndex = index + 1
-                                name to resultSetValueExtractor.extract(rs, columnIndex)
+                                name to resultSetValueExtractor.extract(rs, index + 1)
                             }.toMap()
                         }
                     }
@@ -70,36 +68,37 @@ internal class DatabaseCallQueryBuilder(
     //  CALL PLAN BUILDING
     // -------------------------------------------------------------------------
 
+    /**
+     * @property sql        The CALL statement, e.g. `CALL proc(ROW(?,?)::type, NULL::text)`
+     * @property bindValues Flat list of JDBC `?` values in order (only from IN/INOUT params)
+     * @property outParamNames Names of OUT/INOUT params, in ResultSet column order
+     */
     private data class CallPlan(
         val sql: String,
-        val inParams: List<Pair<Int, Any?>>,
+        val bindValues: List<Any?>,
         val outParamNames: List<String>
     )
 
     /**
-     * Builds the CALL SQL and tracks JDBC positions for all parameters.
+     * Builds the CALL SQL from procedure metadata.
      *
-     * Each IN parameter may expand to multiple JDBC `?` placeholders
-     * (e.g., a composite with 5 fields becomes `ROW(?, ?, ?, ?, ?)::type_name`,
-     * a list becomes `ARRAY[?, ?, ?]`). OUT parameters get a single `?` placeholder
-     * bound to NULL — PostgreSQL requires all parameter slots in CALL but returns
-     * OUT values as ResultSet columns.
+     * - **IN** params are expanded (composites → `ROW(?,…)::type`, lists → `ARRAY[?,…]`)
+     *   and their values are collected into [CallPlan.bindValues].
+     * - **OUT** params become `NULL::typeName` literals — no JDBC bind, PostgreSQL returns
+     *   their values as ResultSet columns.
+     * - **INOUT** params are both bound (IN value) and recorded as OUT names.
      */
     private fun buildCallPlan(procDef: PgProcedureDefinition, userParams: Map<String, Any?>): CallPlan {
         val sqlFragments = mutableListOf<String>()
-        val inParams = mutableListOf<Pair<Int, Any?>>()
+        val bindValues = mutableListOf<Any?>()
         val outParamNames = mutableListOf<String>()
-        var nextPosition = 1
 
         for (param in procDef.params) {
             when (param.mode) {
                 PgParamMode.IN -> {
                     val (fragment, expandedValues) = kotlinToPostgresConverter.expandSingleValue(userParams[param.name])
                     sqlFragments.add(fragment)
-                    expandedValues.forEachIndexed { i, value ->
-                        inParams.add((nextPosition + i) to value)
-                    }
-                    nextPosition += expandedValues.size
+                    bindValues.addAll(expandedValues)
                 }
 
                 PgParamMode.OUT -> {
@@ -109,20 +108,15 @@ internal class DatabaseCallQueryBuilder(
 
                 PgParamMode.INOUT -> {
                     val (fragment, expandedValues) = kotlinToPostgresConverter.expandSingleValue(userParams[param.name])
-                    check(expandedValues.size == 1) {
-                        "INOUT parameter '${param.name}' expanded to ${expandedValues.size} JDBC parameters. " +
-                                "INOUT parameters must be simple types (single JDBC parameter)."
-                    }
                     sqlFragments.add(fragment)
-                    inParams.add(nextPosition to expandedValues[0])
+                    bindValues.addAll(expandedValues)
                     outParamNames.add(param.name)
-                    nextPosition++
                 }
             }
         }
 
         val sql = "CALL $procedureName(${sqlFragments.joinToString(", ")})"
-        return CallPlan(sql, inParams, outParamNames)
+        return CallPlan(sql, bindValues, outParamNames)
     }
 
     companion object {

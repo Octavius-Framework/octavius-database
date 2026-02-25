@@ -5,19 +5,18 @@ import org.octavius.data.DataResult
 import org.octavius.data.builder.CallQueryBuilder
 import org.octavius.data.exception.QueryExecutionException
 import org.octavius.database.type.KotlinToPostgresConverter
-import org.octavius.database.type.PostgresToKotlinConverter
+import org.octavius.database.type.ResultSetValueExtractor
 import org.octavius.database.type.registry.PgParamMode
 import org.octavius.database.type.registry.PgProcedureDefinition
 import org.octavius.database.type.registry.TypeRegistry
 import org.springframework.jdbc.core.ConnectionCallback
 import org.springframework.jdbc.core.JdbcTemplate
-import java.sql.Types
 
 internal class DatabaseCallQueryBuilder(
     private val jdbcTemplate: JdbcTemplate,
     private val typeRegistry: TypeRegistry,
     private val kotlinToPostgresConverter: KotlinToPostgresConverter,
-    private val postgresToKotlinConverter: PostgresToKotlinConverter,
+    private val resultSetValueExtractor: ResultSetValueExtractor,
     private val procedureName: String
 ) : CallQueryBuilder {
 
@@ -29,20 +28,29 @@ internal class DatabaseCallQueryBuilder(
 
         return try {
             val outValues = jdbcTemplate.execute(ConnectionCallback { connection ->
-                connection.prepareCall(plan.sql).use { cs ->
+                connection.prepareStatement(plan.sql).use { ps ->
                     for ((position, value) in plan.inParams) {
-                        cs.setObject(position, value)
+                        ps.setObject(position, value)
                     }
+                    // OUT params are not bound — they use literal NULL::type in SQL
 
-                    for ((position, _, pgTypeName) in plan.outParams) {
-                        cs.registerOutParameter(position, pgTypeToJdbcType(pgTypeName))
-                    }
+                    val hasResultSet = ps.execute()
 
-                    cs.execute()
-
-                    plan.outParams.associate { (position, name, pgTypeName) ->
-                        val rawValue = cs.getString(position)
-                        name to postgresToKotlinConverter.convert(rawValue, pgTypeName)
+                    if (plan.outParamNames.isEmpty()) {
+                        emptyMap()
+                    } else {
+                        check(hasResultSet) {
+                            "Procedure '$procedureName' has OUT parameters but returned no ResultSet"
+                        }
+                        ps.resultSet.use { rs ->
+                            check(rs.next()) {
+                                "Procedure '$procedureName' returned an empty ResultSet"
+                            }
+                            plan.outParamNames.mapIndexed { index, name ->
+                                val columnIndex = index + 1
+                                name to resultSetValueExtractor.extract(rs, columnIndex)
+                            }.toMap()
+                        }
                     }
                 }
             })
@@ -65,21 +73,22 @@ internal class DatabaseCallQueryBuilder(
     private data class CallPlan(
         val sql: String,
         val inParams: List<Pair<Int, Any?>>,
-        val outParams: List<Triple<Int, String, String>>
+        val outParamNames: List<String>
     )
 
     /**
-     * Builds the CALL SQL and tracks JDBC positions for IN and OUT parameters.
+     * Builds the CALL SQL and tracks JDBC positions for all parameters.
      *
      * Each IN parameter may expand to multiple JDBC `?` placeholders
      * (e.g., a composite with 5 fields becomes `ROW(?, ?, ?, ?, ?)::type_name`,
-     * a list becomes `ARRAY[?, ?, ?]`). OUT positions are calculated after
-     * all preceding expansions.
+     * a list becomes `ARRAY[?, ?, ?]`). OUT parameters get a single `?` placeholder
+     * bound to NULL — PostgreSQL requires all parameter slots in CALL but returns
+     * OUT values as ResultSet columns.
      */
     private fun buildCallPlan(procDef: PgProcedureDefinition, userParams: Map<String, Any?>): CallPlan {
         val sqlFragments = mutableListOf<String>()
         val inParams = mutableListOf<Pair<Int, Any?>>()
-        val outParams = mutableListOf<Triple<Int, String, String>>()
+        val outParamNames = mutableListOf<String>()
         var nextPosition = 1
 
         for (param in procDef.params) {
@@ -94,9 +103,8 @@ internal class DatabaseCallQueryBuilder(
                 }
 
                 PgParamMode.OUT -> {
-                    sqlFragments.add("?")
-                    outParams.add(Triple(nextPosition, param.name, param.typeName))
-                    nextPosition++
+                    sqlFragments.add("NULL::${param.typeName}")
+                    outParamNames.add(param.name)
                 }
 
                 PgParamMode.INOUT -> {
@@ -107,38 +115,14 @@ internal class DatabaseCallQueryBuilder(
                     }
                     sqlFragments.add(fragment)
                     inParams.add(nextPosition to expandedValues[0])
-                    outParams.add(Triple(nextPosition, param.name, param.typeName))
+                    outParamNames.add(param.name)
                     nextPosition++
                 }
             }
         }
 
         val sql = "CALL $procedureName(${sqlFragments.joinToString(", ")})"
-        return CallPlan(sql, inParams, outParams)
-    }
-
-    // -------------------------------------------------------------------------
-    //  JDBC TYPE MAPPING
-    // -------------------------------------------------------------------------
-
-    private fun pgTypeToJdbcType(pgTypeName: String): Int = when (pgTypeName) {
-        "int2", "smallserial" -> Types.SMALLINT
-        "int4", "serial" -> Types.INTEGER
-        "int8", "bigserial" -> Types.BIGINT
-        "float4" -> Types.REAL
-        "float8" -> Types.DOUBLE
-        "numeric" -> Types.NUMERIC
-        "text", "varchar", "char" -> Types.VARCHAR
-        "bool" -> Types.BOOLEAN
-        "date" -> Types.DATE
-        "timestamp" -> Types.TIMESTAMP
-        "timestamptz" -> Types.TIMESTAMP_WITH_TIMEZONE
-        "time" -> Types.TIME
-        "timetz" -> Types.TIME_WITH_TIMEZONE
-        "bytea" -> Types.BINARY
-        "uuid" -> Types.OTHER
-        "json", "jsonb" -> Types.VARCHAR
-        else -> Types.VARCHAR
+        return CallPlan(sql, inParams, outParamNames)
     }
 
     companion object {

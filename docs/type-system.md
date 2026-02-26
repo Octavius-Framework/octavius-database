@@ -13,8 +13,7 @@ Octavius Database provides automatic bidirectional mapping between PostgreSQL an
 - [@PgComposite](#pgcomposite)
 - [@DynamicallyMappable](#dynamicallymappable)
 - [PgTyped - Explicit Type Casts](#pgtyped---explicit-type-casts)
-- [@MapKey - Custom Property Mapping](#mapkey---custom-property-mapping)
-- [Object Conversion Utilities](#object-conversion-utilities)
+- [@MapKey & Object Conversion Utilities](#mapkey--object-conversion-utilities)
 - [Enum Serialization in dynamic_dto](#enum-serialization-in-dynamic_dto)
 - [Helper Serializers](#helper-serializers)
 
@@ -24,37 +23,37 @@ Octavius Database provides automatic bidirectional mapping between PostgreSQL an
 
 Automatic conversion between PostgreSQL and Kotlin types:
 
-| PostgreSQL                | Kotlin          | Notes                           |
-|---------------------------|-----------------|---------------------------------|
-| `int2`, `smallserial`     | `Short`         |                                 |
-| `int4`, `serial`          | `Int`           |                                 |
-| `int8`, `bigserial`       | `Long`          |                                 |
-| `float4`                  | `Float`         |                                 |
-| `float8`                  | `Double`        |                                 |
-| `numeric`                 | `BigDecimal`    |                                 |
-| `text`, `varchar`, `char` | `String`        |                                 |
-| `bool`                    | `Boolean`       |                                 |
-| `uuid`                    | `UUID`          | `java.util.UUID`                |
-| `bytea`                   | `ByteArray`     |                                 |
-| `json`, `jsonb`           | `JsonElement`   | `kotlinx.serialization.json`    |
+| PostgreSQL                | Kotlin          | Notes                                            |
+|---------------------------|-----------------|--------------------------------------------------|
+| `int2`, `smallserial`     | `Short`         |                                                  |
+| `int4`, `serial`          | `Int`           |                                                  |
+| `int8`, `bigserial`       | `Long`          |                                                  |
+| `float4`                  | `Float`         |                                                  |
+| `float8`                  | `Double`        |                                                  |
+| `numeric`                 | `BigDecimal`    |                                                  |
+| `text`, `varchar`, `char` | `String`        |                                                  |
+| `bool`                    | `Boolean`       |                                                  |
+| `uuid`                    | `UUID`          | `java.util.UUID`                                 |
+| `bytea`                   | `ByteArray`     |                                                  |
+| `json`, `jsonb`           | `JsonElement`   | `kotlinx.serialization.json`                     |
 | `void`                    | `Unit`          | Return type of void functions (e.g. `pg_notify`) |
-| `date`                    | `LocalDate`     | `kotlinx.datetime` <sup>1</sup> |
-| `time`                    | `LocalTime`     | `kotlinx.datetime`              |
-| `timetz`                  | `OffsetTime`    | `java.time`                     |
-| `timestamp`               | `LocalDateTime` | `kotlinx.datetime` <sup>1</sup> |
-| `timestamptz`             | `Instant`       | `kotlin.time` <sup>1</sup>      |
-| `interval`                | `Duration`      | `kotlin.time` <sup>2</sup>      |
+| `date`                    | `LocalDate`     | `kotlinx.datetime` <sup>1</sup>                  |
+| `time`                    | `LocalTime`     | `kotlinx.datetime`                               |
+| `timetz`                  | `OffsetTime`    | `java.time`                                      |
+| `timestamp`               | `LocalDateTime` | `kotlinx.datetime` <sup>1</sup>                  |
+| `timestamptz`             | `Instant`       | `kotlin.time` <sup>1</sup>                       |
+| `interval`                | `Duration`      | `kotlin.time` <sup>2</sup>                       |
 
 ### Arrays
 
 Arrays of all standard types are supported and map to `List<T>`:
 
-| PostgreSQL | Kotlin |
-|------------|--------|
-| `int4[]` | `List<Int>` |
-| `text[]` | `List<String>` |
-| `uuid[]` | `List<UUID>` |
-| etc. | `List<T>` |
+| PostgreSQL | Kotlin         |
+|------------|----------------|
+| `int4[]`   | `List<Int>`    |
+| `text[]`   | `List<String>` |
+| `uuid[]`   | `List<UUID>`   |
+| etc.       | `List<T>`      |
 
 ### Infinity Values for Date/Time Types
 
@@ -173,20 +172,20 @@ Maps a Kotlin `enum class` to a PostgreSQL `ENUM` type.
 
 ### Annotation Parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `name` | `String` | `""` | PostgreSQL type name (auto-generated if empty) |
-| `pgConvention` | `CaseConvention` | `SNAKE_CASE_UPPER` | How values are stored in PostgreSQL |
-| `kotlinConvention` | `CaseConvention` | `PASCAL_CASE` | How values are defined in Kotlin |
+| Parameter          | Type             | Default            | Description                                    |
+|--------------------|------------------|--------------------|------------------------------------------------|
+| `name`             | `String`         | `""`               | PostgreSQL type name (auto-generated if empty) |
+| `pgConvention`     | `CaseConvention` | `SNAKE_CASE_UPPER` | How values are stored in PostgreSQL            |
+| `kotlinConvention` | `CaseConvention` | `PASCAL_CASE`      | How values are defined in Kotlin               |
 
 ### Case Conventions
 
-| Convention | Example |
-|------------|---------|
+| Convention         | Example    |
+|--------------------|------------|
 | `SNAKE_CASE_UPPER` | `MY_VALUE` |
 | `SNAKE_CASE_LOWER` | `my_value` |
-| `PASCAL_CASE` | `MyValue` |
-| `CAMEL_CASE` | `myValue` |
+| `PASCAL_CASE`      | `MyValue`  |
+| `CAMEL_CASE`       | `myValue`  |
 
 ### Basic Usage
 
@@ -351,8 +350,8 @@ Enables dynamic type mapping via the `dynamic_dto` PostgreSQL type. This allows:
 
 ### Annotation Parameters
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
+| Parameter  | Type     | Description                                  |
+|------------|----------|----------------------------------------------|
 | `typeName` | `String` | Unique key used in `dynamic_dto('key', ...)` |
 
 ### Requirements
@@ -437,21 +436,7 @@ val users = dataAccess.rawQuery("""
 
 ### dynamic_dto PostgreSQL Type
 
-Octavius automatically creates this type on startup:
-
-```sql
-CREATE TYPE dynamic_dto AS (
-    type_name    TEXT,     -- Discriminator key
-    data_payload JSONB     -- Serialized data
-);
-
-CREATE FUNCTION dynamic_dto(p_type_name TEXT, p_data JSONB)
-RETURNS dynamic_dto AS $$
-BEGIN
-    RETURN ROW(p_type_name, p_data)::dynamic_dto;
-END;
-$$ LANGUAGE plpgsql;
-```
+Octavius automatically creates the `dynamic_dto` composite type and helper functions on startup. See [Configuration — Core Type Initialization](configuration.md#core-type-initialization) for the full SQL definition and setup options.
 
 ---
 
@@ -522,129 +507,21 @@ enum class PgStandardType(val typeName: String) {
 
 ### Type Resolution Priority
 
-When a Kotlin type has multiple annotations (e.g., both `@PgComposite` and `@DynamicallyMappable`), the framework resolves conflicts based on explicit wrappers:
+When a Kotlin type has multiple annotations (e.g., both `@PgComposite` and `@DynamicallyMappable`), use explicit wrappers to control the path:
 
-**Priority rules:**
-
-| Wrapper Used | Behavior |
-|--------------|----------|
-| `value.withPgType("type")` | Forces `@PgComposite` / `@PgEnum` path — converts to `ROW(...)::type` or `PGobject` |
-| `DynamicDto.from(value)` | Forces `@DynamicallyMappable` path — converts to `dynamic_dto(...)` |
-| None (raw value) | Depends on `DynamicDtoSerializationStrategy` (see [Configuration](configuration.md)) |
-
-**DynamicDtoSerializationStrategy** controls automatic conversion when no explicit wrapper is used:
-
-| Strategy | Behavior |
-|----------|----------|
-| `EXPLICIT_ONLY` | Only explicit `DynamicDto.from()` wrappers trigger dynamic serialization. Raw values always use `@PgComposite`/`@PgEnum`. |
-| `AUTOMATIC_WHEN_UNAMBIGUOUS` (default) | If type is registered as formal PostgreSQL type (`@PgComposite`/`@PgEnum`), uses that. Otherwise, if `@DynamicallyMappable` is present, uses dynamic serialization. |
-
-**Example with dual-annotated type:**
-
-```kotlin
-@PgComposite
-@DynamicallyMappable(typeName = "profile_dto")
-@Serializable
-data class Profile(val name: String, val role: String)
-
-// Force PostgreSQL COMPOSITE type path
-dataAccess.insertInto("users")
-    .values(listOf("profile"))
-    .execute("profile" to profile.withPgType("profile"))
-// SQL: ROW('John', 'admin')::profile
-
-// Force dynamic_dto path
-dataAccess.insertInto("events")
-    .values(listOf("payload"))
-    .execute("payload" to DynamicDto.from(profile))
-// SQL: dynamic_dto('profile_dto', '{"name":"John","role":"admin"}')
-
-// Raw value - uses @PgComposite (formal type has priority with default strategy)
-dataAccess.insertInto("users")
-    .values(listOf("profile"))
-    .execute("profile" to profile)
-```
+| Wrapper Used               | Behavior                                                                                                               |
+|----------------------------|------------------------------------------------------------------------------------------------------------------------|
+| `value.withPgType("type")` | Forces `@PgComposite` / `@PgEnum` path — converts to `ROW(...)::type` or `PGobject`                                    |
+| `DynamicDto.from(value)`   | Forces `@DynamicallyMappable` path — converts to `dynamic_dto(...)`                                                    |
+| None (raw value)           | Depends on `DynamicDtoSerializationStrategy` (see [Configuration](configuration.md#dynamicdto-serialization-strategy)) |
 
 ---
 
-## @MapKey - Custom Property Mapping
+## @MapKey & Object Conversion Utilities
 
-Override the default snake_case ↔ camelCase mapping for individual properties.
+`@MapKey` overrides the default snake_case ↔ camelCase mapping for individual properties. `toDataObject()` and `toMap()` convert between data classes and maps.
 
-> For practical usage examples with `toMap()` and `toDataObject()`, see [ORM-Like Patterns](orm-patterns.md#mapkey-annotation).
-
-### Usage
-
-```kotlin
-data class User(
-    val id: Int,
-    val userName: String,  // Maps to "user_name" by default
-
-    @MapKey("user")        // Override: maps to "user" instead
-    val userId: Int
-)
-```
-
-### When Needed
-
-- Column name doesn't follow snake_case convention
-- Want to map to a different column name than property suggests
-- Working with legacy schemas
-
-```kotlin
-data class LegacyOrder(
-    @MapKey("ORDER_ID")      // Legacy uppercase
-    val orderId: Int,
-
-    @MapKey("CUST_NAME")     // Abbreviated column
-    val customerName: String,
-
-    val status: String       // Default: maps to "status"
-)
-```
-
----
-
-## Object Conversion Utilities
-
-Octavius provides utilities for converting between data classes and maps.
-
-> For detailed patterns including CRUD operations, partial updates, and real-world examples, see [ORM-Like Patterns](orm-patterns.md#object-map-conversion).
-
-### toDataObject()
-
-Convert a map to a data class:
-
-```kotlin
-val map = mapOf("id" to 1, "user_name" to "John", "email" to "john@example.com")
-val user: User = map.toDataObject<User>()
-
-// Or with explicit class
-val user = map.toDataObject(User::class)
-```
-
-**Rules:**
-- Keys in snake_case match properties in camelCase
-- `@MapKey` annotation overrides default mapping
-- Missing required properties throw `ConversionException`
-- Optional parameters use their default values if key is missing
-- Nullable parameters become `null` if key is missing
-
-### toMap()
-
-Convert a data class to a map:
-
-```kotlin
-data class User(val id: Int, val userName: String, val email: String)
-
-val user = User(1, "John", "john@example.com")
-val map = user.toMap()
-// Result: {id=1, user_name=John, email=john@example.com}
-
-// Exclude certain keys
-val partial = user.toMap("id", "email")
-// Result: {user_name=John}
-```
+See [Data Mapping](data-mapping.md) for full documentation, examples, and CRUD patterns.
 
 ---
 
@@ -712,12 +589,12 @@ Without this, the JSON payload stored in `dynamic_dto` would contain Kotlin enum
 
 ### Parameters
 
-| Parameter | Description |
-|-----------|-------------|
-| `serialName` | Name for serialization descriptor |
-| `entries` | `YourEnum.entries` - list of all enum values |
-| `pgConvention` | Must match `@PgEnum.pgConvention` |
-| `kotlinConvention` | Must match `@PgEnum.kotlinConvention` |
+| Parameter          | Description                                  |
+|--------------------|----------------------------------------------|
+| `serialName`       | Name for serialization descriptor            |
+| `entries`          | `YourEnum.entries` - list of all enum values |
+| `pgConvention`     | Must match `@PgEnum.pgConvention`            |
+| `kotlinConvention` | Must match `@PgEnum.kotlinConvention`        |
 
 ---
 

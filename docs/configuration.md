@@ -230,11 +230,11 @@ Controls how classes with `@DynamicallyMappable` are serialized.
 
 ### Strategy Options
 
-| Strategy | Description |
-|----------|-------------|
-| `EXPLICIT_ONLY` | Never auto-convert. Requires explicit `DynamicDto.from()` wrapping |
+| Strategy                     | Description                                                               |
+|------------------------------|---------------------------------------------------------------------------|
+| `EXPLICIT_ONLY`              | Never auto-convert. Requires explicit `DynamicDto.from()` wrapping        |
 | `AUTOMATIC_WHEN_UNAMBIGUOUS` | Auto-convert only when class has no `@PgComposite`/`@PgEnum`. **Default** |
-| `PREFER_DYNAMIC_DTO` | Always prefer `dynamic_dto` even when `@PgComposite` is present |
+| `PREFER_DYNAMIC_DTO`         | Always prefer `dynamic_dto` even when `@PgComposite` is present           |
 
 ### When Does Ambiguity Occur?
 

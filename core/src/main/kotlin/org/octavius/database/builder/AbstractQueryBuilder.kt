@@ -144,11 +144,12 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
         return executeReturningQuery(params, rowMappers.DataObjectMapper(kClass)) {
             val result = it.firstOrNull()
             if (result == null && !kType.isMarkedNullable) {
-                DataResult.Failure(ConversionException(ConversionExceptionMessage.UNEXPECTED_NULL_VALUE, targetType = kType.toString()))
-            } else {
-                @Suppress("UNCHECKED_CAST")
-                DataResult.Success(result as T)
+                throw ConversionException(ConversionExceptionMessage.UNEXPECTED_NULL_VALUE, targetType = kType.toString())
             }
+            @Suppress("UNCHECKED_CAST")
+            DataResult.Success(result as T)
+        }
+    }
         }
     }
 
@@ -159,11 +160,10 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
         return executeReturningQuery(params, rowMappers.SingleValueMapper(targetType)) {
             val result = it.firstOrNull()
             if (result == null && !targetType.isMarkedNullable) {
-                DataResult.Failure(ConversionException(ConversionExceptionMessage.UNEXPECTED_NULL_VALUE, targetType = targetType.toString()))
-            } else {
-                @Suppress("UNCHECKED_CAST")
-                DataResult.Success(result as T)
+                throw ConversionException(ConversionExceptionMessage.UNEXPECTED_NULL_VALUE, targetType = targetType.toString())
             }
+            @Suppress("UNCHECKED_CAST")
+            DataResult.Success(result as T)
         }
     }
 

@@ -154,7 +154,7 @@ class RealPostgresDataModificationTest {
         // Assert: Odczytujemy tylko zaktualizowane pole i weryfikujemy
         val retrievedTeam = jdbcTemplate.queryForObject(
             "SELECT person_array FROM complex_test_data WHERE id = 1",
-            mappers.SingleValueMapper<List<TestPerson>>(typeOf<List<TestPerson>>())
+            mappers.SingleValueMapper(typeOf<List<TestPerson>>())
         ) as List<TestPerson>
 
         assertThat(retrievedTeam).isEqualTo(newTeam)

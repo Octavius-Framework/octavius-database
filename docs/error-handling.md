@@ -2,7 +2,7 @@
 
 Octavius Database uses a **Result type pattern** instead of throwing exceptions. All database operations return `DataResult<T>` which forces explicit handling of both success and failure cases.
 
-> **Working with DataResult**: For `DataResult` usage patterns (`map`, `onSuccess`, `getOrElse`, `assertNotNull`, etc.), see [Executing Queries](executing-queries.md#dataresult).
+> **Working with DataResult**: For `DataResult` usage patterns (`map`, `onSuccess`, `getOrElse`, etc.), see [Executing Queries](executing-queries.md#dataresult).
 
 ## Table of Contents
 
@@ -236,6 +236,7 @@ Thrown when converting between PostgreSQL and Kotlin types fails.
 | `MISSING_REQUIRED_PROPERTY` | Missing field for non-nullable property |
 | `JSON_DESERIALIZATION_FAILED` | JSON parsing error in dynamic_dto |
 | `JSON_SERIALIZATION_FAILED` | Object to JSON conversion error |
+| `UNEXPECTED_NULL_VALUE` | Null value for non-nullable target type |
 
 ### Where It Appears
 

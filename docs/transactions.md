@@ -135,15 +135,16 @@ val updateStep = dataAccess.update("users")
 
 ### Step Terminal Methods
 
-| Method | Result Type | Use Case |
-|--------|-------------|----------|
-| `toField<T>(params)` | `T` | Single value (e.g., inserted ID) |
-| `toColumn<T>(params)` | `List<T>` | All values from first column |
-| `toSingle(params)` | `Map<String, Any?>?` | Single row as map |
-| `toSingleOf<T>(params)` | `T` | Single row as data class |
-| `toList(params)` | `List<Map<String, Any?>>` | All rows as maps |
-| `toListOf<T>(params)` | `List<T>` | All rows as data classes |
-| `execute(params)` | `Int` | Affected row count |
+| Method                    | Result Type               | Use Case                             |
+|---------------------------|---------------------------|--------------------------------------|
+| `toField<T>(params)`      | `T`                       | Single value (e.g., inserted ID)     |
+| `toColumn<T>(params)`     | `List<T>`                 | All values from first column         |
+| `toSingle(params)`        | `Map<String, Any?>?`      | Single row as map                    |
+| `toSingleNotNull(params)` | `Map<String, Any?>`       | Single row as map (fails if no rows) |
+| `toSingleOf<T>(params)`   | `T`                       | Single row as data class             |
+| `toList(params)`          | `List<Map<String, Any?>>` | All rows as maps                     |
+| `toListOf<T>(params)`     | `List<T>`                 | All rows as data classes             |
+| `execute(params)`         | `Int`                     | Affected row count                   |
 
 ---
 
@@ -155,13 +156,13 @@ When you add a step to a plan, you get a `StepHandle<T>` that can reference that
 
 All methods have default parameter values where applicable (`rowIndex` defaults to `0`).
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `field(rowIndex = 0)` | `FromStep.Field` | Reference to scalar value (from `toField()` or `execute()`) |
-| `field(columnName, rowIndex = 0)` | `FromStep.Field` | Reference to value in specific column (from `toList()`/`toSingle()`) |
-| `column()` | `FromStep.Column` | Reference to entire column (from `toColumn()`) |
-| `column(columnName)` | `FromStep.Column` | Reference to specific column (from `toList()`) |
-| `row(rowIndex = 0)` | `FromStep.Row` | Reference to entire row as `Map<String, Any?>` |
+| Method                            | Returns           | Description                                                          |
+|-----------------------------------|-------------------|----------------------------------------------------------------------|
+| `field(rowIndex = 0)`             | `FromStep.Field`  | Reference to scalar value (from `toField()` or `execute()`)          |
+| `field(columnName, rowIndex = 0)` | `FromStep.Field`  | Reference to value in specific column (from `toList()`/`toSingle()`) |
+| `column()`                        | `FromStep.Column` | Reference to entire column (from `toColumn()`)                       |
+| `column(columnName)`              | `FromStep.Column` | Reference to specific column (from `toList()`)                       |
+| `row(rowIndex = 0)`               | `FromStep.Row`    | Reference to entire row as `Map<String, Any?>`                       |
 
 ### Usage Examples
 
@@ -228,13 +229,13 @@ plan.add(
 
 ### Variants
 
-| Variant | Description |
-|---------|-------------|
-| `Value(value)` | Constant, predefined value |
-| `FromStep.Field(handle, columnName?, rowIndex)` | Single value from a previous step |
-| `FromStep.Column(handle, columnName?)` | List of values from a column |
-| `FromStep.Row(handle, rowIndex)` | Entire row as `Map<String, Any?>` |
-| `Transformed(source, transform)` | Transformed value from another TransactionValue |
+| Variant                                         | Description                                     |
+|-------------------------------------------------|-------------------------------------------------|
+| `Value(value)`                                  | Constant, predefined value                      |
+| `FromStep.Field(handle, columnName?, rowIndex)` | Single value from a previous step               |
+| `FromStep.Column(handle, columnName?)`          | List of values from a column                    |
+| `FromStep.Row(handle, rowIndex)`                | Entire row as `Map<String, Any?>`               |
+| `Transformed(source, transform)`                | Transformed value from another TransactionValue |
 
 ### Extension Functions
 
@@ -332,7 +333,7 @@ plan.add(
         .values(listOf("name", "email", "role", "archived_at", "archived_by"))
         .asStep()
         .execute(
-            sourceHandle.row(),           // Spreads name, email, role
+            "row" to sourceHandle.row(),           // Spreads name, email, role - row disappears
             "archived_at" to Instant.now(),
             "archived_by" to currentUserId
         )
@@ -471,7 +472,7 @@ val maybeUserHandle = plan.add(
 val result = dataAccess.executeTransactionPlan(plan)
 
 result.onSuccess { planResult ->
-    val user: User = planResult.get(userHandle)!!    // guaranteed non-null by step
+    val user: User = planResult.get(userHandle)             // guaranteed non-null by step
     val maybeUser: User? = planResult.get(maybeUserHandle)  // may be null
 }
 ```

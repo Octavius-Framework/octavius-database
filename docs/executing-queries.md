@@ -18,15 +18,16 @@ All query builders share common terminal methods that execute the query and retu
 
 ### Returning Methods (`TerminalReturningMethods`)
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `toList(params)` | `DataResult<List<Map<String, Any?>>>` | All rows as list of maps |
-| `toSingle(params)` | `DataResult<Map<String, Any?>?>` | First row as map (or null) |
-| `toListOf<T>(params)` | `DataResult<List<T>>` | All rows mapped to data class |
-| `toSingleOf<T>(params)` | `DataResult<T>` | First row mapped to data class |
-| `toField<T>(params)` | `DataResult<T>` | Single value from first column/row |
-| `toColumn<T>(params)` | `DataResult<List<T>>` | All values from first column |
-| `toSql()` | `String` | Generated SQL (no execution) |
+| Method                    | Returns                               | Description                           |
+|---------------------------|---------------------------------------|---------------------------------------|
+| `toList(params)`          | `DataResult<List<Map<String, Any?>>>` | All rows as list of maps              |
+| `toSingle(params)`        | `DataResult<Map<String, Any?>?>`      | First row as map (or null)            |
+| `toSingleNotNull(params)` | `DataResult<Map<String, Any?>>`       | First row as map (Failure if no rows) |
+| `toListOf<T>(params)`     | `DataResult<List<T>>`                 | All rows mapped to data class         |
+| `toSingleOf<T>(params)`   | `DataResult<T>`                       | First row mapped to data class        |
+| `toField<T>(params)`      | `DataResult<T>`                       | Single value from first column/row    |
+| `toColumn<T>(params)`     | `DataResult<List<T>>`                 | All values from first column          |
+| `toSql()`                 | `String`                              | Generated SQL (no execution)          |
 
 Nullability is controlled by the type parameter `T`. Use nullable types when null results are expected:
 
@@ -40,8 +41,8 @@ val id: DataResult<Int?> = query.toField<Int?>()
 
 ### Modification Methods (`TerminalModificationMethods`)
 
-| Method | Returns | Description |
-|--------|---------|-------------|
+| Method            | Returns           | Description        |
+|-------------------|-------------------|--------------------|
 | `execute(params)` | `DataResult<Int>` | Affected row count |
 
 ### Parameter Passing
@@ -86,13 +87,13 @@ sealed class DataResult<out T> {
 
 ### Extension Functions
 
-| Function | Description |
-|----------|-------------|
-| `map { }` | Transform success value, leave failure unchanged |
-| `onSuccess { }` | Execute action on success, return same result |
-| `onFailure { }` | Execute action on failure, return same result |
-| `getOrElse { }` | Get value or compute default from error |
-| `getOrThrow()` | Get value or throw exception (use sparingly) |
+| Function        | Description                                      |
+|-----------------|--------------------------------------------------|
+| `map { }`       | Transform success value, leave failure unchanged |
+| `onSuccess { }` | Execute action on success, return same result    |
+| `onFailure { }` | Execute action on failure, return same result    |
+| `getOrElse { }` | Get value or compute default from error          |
+| `getOrThrow()`  | Get value or throw exception                     |
 
 ### Basic Usage
 
@@ -120,7 +121,7 @@ val users: List<User> = result.getOrThrow()  // Throws on failure
 
 ### Null Handling via Type Parameter
 
-Nullability is determined by the type parameter you pass — no separate `assertNotNull()` call needed:
+Nullability is determined by the type parameter you pass:
 
 ```kotlin
 // Non-nullable — Failure if user not found (0 rows)
@@ -141,16 +142,26 @@ val user: User = dataAccess.select("*")
     .where("id = :id")
     .toSingleOf<User>("id" to userId)
     .getOrThrow()  // Guaranteed non-null
+
+// For untyped map results, use toSingleNotNull
+val row: DataResult<Map<String, Any?>> = dataAccess.select("*")
+    .from("users")
+    .where("id = :id")
+    .toSingleNotNull("id" to userId)  // Failure if no rows
 ```
 
 Behavior for `toField<T>()`, `toSingleOf<T>()`:
-- Non-null `T` + result is null → `Failure(ConversionException(UNEXPECTED_NULL_VALUE))`
+- Non-null `T` + result is null → `Failure(QueryExecutionException)` with `ConversionException(UNEXPECTED_NULL_VALUE)` as cause
 - Nullable `T?` + result is null → `Success(null)`
 - Non-null result → `Success(value)` in both cases
 
 For `toColumn<T>()`, the element type determines nullability:
 - `toColumn<Int>()` — fails if any row has a null value
 - `toColumn<Int?>()` — allows null elements in the list
+
+For `toSingle()` vs `toSingleNotNull()`:
+- `toSingle()` — 0 rows → `Success(null)`
+- `toSingleNotNull()` — 0 rows → `Failure(QueryExecutionException)` with `ConversionException(UNEXPECTED_NULL_VALUE)` as cause
 
 ### In Transactions
 
@@ -188,8 +199,6 @@ fun getOrderWithItems(orderId: Int): DataResult<OrderWithItems> {
         .toSingleOf<Order>("id" to orderId)
 
     return orderResult.map { order ->
-        order ?: return DataResult.Failure(/* custom error */)
-
         val items = dataAccess.select("*")
             .from("order_items")
             .where("order_id = :orderId")
@@ -308,6 +317,7 @@ All terminal methods have async counterparts accepting callbacks:
 interface AsyncTerminalMethods {
     fun toList(params, onResult: (DataResult<List<Map<String, Any?>>>) -> Unit): Job
     fun toSingle(params, onResult: (DataResult<Map<String, Any?>?>) -> Unit): Job
+    fun toSingleNotNull(params, onResult: (DataResult<Map<String, Any?>>) -> Unit): Job
     fun <T> toListOf(kType, params, onResult: (DataResult<List<T>>) -> Unit): Job
     fun <T> toSingleOf(kType, params, onResult: (DataResult<T>) -> Unit): Job
     fun <T> toField(kType, params, onResult: (DataResult<T>) -> Unit): Job

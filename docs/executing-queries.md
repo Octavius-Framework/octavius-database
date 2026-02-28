@@ -26,6 +26,7 @@ All query builders share common terminal methods that execute the query and retu
 | `toListOf<T>(params)`     | `DataResult<List<T>>`                 | All rows mapped to data class         |
 | `toSingleOf<T>(params)`   | `DataResult<T>`                       | First row mapped to data class        |
 | `toField<T>(params)`      | `DataResult<T>`                       | Single value from first column/row    |
+| `toFieldStrict<T>(params)`| `DataResult<T>`                       | Single value, always Failure if no rows |
 | `toColumn<T>(params)`     | `DataResult<List<T>>`                 | All values from first column          |
 | `toSql()`                 | `String`                              | Generated SQL (no execution)          |
 
@@ -37,6 +38,10 @@ val id: DataResult<Int> = query.toField<Int>()
 
 // Nullable — returns Success(null) if no rows or null value
 val id: DataResult<Int?> = query.toField<Int?>()
+
+// Strict — always Failure if no rows, null value controlled by type
+val id: DataResult<Int> = query.toFieldStrict<Int>()      // Failure if no rows OR null value
+val id: DataResult<Int?> = query.toFieldStrict<Int?>()     // Failure if no rows, Success(null) if null value
 ```
 
 ### Modification Methods (`TerminalModificationMethods`)
@@ -153,6 +158,12 @@ val row: DataResult<Map<String, Any?>> = dataAccess.select("*")
 Behavior for `toField<T>()`, `toSingleOf<T>()`:
 - Non-null `T` + result is null → `Failure(QueryExecutionException)` with `ConversionException(UNEXPECTED_NULL_VALUE)` as cause
 - Nullable `T?` + result is null → `Success(null)`
+- Non-null result → `Success(value)` in both cases
+
+Behavior for `toFieldStrict<T>()`:
+- 0 rows → always `Failure(QueryExecutionException)` with `ConversionException(EMPTY_RESULT)` as cause, regardless of nullability
+- Non-null `T` + null value → `Failure(QueryExecutionException)` with `ConversionException(UNEXPECTED_NULL_VALUE)` as cause
+- Nullable `T?` + null value → `Success(null)`
 - Non-null result → `Success(value)` in both cases
 
 For `toColumn<T>()`, the element type determines nullability:
@@ -321,6 +332,7 @@ interface AsyncTerminalMethods {
     fun <T> toListOf(kType, params, onResult: (DataResult<List<T>>) -> Unit): Job
     fun <T> toSingleOf(kType, params, onResult: (DataResult<T>) -> Unit): Job
     fun <T> toField(kType, params, onResult: (DataResult<T>) -> Unit): Job
+    fun <T> toFieldStrict(kType, params, onResult: (DataResult<T>) -> Unit): Job
     fun <T> toColumn(kType, params, onResult: (DataResult<List<T>>) -> Unit): Job
     fun execute(params, onResult: (DataResult<Int>) -> Unit): Job
 }

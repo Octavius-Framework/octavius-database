@@ -64,6 +64,15 @@ internal class StepBuilder(private val builder: AbstractQueryBuilder<*>) : StepB
         )
     }
 
+    /** Creates TransactionStep with toFieldStrict method */
+    override fun <T> toFieldStrict(kType: KType, params: Map<String, Any?>): TransactionStep<T> {
+        return TransactionStep(
+            builder = this.builder,
+            executionLogic = { b, p -> (b as AbstractQueryBuilder<*>).toFieldStrict(kType, p) },
+            params = params
+        )
+    }
+
     /** Creates TransactionStep with toColumn method */
     override fun <T> toColumn(kType: KType, params: Map<String, Any?>): TransactionStep<List<T>> {
         return TransactionStep(

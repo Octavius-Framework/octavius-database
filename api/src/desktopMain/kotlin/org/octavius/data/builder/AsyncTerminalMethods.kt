@@ -55,6 +55,13 @@ interface AsyncTerminalMethods {
         onResult: (DataResult<T>) -> Unit
     ): Job
 
+    /** Asynchronously fetches a single value (strict: always fails on empty result) and passes the result to the onResult callback. */
+    fun <T> toFieldStrict(
+        kType: KType,
+        params: Map<String, Any?> = emptyMap(),
+        onResult: (DataResult<T>) -> Unit
+    ): Job
+
     /** Asynchronously fetches a list of values from the first column and passes the result to the onResult callback. */
     fun <T> toColumn(
         kType: KType,
@@ -116,6 +123,16 @@ inline fun <reified T> AsyncTerminalMethods.toField(
     vararg params: Pair<String, Any?>,
     noinline onResult: (DataResult<T>) -> Unit
 ): Job = toField(typeOf<T>(), params.toMap(), onResult)
+
+inline fun <reified T> AsyncTerminalMethods.toFieldStrict(
+    params: Map<String, Any?> = emptyMap(),
+    noinline onResult: (DataResult<T>) -> Unit
+): Job = toFieldStrict(typeOf<T>(), params, onResult)
+
+inline fun <reified T> AsyncTerminalMethods.toFieldStrict(
+    vararg params: Pair<String, Any?>,
+    noinline onResult: (DataResult<T>) -> Unit
+): Job = toFieldStrict(typeOf<T>(), params.toMap(), onResult)
 
 // toColumn
 inline fun <reified T> AsyncTerminalMethods.toColumn(

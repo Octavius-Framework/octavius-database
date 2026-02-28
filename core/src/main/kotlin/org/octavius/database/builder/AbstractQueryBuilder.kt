@@ -176,6 +176,21 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
         }
     }
 
+    /** Executes the query and returns the value from the first column of the first row. Always fails on empty result. */
+    fun <T> toFieldStrict(targetType: KType, params: Map<String, Any?>): DataResult<T> {
+        return executeReturningQuery(params, rowMappers.SingleValueMapper(targetType)) {
+            if (it.isEmpty()) {
+                throw ConversionException(ConversionExceptionMessage.EMPTY_RESULT, targetType = targetType.toString())
+            }
+            val result = it.first()
+            if (result == null && !targetType.isMarkedNullable) {
+                throw ConversionException(ConversionExceptionMessage.UNEXPECTED_NULL_VALUE, targetType = targetType.toString())
+            }
+            @Suppress("UNCHECKED_CAST")
+            DataResult.Success(result as T)
+        }
+    }
+
     /** Executes the query and returns a list of values from the first column of all rows. */
     fun <T> toColumn(targetType: KType, params: Map<String, Any?>): DataResult<List<T>> {
         return executeReturningQuery(params, rowMappers.SingleValueMapper(targetType)) {

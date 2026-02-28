@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test
 import org.octavius.data.DataResult
 import org.octavius.data.builder.toColumn
 import org.octavius.data.builder.toField
+import org.octavius.data.builder.toFieldStrict
 import org.octavius.data.builder.toSingleOf
 import org.octavius.data.exception.ConversionException
 import org.octavius.data.exception.ConversionExceptionMessage
@@ -40,13 +41,21 @@ class NullHandlingTest {
         builder.from("dual")
     }
 
-    private fun assertUnexpectedNullFailure(result: DataResult<*>) {
+    private fun assertConversionFailure(result: DataResult<*>, expectedMessage: ConversionExceptionMessage) {
         assertThat(result).isInstanceOf(DataResult.Failure::class.java)
         val failure = result as DataResult.Failure
         assertThat(failure.error).isInstanceOf(QueryExecutionException::class.java)
         val cause = failure.error.cause
         assertThat(cause).isInstanceOf(ConversionException::class.java)
-        assertThat((cause as ConversionException).messageEnum).isEqualTo(ConversionExceptionMessage.UNEXPECTED_NULL_VALUE)
+        assertThat((cause as ConversionException).messageEnum).isEqualTo(expectedMessage)
+    }
+
+    private fun assertUnexpectedNullFailure(result: DataResult<*>) {
+        assertConversionFailure(result, ConversionExceptionMessage.UNEXPECTED_NULL_VALUE)
+    }
+
+    private fun assertEmptyResultFailure(result: DataResult<*>) {
+        assertConversionFailure(result, ConversionExceptionMessage.EMPTY_RESULT)
     }
 
     @Nested
@@ -82,6 +91,67 @@ class NullHandlingTest {
             every { mockJdbcTemplate.query(any<String>(), any<RowMapper<Any?>>(), *anyVararg()) } returns listOf(42)
 
             val result: DataResult<Int> = builder.toField<Int>()
+
+            assertThat(result).isInstanceOf(DataResult.Success::class.java)
+            assertThat((result as DataResult.Success).value).isEqualTo(42)
+        }
+    }
+
+    @Nested
+    inner class ToFieldStrictNullHandling {
+
+        @Test
+        fun `toFieldStrict with non-nullable type and 0 rows should return Failure`() {
+            val nullMapper = RowMapper<Any?> { _, _ -> null }
+            every { mockMappers.SingleValueMapper(any()) } returns nullMapper
+            every { mockJdbcTemplate.query(any<String>(), any<RowMapper<Any?>>(), *anyVararg()) } returns emptyList<Any?>()
+
+            val result: DataResult<Int> = builder.toFieldStrict<Int>()
+
+            assertEmptyResultFailure(result)
+        }
+
+        @Test
+        fun `toFieldStrict with nullable type and 0 rows should return Failure`() {
+            val nullMapper = RowMapper<Any?> { _, _ -> null }
+            every { mockMappers.SingleValueMapper(any()) } returns nullMapper
+            every { mockJdbcTemplate.query(any<String>(), any<RowMapper<Any?>>(), *anyVararg()) } returns emptyList<Any?>()
+
+            val result: DataResult<Int?> = builder.toFieldStrict<Int?>()
+
+            assertEmptyResultFailure(result)
+        }
+
+        @Test
+        fun `toFieldStrict with nullable type and null value should return Success(null)`() {
+            val nullMapper = RowMapper<Any?> { _, _ -> null }
+            every { mockMappers.SingleValueMapper(any()) } returns nullMapper
+            every { mockJdbcTemplate.query(any<String>(), any<RowMapper<Any?>>(), *anyVararg()) } returns listOf(null)
+
+            val result: DataResult<Int?> = builder.toFieldStrict<Int?>()
+
+            assertThat(result).isInstanceOf(DataResult.Success::class.java)
+            assertThat((result as DataResult.Success).value).isNull()
+        }
+
+        @Test
+        fun `toFieldStrict with non-nullable type and null value should return Failure`() {
+            val nullMapper = RowMapper<Any?> { _, _ -> null }
+            every { mockMappers.SingleValueMapper(any()) } returns nullMapper
+            every { mockJdbcTemplate.query(any<String>(), any<RowMapper<Any?>>(), *anyVararg()) } returns listOf(null)
+
+            val result: DataResult<Int> = builder.toFieldStrict<Int>()
+
+            assertUnexpectedNullFailure(result)
+        }
+
+        @Test
+        fun `toFieldStrict with non-nullable type and non-null result should return Success`() {
+            val valueMapper = RowMapper<Any?> { _, _ -> 42 }
+            every { mockMappers.SingleValueMapper(any()) } returns valueMapper
+            every { mockJdbcTemplate.query(any<String>(), any<RowMapper<Any?>>(), *anyVararg()) } returns listOf(42)
+
+            val result: DataResult<Int> = builder.toFieldStrict<Int>()
 
             assertThat(result).isInstanceOf(DataResult.Success::class.java)
             assertThat((result as DataResult.Success).value).isEqualTo(42)

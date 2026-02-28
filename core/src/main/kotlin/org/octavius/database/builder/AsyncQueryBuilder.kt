@@ -74,6 +74,14 @@ internal class AsyncQueryBuilder(
         executeAndInvoke({ builder.toField(kType, params) }, onResult)
     }
 
+    override fun <T> toFieldStrict(
+        kType: KType,
+        params: Map<String, Any?>,
+        onResult: (DataResult<T>) -> Unit
+    ): Job = scope.launch {
+        executeAndInvoke({ builder.toFieldStrict(kType, params) }, onResult)
+    }
+
     override fun <T> toColumn(
         kType: KType,
         params: Map<String, Any?>,

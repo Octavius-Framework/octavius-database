@@ -138,9 +138,10 @@ val updateStep = dataAccess.update("users")
 | Method                    | Result Type               | Use Case                             |
 |---------------------------|---------------------------|--------------------------------------|
 | `toField<T>(params)`      | `T`                       | Single value (e.g., inserted ID)     |
+| `toFieldStrict<T>(params)`| `T`                       | Single value, always fails if no rows|
 | `toColumn<T>(params)`     | `List<T>`                 | All values from first column         |
 | `toSingle(params)`        | `Map<String, Any?>?`      | Single row as map                    |
-| `toSingleNotNull(params)` | `Map<String, Any?>`       | Single row as map (fails if no rows) |
+| `toSingleStrict(params)`  | `Map<String, Any?>`       | Single row as map (fails if no rows) |
 | `toSingleOf<T>(params)`   | `T`                       | Single row as data class             |
 | `toList(params)`          | `List<Map<String, Any?>>` | All rows as maps                     |
 | `toListOf<T>(params)`     | `List<T>`                 | All rows as data classes             |

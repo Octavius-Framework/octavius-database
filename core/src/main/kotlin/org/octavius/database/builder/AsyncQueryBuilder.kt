@@ -43,11 +43,11 @@ internal class AsyncQueryBuilder(
         executeAndInvoke({ builder.toSingle(params) }, onResult)
     }
 
-    override fun toSingleNotNull(
+    override fun toSingleStrict(
         params: Map<String, Any?>,
         onResult: (DataResult<Map<String, Any?>>) -> Unit
     ): Job = scope.launch {
-        executeAndInvoke({ builder.toSingleNotNull(params) }, onResult)
+        executeAndInvoke({ builder.toSingleStrict(params) }, onResult)
     }
 
     override fun <T> toListOf(
@@ -72,6 +72,14 @@ internal class AsyncQueryBuilder(
         onResult: (DataResult<T>) -> Unit
     ): Job = scope.launch {
         executeAndInvoke({ builder.toField(kType, params) }, onResult)
+    }
+
+    override fun <T> toFieldStrict(
+        kType: KType,
+        params: Map<String, Any?>,
+        onResult: (DataResult<T>) -> Unit
+    ): Job = scope.launch {
+        executeAndInvoke({ builder.toFieldStrict(kType, params) }, onResult)
     }
 
     override fun <T> toColumn(

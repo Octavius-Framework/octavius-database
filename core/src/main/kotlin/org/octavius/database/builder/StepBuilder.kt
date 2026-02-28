@@ -28,11 +28,11 @@ internal class StepBuilder(private val builder: AbstractQueryBuilder<*>) : StepB
         )
     }
 
-    /** Creates TransactionStep with toSingleNotNull method */
-    override fun toSingleNotNull(params: Map<String, Any?>): TransactionStep<Map<String, Any?>> {
+    /** Creates TransactionStep with toSingleStrict method */
+    override fun toSingleStrict(params: Map<String, Any?>): TransactionStep<Map<String, Any?>> {
         return TransactionStep(
             builder = this.builder,
-            executionLogic = { b, p -> (b as AbstractQueryBuilder<*>).toSingleNotNull(p) },
+            executionLogic = { b, p -> (b as AbstractQueryBuilder<*>).toSingleStrict(p) },
             params = params
         )
     }
@@ -60,6 +60,15 @@ internal class StepBuilder(private val builder: AbstractQueryBuilder<*>) : StepB
         return TransactionStep(
             builder = this.builder,
             executionLogic = { b, p -> (b as AbstractQueryBuilder<*>).toField(kType, p) },
+            params = params
+        )
+    }
+
+    /** Creates TransactionStep with toFieldStrict method */
+    override fun <T> toFieldStrict(kType: KType, params: Map<String, Any?>): TransactionStep<T> {
+        return TransactionStep(
+            builder = this.builder,
+            executionLogic = { b, p -> (b as AbstractQueryBuilder<*>).toFieldStrict(kType, p) },
             params = params
         )
     }

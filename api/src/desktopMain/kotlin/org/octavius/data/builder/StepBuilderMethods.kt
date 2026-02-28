@@ -17,8 +17,8 @@ interface StepBuilderMethods {
     /** Creates a TransactionStep with toSingle method */
     fun toSingle(params: Map<String, Any?> = emptyMap()): TransactionStep<Map<String, Any?>?>
 
-    /** Creates a TransactionStep with toSingleNotNull method */
-    fun toSingleNotNull(params: Map<String, Any?> = emptyMap()): TransactionStep<Map<String, Any?>>
+    /** Creates a TransactionStep with toSingleStrict method */
+    fun toSingleStrict(params: Map<String, Any?> = emptyMap()): TransactionStep<Map<String, Any?>>
 
     // --- Returning data class objects ---
 
@@ -32,6 +32,9 @@ interface StepBuilderMethods {
 
     /** Creates a TransactionStep with toField method */
     fun <T> toField(kType: KType, params: Map<String, Any?> = emptyMap()): TransactionStep<T>
+
+    /** Creates a TransactionStep with toFieldStrict method */
+    fun <T> toFieldStrict(kType: KType, params: Map<String, Any?> = emptyMap()): TransactionStep<T>
 
     /** Creates a TransactionStep with toColumn method */
     fun <T> toColumn(kType: KType, params: Map<String, Any?> = emptyMap()): TransactionStep<List<T>>
@@ -48,8 +51,8 @@ fun StepBuilderMethods.toList(vararg params: Pair<String, Any?>): TransactionSte
 fun StepBuilderMethods.toSingle(vararg params: Pair<String, Any?>): TransactionStep<Map<String, Any?>?> =
     toSingle(params.toMap())
 
-fun StepBuilderMethods.toSingleNotNull(vararg params: Pair<String, Any?>): TransactionStep<Map<String, Any?>> =
-    toSingleNotNull(params.toMap())
+fun StepBuilderMethods.toSingleStrict(vararg params: Pair<String, Any?>): TransactionStep<Map<String, Any?>> =
+    toSingleStrict(params.toMap())
 
 inline fun <reified T> StepBuilderMethods.toField(
     params: Map<String, Any?> = emptyMap()
@@ -58,6 +61,14 @@ inline fun <reified T> StepBuilderMethods.toField(
 inline fun <reified T> StepBuilderMethods.toField(
     vararg params: Pair<String, Any?>
 ): TransactionStep<T> = toField(typeOf<T>(), params.toMap())
+
+inline fun <reified T> StepBuilderMethods.toFieldStrict(
+    params: Map<String, Any?> = emptyMap()
+): TransactionStep<T> = toFieldStrict(typeOf<T>(), params)
+
+inline fun <reified T> StepBuilderMethods.toFieldStrict(
+    vararg params: Pair<String, Any?>
+): TransactionStep<T> = toFieldStrict(typeOf<T>(), params.toMap())
 
 inline fun <reified T> StepBuilderMethods.toColumn(
     params: Map<String, Any?> = emptyMap()

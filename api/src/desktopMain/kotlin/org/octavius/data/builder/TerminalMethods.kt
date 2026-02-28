@@ -15,7 +15,7 @@ interface TerminalReturningMethods {
     fun toSingle(params: Map<String, Any?> = emptyMap()): DataResult<Map<String, Any?>?>
 
     /** Fetches a single row as Map<String, Any?>. Returns Failure if no rows. */
-    fun toSingleNotNull(params: Map<String, Any?> = emptyMap()): DataResult<Map<String, Any?>>
+    fun toSingleStrict(params: Map<String, Any?> = emptyMap()): DataResult<Map<String, Any?>>
 
     // --- Returning data class objects ---
 
@@ -45,6 +45,14 @@ interface TerminalReturningMethods {
     fun <T> toField(targetType: KType, params: Map<String, Any?> = emptyMap()): DataResult<T>
 
     /**
+     * Fetches a single value from the first column of the first row.
+     * Always returns Failure if no rows are found, regardless of nullability.
+     * Nullability only controls whether a null value in the column is allowed:
+     * use `toFieldStrict<Int>()` to fail on null, or `toFieldStrict<Int?>()` to allow null values.
+     */
+    fun <T> toFieldStrict(targetType: KType, params: Map<String, Any?> = emptyMap()): DataResult<T>
+
+    /**
      * Fetches a list of values from the first column of all rows.
      * Nullability of elements is determined by the KType: use `toColumn<Int>()` for non-null
      * or `toColumn<Int?>()` for nullable elements.
@@ -63,8 +71,8 @@ fun TerminalReturningMethods.toList(vararg params: Pair<String, Any?>): DataResu
 fun TerminalReturningMethods.toSingle(vararg params: Pair<String, Any?>): DataResult<Map<String, Any?>?> =
     toSingle(params.toMap())
 
-fun TerminalReturningMethods.toSingleNotNull(vararg params: Pair<String, Any?>): DataResult<Map<String, Any?>> =
-    toSingleNotNull(params.toMap())
+fun TerminalReturningMethods.toSingleStrict(vararg params: Pair<String, Any?>): DataResult<Map<String, Any?>> =
+    toSingleStrict(params.toMap())
 
 inline fun <reified T> TerminalReturningMethods.toField(
     params: Map<String, Any?> = emptyMap()
@@ -73,6 +81,14 @@ inline fun <reified T> TerminalReturningMethods.toField(
 inline fun <reified T> TerminalReturningMethods.toField(
     vararg params: Pair<String, Any?>
 ): DataResult<T> = toField(typeOf<T>(), params.toMap())
+
+inline fun <reified T> TerminalReturningMethods.toFieldStrict(
+    params: Map<String, Any?> = emptyMap()
+): DataResult<T> = toFieldStrict(typeOf<T>(), params)
+
+inline fun <reified T> TerminalReturningMethods.toFieldStrict(
+    vararg params: Pair<String, Any?>
+): DataResult<T> = toFieldStrict(typeOf<T>(), params.toMap())
 
 inline fun <reified T> TerminalReturningMethods.toColumn(
     params: Map<String, Any?> = emptyMap()

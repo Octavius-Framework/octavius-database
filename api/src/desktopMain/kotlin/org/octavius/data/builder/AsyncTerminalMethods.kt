@@ -25,7 +25,7 @@ interface AsyncTerminalMethods {
     ): Job
 
     /** Asynchronously fetches a single row (non-nullable) and passes the result to the onResult callback. */
-    fun toSingleNotNull(
+    fun toSingleStrict(
         params: Map<String, Any?> = emptyMap(),
         onResult: (DataResult<Map<String, Any?>>) -> Unit
     ): Job
@@ -50,6 +50,13 @@ interface AsyncTerminalMethods {
 
     /** Asynchronously fetches a single value from the first column and passes the result to the onResult callback. */
     fun <T> toField(
+        kType: KType,
+        params: Map<String, Any?> = emptyMap(),
+        onResult: (DataResult<T>) -> Unit
+    ): Job
+
+    /** Asynchronously fetches a single value (strict: always fails on empty result) and passes the result to the onResult callback. */
+    fun <T> toFieldStrict(
         kType: KType,
         params: Map<String, Any?> = emptyMap(),
         onResult: (DataResult<T>) -> Unit
@@ -81,10 +88,10 @@ fun AsyncTerminalMethods.toSingle(
     onResult: (DataResult<Map<String, Any?>?>) -> Unit
 ): Job = toSingle(params.toMap(), onResult)
 
-fun AsyncTerminalMethods.toSingleNotNull(
+fun AsyncTerminalMethods.toSingleStrict(
     vararg params: Pair<String, Any?>,
     onResult: (DataResult<Map<String, Any?>>) -> Unit
-): Job = toSingleNotNull(params.toMap(), onResult)
+): Job = toSingleStrict(params.toMap(), onResult)
 
 // Inline extensions
 inline fun <reified T : Any> AsyncTerminalMethods.toListOf(
@@ -116,6 +123,16 @@ inline fun <reified T> AsyncTerminalMethods.toField(
     vararg params: Pair<String, Any?>,
     noinline onResult: (DataResult<T>) -> Unit
 ): Job = toField(typeOf<T>(), params.toMap(), onResult)
+
+inline fun <reified T> AsyncTerminalMethods.toFieldStrict(
+    params: Map<String, Any?> = emptyMap(),
+    noinline onResult: (DataResult<T>) -> Unit
+): Job = toFieldStrict(typeOf<T>(), params, onResult)
+
+inline fun <reified T> AsyncTerminalMethods.toFieldStrict(
+    vararg params: Pair<String, Any?>,
+    noinline onResult: (DataResult<T>) -> Unit
+): Job = toFieldStrict(typeOf<T>(), params.toMap(), onResult)
 
 // toColumn
 inline fun <reified T> AsyncTerminalMethods.toColumn(

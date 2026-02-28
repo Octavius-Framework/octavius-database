@@ -37,7 +37,7 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 - [Limitations](stored-procedures.md#limitations) - Overloaded procedures, rawQuery() fallback
 
 ### Executing Queries
-- [Terminal Methods](executing-queries.md#terminal-methods) - `toList()`, `toListOf()`, `toField()`, `execute()`
+- [Terminal Methods](executing-queries.md#terminal-methods) - `toList()`, `toListOf()`, `toField()`, `toFieldStrict()`, `execute()`
 - [DataResult](executing-queries.md#dataresult) - Success/Failure pattern
 - [assertNotNull](executing-queries.md#assertnotnull) - Handle nullable results
 - [Async Execution](executing-queries.md#async-execution) - Coroutine-based async queries

@@ -21,7 +21,11 @@ enum class ConversionExceptionMessage {
     /** Object to JSON serialization error for dynamic_dto */
     JSON_SERIALIZATION_FAILED,
     /** When a non-null value was expected but null was received */
-    UNEXPECTED_NULL_VALUE
+    UNEXPECTED_NULL_VALUE,
+    /** When a query returned no rows but at least one was expected */
+    EMPTY_RESULT,
+    /** When a single-row method received more than one row */
+    TOO_MANY_ROWS
 }
 
 private fun generateDeveloperMessage(
@@ -49,6 +53,10 @@ private fun generateDeveloperMessage(
                 "Ensure that the class and all its nested types have the @Serializable annotation."
         ConversionExceptionMessage.UNEXPECTED_NULL_VALUE ->
             "Query returned null but target type '$targetType' is non-nullable. Use a nullable type (e.g. toField<Int?>()) if null values are expected."
+        ConversionExceptionMessage.EMPTY_RESULT ->
+            "Query returned no rows but a result of type '$targetType' was expected. Use toField() instead of toFieldStrict() if empty results should return Success(null)."
+        ConversionExceptionMessage.TOO_MANY_ROWS ->
+            "Query returned multiple rows but only a single row was expected (target type: '$targetType'). Use toList() or toColumn() for multi-row results, or add LIMIT 1 to your query."
     }
 }
 

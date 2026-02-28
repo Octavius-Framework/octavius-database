@@ -66,10 +66,33 @@ class NullHandlingTest {
     inner class ToFieldNullHandling {
 
         @Test
-        fun `toField with non-nullable type and null result should return Failure`() {
+        fun `toField with non-nullable type and 0 rows should return Failure with EMPTY_RESULT`() {
             val nullMapper = RowMapper<Any?> { _, _ -> null }
             every { mockMappers.SingleValueMapper(any()) } returns nullMapper
             every { mockJdbcTemplate.query(any<String>(), any<RowMapper<Any?>>(), *anyVararg()) } returns emptyList<Any?>()
+
+            val result: DataResult<Int> = builder.toField<Int>()
+
+            assertEmptyResultFailure(result)
+        }
+
+        @Test
+        fun `toField with nullable type and 0 rows should return Success(null)`() {
+            val nullMapper = RowMapper<Any?> { _, _ -> null }
+            every { mockMappers.SingleValueMapper(any()) } returns nullMapper
+            every { mockJdbcTemplate.query(any<String>(), any<RowMapper<Any?>>(), *anyVararg()) } returns emptyList<Any?>()
+
+            val result: DataResult<Int?> = builder.toField<Int?>()
+
+            assertThat(result).isInstanceOf(DataResult.Success::class.java)
+            assertThat((result as DataResult.Success).value).isNull()
+        }
+
+        @Test
+        fun `toField with non-nullable type and null value should return Failure with UNEXPECTED_NULL_VALUE`() {
+            val nullMapper = RowMapper<Any?> { _, _ -> null }
+            every { mockMappers.SingleValueMapper(any()) } returns nullMapper
+            every { mockJdbcTemplate.query(any<String>(), any<RowMapper<Any?>>(), *anyVararg()) } returns listOf(null)
 
             val result: DataResult<Int> = builder.toField<Int>()
 
@@ -77,10 +100,10 @@ class NullHandlingTest {
         }
 
         @Test
-        fun `toField with nullable type and null result should return Success(null)`() {
+        fun `toField with nullable type and null value should return Success(null)`() {
             val nullMapper = RowMapper<Any?> { _, _ -> null }
             every { mockMappers.SingleValueMapper(any()) } returns nullMapper
-            every { mockJdbcTemplate.query(any<String>(), any<RowMapper<Any?>>(), *anyVararg()) } returns emptyList<Any?>()
+            every { mockJdbcTemplate.query(any<String>(), any<RowMapper<Any?>>(), *anyVararg()) } returns listOf(null)
 
             val result: DataResult<Int?> = builder.toField<Int?>()
 
@@ -212,13 +235,13 @@ class NullHandlingTest {
     inner class ToSingleOfNullHandling {
 
         @Test
-        fun `toSingleOf with non-nullable type and 0 rows should return Failure`() {
+        fun `toSingleOf with non-nullable type and 0 rows should return Failure with EMPTY_RESULT`() {
             every { mockMappers.DataObjectMapper<Any>(any()) } returns RowMapper<Any> { _, _ -> "dummy" }
             every { mockJdbcTemplate.query(any<String>(), any<RowMapper<Any>>(), *anyVararg()) } returns emptyList<Any>()
 
             val result: DataResult<String> = builder.toSingleOf<String>()
 
-            assertUnexpectedNullFailure(result)
+            assertEmptyResultFailure(result)
         }
 
         @Test

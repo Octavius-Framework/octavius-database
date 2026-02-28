@@ -157,12 +157,11 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
         val kClass = kType.classifier as KClass<*>
         return executeReturningQuery(params, rowMappers.DataObjectMapper(kClass)) {
             assertSingleRow(it, kType.toString())
-            val result = it.firstOrNull()
-            if (result == null && !kType.isMarkedNullable) {
-                throw ConversionException(ConversionExceptionMessage.UNEXPECTED_NULL_VALUE, targetType = kType.toString())
+            if (it.isEmpty() && !kType.isMarkedNullable) {
+                throw ConversionException(ConversionExceptionMessage.EMPTY_RESULT, targetType = kType.toString())
             }
             @Suppress("UNCHECKED_CAST")
-            DataResult.Success(result as T)
+            DataResult.Success(it.firstOrNull() as T)
         }
     }
 
@@ -174,7 +173,8 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
             assertSingleRow(it, targetType.toString())
             val result = it.firstOrNull()
             if (result == null && !targetType.isMarkedNullable) {
-                throw ConversionException(ConversionExceptionMessage.UNEXPECTED_NULL_VALUE, targetType = targetType.toString())
+                val error = if (it.isEmpty()) ConversionExceptionMessage.EMPTY_RESULT else ConversionExceptionMessage.UNEXPECTED_NULL_VALUE
+                throw ConversionException(error, targetType = targetType.toString())
             }
             @Suppress("UNCHECKED_CAST")
             DataResult.Success(result as T)

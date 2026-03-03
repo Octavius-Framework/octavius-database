@@ -16,6 +16,7 @@ import org.octavius.data.util.clean
 import org.octavius.database.config.DynamicDtoSerializationStrategy
 import org.octavius.database.type.registry.TypeRegistry
 import org.postgresql.util.PGobject
+import java.util.UUID
 import kotlin.reflect.KClass
 import kotlin.time.Duration
 import kotlin.time.ExperimentalTime
@@ -173,96 +174,230 @@ internal class KotlinToPostgresConverter(
      */
     private fun expandParameter(
         paramValue: Any?,
-        appendTypeCast: Boolean = true
+        appendTypeCast: Boolean = true,
+        explicitPgType: String? = null,
+        allowDynamicDto: Boolean = true
     ): Pair<String, List<Any?>> {
         if (paramValue == null) {
             return "?" to listOf(null)
         }
 
         if (paramValue is PgTyped) {
+            // Rozpakowanie PgTyped: wyłączamy dynamiczne mapowanie, by zachować wymuszony kompozyt
             val (innerPlaceholder, innerParams) = expandParameter(
                 paramValue.value,
-                appendTypeCast = false
+                appendTypeCast = false,
+                explicitPgType = paramValue.pgType,
+                allowDynamicDto = false
             )
-            val finalPlaceholder = innerPlaceholder + "::" + paramValue.pgType
+            val finalPlaceholder = if (appendTypeCast) "$innerPlaceholder::${paramValue.pgType}" else innerPlaceholder
             return finalPlaceholder to innerParams
         }
 
+        // Fast-path dla typów natywnych sterownika (tylko na najwyższym poziomie)
         KOTLIN_TO_JDBC_CONVERTERS[paramValue::class]?.let { converter ->
             return "?" to listOf(converter(paramValue))
         }
 
-        return when {
-            paramValue is JsonElement -> {
-                val pgObject = PGobject().apply {
-                    type = "jsonb"
-                    value = paramValue.toString()
-                }
-                "?" to listOf(pgObject)
+        val resultValue: Any = when {
+            paramValue is JsonElement -> PGobject().apply {
+                type = "jsonb"
+                value = paramValue.toString()
             }
             isDataClass(paramValue) -> {
-                if (appendTypeCast) {
-                    tryExpandAsDynamicDto(paramValue) ?: expandRowParameter(paramValue, true)
-                } else {
-                    expandRowParameter(paramValue, false)
+                if (allowDynamicDto) {
+                    tryExpandAsDynamicDto(paramValue)?.let { return "?" to listOf(it) }
                 }
+                createCompositeParameter(paramValue, explicitPgType)
             }
-            paramValue is Array<*> -> validateTypedArrayParameter(paramValue)
-            paramValue is List<*> -> expandArrayParameter(paramValue)
+            paramValue is Array<*> -> validateTypedArrayParameter(paramValue).second.first()!!
+            paramValue is List<*> -> createArrayParameter(paramValue, explicitPgType)
             paramValue is Enum<*> -> {
-                if (appendTypeCast) {
-                    tryExpandAsDynamicDto(paramValue) ?: createEnumParameter(paramValue)
-                } else {
-                    createEnumParameter(paramValue)
+                if (allowDynamicDto) {
+                    tryExpandAsDynamicDto(paramValue)?.let { return "?" to listOf(it) }
+                }
+                val dbTypeName = explicitPgType ?: typeRegistry.getPgTypeNameForClass(paramValue::class)
+                val typeInfo = typeRegistry.getEnumDefinition(dbTypeName)
+                PGobject().apply {
+                    type = dbTypeName
+                    value = typeInfo.enumToValueMap[paramValue] ?: paramValue.name
                 }
             }
-            isValueClass(paramValue) -> tryExpandAsDynamicDto(paramValue)
-                ?: throw TypeRegistryException(
+            isValueClass(paramValue) -> {
+                if (allowDynamicDto) {
+                    tryExpandAsDynamicDto(paramValue)?.let { return "?" to listOf(it) }
+                }
+                throw TypeRegistryException(
                     messageEnum = TypeRegistryExceptionMessage.KOTLIN_CLASS_NOT_MAPPED,
                     typeName = paramValue::class.qualifiedName,
                     cause = IllegalStateException("Value class must be annotated with @DynamicallyMappable.")
                 )
-            paramValue is String -> "?" to listOf(paramValue.clean())
-            else -> "?" to listOf(paramValue)
+            }
+            paramValue is String -> paramValue.clean()
+            else -> paramValue
+        }
+
+        return "?" to listOf(resultValue)
+    }
+
+    // =================================================================
+    // --- TOP LEVEL BUILDERS (Zwracające pojedyncze obiekty PGobject) ---
+    // =================================================================
+
+    private fun createCompositeParameter(compositeValue: Any, explicitType: String?): PGobject {
+        val dbTypeName = explicitType ?: typeRegistry.getPgTypeNameForClass(compositeValue::class)
+        return PGobject().apply {
+            type = dbTypeName
+            value = createCompositeString(compositeValue, dbTypeName)
         }
     }
 
-    /**
-     * Attempts to convert the given value to a `DynamicDto` wrapper, if allowed
-     * by configuration and if the class is annotated with @DynamicallyMappable.
-     *
-     * **Strategy behavior:**
-     * - `EXPLICIT_ONLY`: Always returns null (only explicit DynamicDto wrappers allowed)
-     * - `AUTOMATIC_WHEN_UNAMBIGUOUS`: Returns null if type is already registered as formal PostgreSQL type
-     *   (`@PgComposite`/`@PgEnum`), otherwise attempts dynamic conversion
-     *
-     * @return Expansion result as `Pair` or `null` if conversion is not possible/allowed.
-     */
-    private fun tryExpandAsDynamicDto(
-        paramValue: Any
-    ): Pair<String, List<Any?>>? {
-        if (dynamicDtoStrategy == DynamicDtoSerializationStrategy.EXPLICIT_ONLY) return null
+    private fun createArrayParameter(arrayValue: List<*>, explicitType: String?): PGobject {
+        val dbTypeName = explicitType ?: determineArrayType(arrayValue)
+        return PGobject().apply {
+            type = dbTypeName
+            value = createArrayString(arrayValue)
+        }
+    }
+
+    private fun tryExpandAsDynamicDto(paramValue: Any): PGobject? {
+        val strValue = buildDynamicDtoString(paramValue) ?: return null
+        return PGobject().apply {
+            type = "dynamic_dto"
+            value = strValue
+        }
+    }
+
+    // =================================================================
+    // --- LEVEL 2 STRINGIFIERS (Generatory Stringów) ---
+    // =================================================================
+
+    private fun createCompositeString(compositeValue: Any, dbTypeName: String): String {
+        val typeInfo = typeRegistry.getCompositeDefinition(dbTypeName)
+        val valueMap = compositeValue.toMap()
+
+        val fields = typeInfo.attributes.keys.map { dbAttributeName ->
+            val value = valueMap[dbAttributeName]
+            toPostgresLiteral(value, inComposite = true)
+        }
+        return "(${fields.joinToString(",")})"
+    }
+
+    private fun createArrayString(arrayValue: List<*>): String {
+        if (arrayValue.isEmpty()) return "{}"
+        val fields = arrayValue.map { value ->
+            toPostgresLiteral(value, inComposite = false)
+        }
+        return "{${fields.joinToString(",")}}"
+    }
+
+    private fun buildDynamicDtoString(paramValue: Any): String? {
+        if (dynamicDtoStrategy == DynamicDtoSerializationStrategy.EXPLICIT_ONLY && paramValue !is DynamicDto) return null
         if (dynamicDtoStrategy == DynamicDtoSerializationStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS && typeRegistry.isPgType(paramValue::class)) return null
 
         val dynamicTypeName = typeRegistry.getDynamicTypeNameForClass(paramValue::class) ?: return null
         val serializer = typeRegistry.getDynamicSerializer(dynamicTypeName)
-        logger.trace { "Dynamically converting ${paramValue::class.simpleName} to dynamic_dto '$dynamicTypeName'" }
 
-        val dynamicDtoWrapper = try {
-            DynamicDto.from(paramValue, dynamicTypeName, serializer)
-        } catch (ex: Exception) {
-            logger.error(ex) { ex }; throw ex
-        }
-        return expandParameter(dynamicDtoWrapper)
+        val dynamicDtoWrapper = if (paramValue is DynamicDto) paramValue else DynamicDto.from(paramValue, dynamicTypeName, serializer)
+        return createCompositeString(dynamicDtoWrapper, "dynamic_dto")
     }
 
     /**
-     * Validates a typed array (`Array<*>`) intended for direct JDBC passing.
-     * Throws exception if element type is not a simple type.
+     * Konwertuje wartość zagnieżdżoną na bezpieczny tekst w standardzie PostgreSQL (Literal).
+     * Uwzględnia zasady cytowania oraz zachowanie nulla (puste pola dla ROW, lub literał NULL dla ARRAY).
      */
+    @OptIn(ExperimentalTime::class)
+    private fun toPostgresLiteral(value: Any?, inComposite: Boolean): String {
+        if (value == null) return if (inComposite) "" else "NULL"
+
+        // Bezpiecznie rozwiązujemy typy na drugim poziomie
+        val actualValue = if (value is PgTyped) value.value else value
+        if (actualValue == null) return if (inComposite) "" else "NULL"
+
+        return when {
+            actualValue is String -> escapeAndQuote(actualValue.clean())
+            actualValue is Enum<*> -> {
+                val dbTypeName = typeRegistry.getPgTypeNameForClass(actualValue::class)
+                val mappedValue = typeRegistry.getEnumDefinition(dbTypeName).enumToValueMap[actualValue]
+                escapeAndQuote(mappedValue ?: actualValue.name)
+            }
+            actualValue is JsonElement -> escapeAndQuote(actualValue.toString())
+            isDataClass(actualValue) -> {
+                // Rekurencyjna obsługuje zagnieżdżone kompozyty
+                val compStr = buildDynamicDtoString(actualValue)
+                    ?: createCompositeString(actualValue, typeRegistry.getPgTypeNameForClass(actualValue::class))
+                escapeAndQuote(compStr) // Zagnieżdżony kompozyt zawsze musi być w cudzysłowie
+            }
+            actualValue is List<*> -> {
+                val arrStr = createArrayString(actualValue)
+                // PostgreSQL nie stosuje cudzysłowów dla tablic wewnątrz tablic (zwraca {{1,2}}).
+                // Jednak tablice zagnieżdżone wew. kompozytu muszą zostać objęte cudzysłowem!
+                if (inComposite) escapeAndQuote(arrStr) else arrStr
+            }
+            actualValue is LocalDate -> formatInfinity(actualValue, LocalDate.DISTANT_FUTURE, LocalDate.DISTANT_PAST) { it.toString() }
+            actualValue is LocalDateTime -> formatInfinity(actualValue, LocalDateTime.DISTANT_FUTURE, LocalDateTime.DISTANT_PAST) { it.toString().replace('T', ' ') }
+            actualValue is Instant -> formatInfinity(actualValue, Instant.DISTANT_FUTURE, Instant.DISTANT_PAST) { it.toString() }
+            actualValue is Duration -> {
+                val str = when (actualValue) {
+                    Duration.INFINITE -> "infinity"
+                    -Duration.INFINITE -> "-infinity"
+                    else -> actualValue.toIsoString()
+                }
+                escapeAndQuote(str)
+            }
+            actualValue is Boolean -> if (actualValue) "t" else "f"
+            else -> actualValue.toString() // Standardowe liczby, UUID itp.
+        }
+    }
+
+    private fun <T> formatInfinity(value: T, plusInf: T, minusInf: T, format: (T) -> String): String {
+        return when (value) {
+            plusInf -> "infinity"
+            minusInf -> "-infinity"
+            else -> format(value)
+        }
+    }
+
+    /**
+     * Cytuje element do wstawienia jako String Literał wg reguł Postgresa.
+     */
+    private fun escapeAndQuote(value: String): String {
+        val escaped = value.replace("\\", "\\\\").replace("\"", "\\\"")
+        return "\"$escaped\""
+    }
+
+    /**
+     * Inteligentne przypisanie nazwy typu w formacie PostgreSQL Array (np. `_int4` lub `_text`).
+     */
+    private fun determineArrayType(arrayValue: List<*>): String {
+        val firstNonNull = arrayValue.firstOrNull { it != null } ?: return "text[]"
+
+        val kClass = firstNonNull::class
+        return when {
+            firstNonNull is String -> "_text"
+            firstNonNull is Int -> "_int4"
+            firstNonNull is Long -> "_int8"
+            firstNonNull is Double -> "_float8"
+            firstNonNull is Float -> "_float4"
+            firstNonNull is Boolean -> "_bool"
+            firstNonNull is UUID -> "_uuid"
+            firstNonNull is LocalDate -> "_date"
+            firstNonNull is LocalDateTime -> "_timestamp"
+            firstNonNull is Instant -> "_timestamptz"
+            firstNonNull  is Duration -> "_interval"
+            firstNonNull is JsonElement -> "_jsonb"
+            firstNonNull is Enum<*> -> "_${typeRegistry.getPgTypeNameForClass(kClass)}"
+            isDataClass(firstNonNull) -> {
+                if (buildDynamicDtoString(firstNonNull) != null) "_dynamic_dto"
+                else "_${typeRegistry.getPgTypeNameForClass(kClass)}"
+            }
+            else -> "_text"
+        }
+    }
+
     private fun validateTypedArrayParameter(arrayValue: Array<*>): Pair<String, List<Any?>> {
         val componentType = arrayValue::class.java.componentType!!.kotlin
-        if (isComplexComponentType(componentType)) {
+        if (componentType.isData || componentType == Map::class || componentType == List::class) {
             throw ConversionException(
                 ConversionExceptionMessage.UNSUPPORTED_COMPONENT_TYPE_IN_ARRAY,
                 arrayValue,
@@ -272,97 +407,10 @@ internal class KotlinToPostgresConverter(
         return "?" to listOf(arrayValue)
     }
 
-    /**
-     * Checks whether KClass represents a complex type (e.g., data class)
-     * that cannot be used in a typed JDBC array.
-     */
-    private fun isComplexComponentType(kClass: KClass<*>): Boolean {
-        return kClass.isData || kClass == Map::class || kClass == List::class
-    }
-
-    /** Creates parameter for enum, mapping naming case for type and value. */
-    private fun createEnumParameter(enumValue: Enum<*>): Pair<String, List<Any?>> {
-        val dbTypeName = typeRegistry.getPgTypeNameForClass(enumValue::class)
-        val typeInfo = typeRegistry.getEnumDefinition(dbTypeName)
-        val finalDbValue = typeInfo.enumToValueMap[enumValue]
-        val pgObject = PGobject().apply {
-            value = finalDbValue; type = dbTypeName
-        }
-        return "?" to listOf(pgObject)
-    }
-
-    /**
-     * Expands list into PostgreSQL ARRAY[...] construct.
-     *
-     * Recursively processes list elements, handling nested structures.
-     * Empty list is converted to '{}' (empty PostgreSQL array).
-     *
-     * @param arrayValue List to convert.
-     * @return Pair: ARRAY[...] placeholder and list of element parameters.
-     */
-    private fun expandArrayParameter(arrayValue: List<*>): Pair<String, List<Any?>> {
-        if (arrayValue.isEmpty()) {
-            return "'{}'" to emptyList()
-        }
-
-        val expandedParams = mutableListOf<Any?>()
-        val placeholders = arrayValue.map { value ->
-            val (placeholder, params) = expandParameter(value)
-            expandedParams.addAll(params)
-            placeholder
-        }
-
-        val arrayPlaceholder = "ARRAY[${placeholders.joinToString(", ")}]"
-        return arrayPlaceholder to expandedParams
-    }
-
-    /**
-     * Expands data class into PostgreSQL ROW(...)::type_name construct.
-     *
-     * Maps data class fields to composite type attributes in order
-     * specified by TypeRegistry. Recursively processes nested fields.
-     *
-     * @param compositeValue Data class instance to convert.
-     * @param appendTypeCast Whether to append type cast (e.g., `::type_name`).
-     * @return Pair: ROW(...)::type_name placeholder and list of field parameters.
-     * @throws TypeRegistryException if class is not registered.
-     */
-    private fun expandRowParameter(
-        compositeValue: Any,
-        appendTypeCast: Boolean = true
-    ): Pair<String, List<Any?>> {
-        val kClass = compositeValue::class
-        val dbTypeName = typeRegistry.getPgTypeNameForClass(kClass)
-        val typeInfo = typeRegistry.getCompositeDefinition(dbTypeName)
-        val valueMap = compositeValue.toMap()
-        val expandedParams = mutableListOf<Any?>()
-
-        val placeholders = typeInfo.attributes.keys.map { dbAttributeName ->
-            val value = valueMap[dbAttributeName]
-            val (placeholder, params) = expandParameter(value)
-            expandedParams.addAll(params)
-            placeholder
-        }
-
-        val rowPlaceholder = if (appendTypeCast) {
-            "ROW(${placeholders.joinToString(", ")})::$dbTypeName"
-        } else {
-            "ROW(${placeholders.joinToString(", ")})"
-        }
-
-        return rowPlaceholder to expandedParams
-    }
-
-    /**
-     * Checks whether an object is an instance of a data class.
-     */
     private fun isDataClass(obj: Any): Boolean {
         return obj::class.isData
     }
 
-    /**
-     * Checks whether an object is an instance of a value class.
-     */
     private fun isValueClass(obj: Any): Boolean {
         return obj::class.isValue
     }

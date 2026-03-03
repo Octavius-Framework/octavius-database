@@ -220,6 +220,18 @@ internal class KotlinToPostgresConverter(
             return true
         }
 
-        private fun escapeAndQuote(s: String): String = "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+        private fun escapeAndQuote(s: String): String {
+            val sb = StringBuilder(s.length + 2)
+            sb.append('"')
+            for (c in s) {
+                when (c) {
+                    '\\' -> sb.append("\\\\")
+                    '"' -> sb.append("\\\"")
+                    else -> sb.append(c)
+                }
+            }
+            sb.append('"')
+            return sb.toString()
+        }
     }
 }

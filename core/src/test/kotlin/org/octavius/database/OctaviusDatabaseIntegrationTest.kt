@@ -12,6 +12,7 @@ class OctaviusDatabaseIntegrationTest {
     @Test
     fun `should apply hikari properties and close pool correctly`() {
         val config = DatabaseConfig.loadFromFile("test-database.properties").copy(
+            disableCoreTypeInitialization = false,
             hikariProperties = mapOf(
                 "maximumPoolSize" to "12",
                 "poolName" to "IntegrationTestPool"

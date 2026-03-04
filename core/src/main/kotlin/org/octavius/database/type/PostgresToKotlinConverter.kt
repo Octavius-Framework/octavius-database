@@ -74,39 +74,6 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
     }
 
     /**
-     * Deserializes the special `dynamic_dto` type to an appropriate Kotlin class.
-     *
-     * @param value Raw value from database in composite format `("typeName", "jsonData")`.
-     * @return Instance of appropriate `data class` with `@DynamicallyMappable` annotation.
-     */
-    private fun convertDynamicType(value: String): Any {
-        // null handled in convert method
-        // json itself cannot be null in composite - this is also consistent with the write where value cannot be null
-
-        val parts: List<String?> = parseNestedStructure(value)
-
-        if (parts.size != 2) {
-            throw TypeRegistryException(TypeRegistryExceptionMessage.WRONG_FIELD_NUMBER_IN_COMPOSITE, typeName = "dynamic_dto")
-        }
-
-        val typeName = parts[0]
-        val jsonDataString = parts[1]
-
-        if (typeName == null || jsonDataString == null) {
-            throw ConversionException(ConversionExceptionMessage.INVALID_DYNAMIC_DTO_FORMAT, value = value)
-        }
-
-        // Use TypeRegistry to safely find the serializer
-        val serializer = typeRegistry.getDynamicSerializer(typeName)
-
-        return try {
-            Json.decodeFromString(serializer, jsonDataString)
-        } catch (e: Exception) {
-            throw ConversionException(ConversionExceptionMessage.JSON_DESERIALIZATION_FAILED, targetType = typeName, rowData = mapOf("json" to jsonDataString), cause = e)
-        }
-    }
-
-    /**
      * Converts standard PostgreSQL types to appropriate Kotlin types.
      *
      * Delegates to `StandardTypeMappingRegistry`, which is the single source of truth.
@@ -174,49 +141,52 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
 
         logger.trace { "Parsing PostgreSQL array with element type: ${typeInfo.elementTypeName}" }
 
-        val elements: List<String?> = parseNestedStructure(value)
+        val results = mutableListOf<Any?>()
 
-        logger.trace { "Parsed ${elements.size} array elements" }
-
-        // Recursively convert each array element using the main conversion function
-        return elements.map { elementValue ->
+        parseNestedStructure(value) { elementValue, isQuoted ->
             // Check if the string representing the element ITSELF is an array.
-            val isNestedArray = elementValue?.startsWith('{') ?: false
-
+            val isNestedArray = !isQuoted && elementValue?.startsWith('{') == true
             // If it's a nested array, recursively invoke conversion
             // for the ENTIRE array type (e.g., "_text"), not its element ("text").
             // Otherwise, continue with standard elementType logic.
             val typeNameToUse = if (isNestedArray) typeInfo.typeName else typeInfo.elementTypeName
-
-            convert(elementValue, typeNameToUse)
+            // Recursively convert each array element using the main conversion function
+            results.add(convert(elementValue, typeNameToUse))
         }
+        logger.trace { "Parsed ${results.size} array elements" }
+        return results
     }
 
-    /**
-     * Converts PostgreSQL composite type to Kotlin `data class`.
-     * Uses cache for KClass and delegates to `toDataObject` (which has its own cache).
-     */
-    private fun convertCompositeType(value: String, typeInfo: PgCompositeDefinition): Any { // null handled in convert method
-
+    private fun convertCompositeType(value: String, typeInfo: PgCompositeDefinition): Any {
         logger.trace { "Converting composite type ${typeInfo.typeName} to class: ${typeInfo.kClass.qualifiedName}" }
 
-        // 1. Parse string into list of raw values
-        val fieldValues: List<String?> = parseNestedStructure(value)
+        val dbAttributes = typeInfo.dbAttributes
+        val constructorArgsMap = mutableMapOf<String, Any?>()
+        var index = 0
 
+        parseNestedStructure(value) { elementValue, _ ->
+            if (index >= dbAttributes.size) {
+                val ex = TypeRegistryException(
+                    TypeRegistryExceptionMessage.WRONG_FIELD_NUMBER_IN_COMPOSITE,
+                    typeName = typeInfo.typeName
+                )
+                logger.error(ex) { ex }
+                throw ex
+            }
 
-        val dbAttributes = typeInfo.attributes.toList()
+            val (dbAttributeName, dbAttributeType) = dbAttributes[index]
+            constructorArgsMap[dbAttributeName] = convert(elementValue, dbAttributeType)
+            index++
+        }
 
-        if (fieldValues.size != dbAttributes.size) {
-            val ex = TypeRegistryException(TypeRegistryExceptionMessage.WRONG_FIELD_NUMBER_IN_COMPOSITE, typeName = typeInfo.typeName)
+        if (index != dbAttributes.size) {
+            val ex = TypeRegistryException(
+                TypeRegistryExceptionMessage.WRONG_FIELD_NUMBER_IN_COMPOSITE,
+                typeName = typeInfo.typeName
+            )
             logger.error(ex) { ex }
             throw ex
         }
-
-        logger.trace { "Converting ${dbAttributes.size} composite fields" }
-        val constructorArgsMap = dbAttributes.mapIndexed { index, (dbAttributeName, dbAttributeType) ->
-            val convertedValue = convert(fieldValues[index], dbAttributeType)
-            dbAttributeName to convertedValue
-        }.toMap()
 
         return try {
             val result = constructorArgsMap.toDataObject(typeInfo.kClass)
@@ -228,82 +198,114 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
         }
     }
 
-    // =================================================================
-    // --- POSTGRESQL STRUCTURE PARSER ---
-    // =================================================================
+    /**
+     * Deserializes the special `dynamic_dto` type to an appropriate Kotlin class.
+     *
+     * @param value Raw value from database in composite format `("typeName", "jsonData")`.
+     * @return Instance of appropriate `data class` with `@DynamicallyMappable` annotation.
+     */
+    private fun convertDynamicType(value: String): Any {
+        // null handled in convert method
+        // json itself cannot be null in composite - this is also consistent with the write where value cannot be null
+        var typeName: String? = null
+        var jsonDataString: String? = null
+        var count = 0
 
-    private data class ParserState(
-        var i: Int = 0,
-        var inQuotes: Boolean = false,
-        var nestingLevel: Int = 0,
-        var currentElementStart: Int = 0
-    )
+        parseNestedStructure(value) { elementValue, _ ->
+            if (count == 0) typeName = elementValue
+            else if (count == 1) jsonDataString = elementValue
+            count++
+        }
+
+        if (count != 2) throw TypeRegistryException(
+            TypeRegistryExceptionMessage.WRONG_FIELD_NUMBER_IN_COMPOSITE,
+            typeName = "dynamic_dto"
+        )
+        if (typeName == null || jsonDataString == null) throw ConversionException(
+            ConversionExceptionMessage.INVALID_DYNAMIC_DTO_FORMAT,
+            value = value
+        )
+
+
+        // Use TypeRegistry to safely find the serializer
+        val serializer = typeRegistry.getDynamicSerializer(typeName)
+
+        return try {
+            Json.decodeFromString(serializer, jsonDataString)
+        } catch (e: Exception) {
+            throw ConversionException(
+                ConversionExceptionMessage.JSON_DESERIALIZATION_FAILED,
+                targetType = typeName,
+                rowData = mapOf("json" to jsonDataString),
+                cause = e
+            )
+        }
+    }
+
+// =================================================================
+    // --- POSTGRESQL STRUCTURE PARSER (ZERO-ALLOCATION STATE) ---
+    // =================================================================
 
     /**
-     * Universal parser for nested structures (arrays and composites).
+     * Universal inline parser for nested structures (arrays and composites).
      * Handles quotes, escaping, `NULL` values, and nesting.
+     * Yields elements directly via a lambda.
      */
-    private fun parseNestedStructure(input: String): List<String?> {
-        if (input.length < 2) return emptyList()
-
-        val contentView: CharSequence = input.subSequence(1, input.length - 1)
-        if (contentView.isEmpty()) return emptyList()
-
-        val elements = mutableListOf<String?>()
-        val state = ParserState()
-
-        while (state.i < contentView.length) {
-            val char = contentView[state.i]
-
-            if (state.inQuotes) {
-                processInQuotes(contentView, state)
-            } else {
-                processOutsideQuotes(char, contentView, state, elements)
-            }
-            state.i++
-        }
-
-        elements.add(unescapeValue(contentView, state.currentElementStart, contentView.length))
-        return elements
-    }
-
-    private fun processInQuotes(contentView: CharSequence, state: ParserState) {
-        val char = contentView[state.i]
-        when (char) {
-            '\\' -> state.i++ // Skip next character
-            // When it's a quote escaping another (i.e., "")
-            // on the next loop iteration the parser will simply change state back
-            // Additional handling is pointless since splitting is done by comma
-            '"' -> state.inQuotes = false
-        }
-    }
-
-    private fun processOutsideQuotes(
-        char: Char,
-        contentView: CharSequence,
-        state: ParserState,
-        elements: MutableList<String?>
+    private inline fun parseNestedStructure(
+        input: String,
+        onElement: (value: String?, isQuoted: Boolean) -> Unit
     ) {
-        when (char) {
-            '"' -> state.inQuotes = true
-            '{', '(' -> state.nestingLevel++
-            '}', ')' -> state.nestingLevel--
-            ',' -> {
-                if (state.nestingLevel == 0) {
-                    elements.add(unescapeValue(contentView, state.currentElementStart, state.i))
-                    state.currentElementStart = state.i + 1
+        // Minimum length is 2 for empty array "{}" or composite "()"
+        if (input.length <= 2) return
+
+        val endIndex = input.length - 1
+        var i = 1 // Start reading inside the bounds
+        var inQuotes = false
+        var nestingLevel = 0
+        var currentElementStart = 1
+
+        while (i < endIndex) {
+            val char = input[i]
+
+            if (inQuotes) {
+                if (char == '\\') {
+                    i++ // Skip escaped character
+                } else if (char == '"') {
+                    // When it's a quote escaping another (i.e., "")
+                    // on the next loop iteration the parser will simply change state back
+                    // Additional handling is pointless since splitting is done by comma
+                    inQuotes = false
+                }
+            } else {
+                when (char) {
+                    '"' -> inQuotes = true
+                    '{', '(' -> nestingLevel++
+                    '}', ')' -> nestingLevel--
+                    ',' -> {
+                        if (nestingLevel == 0) {
+                            onElement(unescapeValue(input, currentElementStart, i),
+                                currentElementStart < i && input[currentElementStart] == '"')
+                            currentElementStart = i + 1
+                        }
+                    }
                 }
             }
+            i++
+        }
+
+        // Emit the last element
+        if (currentElementStart <= endIndex) {
+            val isQuoted = currentElementStart < endIndex && input[currentElementStart] == '"'
+            onElement(unescapeValue(input, currentElementStart, endIndex), isQuoted)
         }
     }
 
-    private fun unescapeValue(source: CharSequence, start: Int, end: Int): String? {
-        return if (start >= end) {
-            // Empty composite field (two commas next to each other)
-            null
-        } else if (source[start] == '"') {
+    private fun unescapeValue(source: String, start: Int, end: Int): String? {
+        if (start >= end) return null
+
+        return if (source[start] == '"') {
             // Quoted value - escape quotes inside (") and backslash (\)
-            buildString {
+            buildString(end - start) {
                 var i = start + 1
                 while (i < end - 1) {
                     val char = source[i]
@@ -318,7 +320,7 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
             }
         } else {
             // Field without quotes
-            val rawValue = source.subSequence(start, end).toString()
+            val rawValue = source.substring(start, end)
             if (rawValue == "NULL") null else rawValue
         }
     }

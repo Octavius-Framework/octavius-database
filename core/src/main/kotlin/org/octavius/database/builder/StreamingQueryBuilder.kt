@@ -29,12 +29,12 @@ internal class StreamingQueryBuilder(
         var positionalQuery: PositionalQuery? = null
 
         return try {
-            positionalQuery = builder.kotlinToPostgresConverter.expandParametersInQuery(originalSql, params)
+            positionalQuery = builder.kotlinToPostgresConverter.toPositionalQuery(originalSql, params)
 
             logger.debug {
                 """
                 Executing query (original): $originalSql with params: $params
-                  -> (expanded): ${positionalQuery.sql} with positional params: ${positionalQuery.params}
+                  -> serialized and positional params: ${positionalQuery.params}
                 """.trimIndent()
             }
 

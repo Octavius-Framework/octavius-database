@@ -283,11 +283,11 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
     ): DataResult<R> {
         var positionalQuery: PositionalQuery? = null
         return try {
-            positionalQuery = kotlinToPostgresConverter.expandParametersInQuery(sql, params)
+            positionalQuery = kotlinToPostgresConverter.toPositionalQuery(sql, params)
             logger.debug {
                 """
                 Executing query (original): $sql with params: $params
-                  -> (expanded): ${positionalQuery.sql} with positional params: ${positionalQuery.params}
+                  -> serialized and positional params: ${positionalQuery.params}
                 """.trimIndent()
             }
             action(positionalQuery.sql, positionalQuery.params)

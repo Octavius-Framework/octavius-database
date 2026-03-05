@@ -36,7 +36,7 @@ class NullHandlingTest {
 
     @BeforeEach
     fun setup() {
-        every { mockConverter.expandParametersInQuery(any(), any()) } returns PositionalQuery("SELECT 1", emptyList())
+        every { mockConverter.toPositionalQuery(any(), any()) } returns PositionalQuery("SELECT 1", emptyList())
         builder = DatabaseSelectQueryBuilder(mockJdbcTemplate, mockMappers, mockConverter, "1")
         builder.from("dual")
     }

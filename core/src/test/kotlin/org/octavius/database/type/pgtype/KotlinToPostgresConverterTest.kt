@@ -27,7 +27,7 @@ class KotlinToPostgresConverterTest {
             val sql = "SELECT * FROM users WHERE id = :id AND name = :name AND profile IS :profile"
             val params = mapOf("id" to 123, "name" to "John", "profile" to null)
 
-            val result = converter.expandParametersInQuery(sql, params)
+            val result = converter.toPositionalQuery(sql, params)
 
             // Oczekujemy, że nazwane parametry zostaną zastąpione przez '?' z castami (poza null)
             assertThat(result.sql).isEqualTo("SELECT * FROM users WHERE id = ?::int4 AND name = ?::text AND profile IS ?")
@@ -41,7 +41,7 @@ class KotlinToPostgresConverterTest {
             val sql = "SELECT * FROM tasks WHERE category = :category"
             val params = mapOf("category" to TestCategory.BugFix)
 
-            val result = converter.expandParametersInQuery(sql, params)
+            val result = converter.toPositionalQuery(sql, params)
 
             assertThat(result.sql).isEqualTo("SELECT * FROM tasks WHERE category = ?::test_category")
             assertThat(result.params).hasSize(1)
@@ -57,7 +57,7 @@ class KotlinToPostgresConverterTest {
             val jsonData = Json.parseToJsonElement("""{"key": "value", "count": 100}""") as JsonObject
             val params = mapOf("data" to jsonData)
 
-            val result = converter.expandParametersInQuery(sql, params)
+            val result = converter.toPositionalQuery(sql, params)
 
             assertThat(result.sql).isEqualTo("UPDATE documents SET data = ?::jsonb WHERE id = 1")
             assertThat(result.params).hasSize(1)
@@ -76,7 +76,7 @@ class KotlinToPostgresConverterTest {
             val sql = "SELECT * FROM users WHERE id = ANY(:ids)"
             val params = mapOf("ids" to listOf(10, 20, 30))
 
-            val result = converter.expandParametersInQuery(sql, params)
+            val result = converter.toPositionalQuery(sql, params)
 
             // Oczekujemy ?::int4[] i PGobject z "{10,20,30}"
             assertThat(result.sql).isEqualTo("SELECT * FROM users WHERE id = ANY(?::int4[])")
@@ -91,7 +91,7 @@ class KotlinToPostgresConverterTest {
             val sql = "SELECT * FROM users WHERE tags && :tags"
             val params = mapOf("tags" to emptyList<String>())
 
-            val result = converter.expandParametersInQuery(sql, params)
+            val result = converter.toPositionalQuery(sql, params)
 
             // Teraz pusta tablica też jest parametrem
             assertThat(result.sql).isEqualTo("SELECT * FROM users WHERE tags && ?::text[]")
@@ -106,7 +106,7 @@ class KotlinToPostgresConverterTest {
             val sql = "SELECT * FROM tasks WHERE status = ANY(:statuses)"
             val params = mapOf("statuses" to listOf(TestStatus.Active, TestStatus.Pending))
 
-            val result = converter.expandParametersInQuery(sql, params)
+            val result = converter.toPositionalQuery(sql, params)
 
             assertThat(result.sql).isEqualTo("SELECT * FROM tasks WHERE status = ANY(?::test_status[])")
             assertThat(result.params).hasSize(1)
@@ -126,7 +126,7 @@ class KotlinToPostgresConverterTest {
             val person = TestPerson("John Doe", 35, "john.doe@example.com", true, listOf("developer", "team-lead"))
             val params = mapOf("person" to person)
 
-            val result = converter.expandParametersInQuery(sql, params)
+            val result = converter.toPositionalQuery(sql, params)
 
             // Oczekujemy ?::test_person i zserializowany literal
             assertThat(result.sql).isEqualTo("INSERT INTO employees (person) VALUES (?::test_person)")
@@ -147,7 +147,7 @@ class KotlinToPostgresConverterTest {
             )
             val params = mapOf("team" to team)
 
-            val result = converter.expandParametersInQuery(sql, params)
+            val result = converter.toPositionalQuery(sql, params)
 
             // Oczekujemy ?::test_person[]
             assertThat(result.sql).isEqualTo("SELECT process_team(?::test_person[])")
@@ -204,7 +204,7 @@ class KotlinToPostgresConverterTest {
             )
             val params = mapOf("project_data" to project)
 
-            val result = converter.expandParametersInQuery(sql, params)
+            val result = converter.toPositionalQuery(sql, params)
 
             // Weryfikacja struktury SQL
             assertThat(result.sql).isEqualTo("SELECT update_project(?::test_project)")

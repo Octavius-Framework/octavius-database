@@ -113,7 +113,7 @@ class RealPostgresDataModificationTest {
         )
 
         // Act: Konwertujemy i wykonujemy zapytanie INSERT
-        val expandedQuery = kotlinToPostgresConverter.expandParametersInQuery(sql, params)
+        val expandedQuery = kotlinToPostgresConverter.toPositionalQuery(sql, params)
         val newId = jdbcTemplate.queryForObject(
             expandedQuery.sql,
             Long::class.java,
@@ -148,7 +148,7 @@ class RealPostgresDataModificationTest {
         val params = mapOf("newTeam" to newTeam)
 
         // Act: Konwertujemy i wykonujemy zapytanie UPDATE
-        val expandedQuery = kotlinToPostgresConverter.expandParametersInQuery(sql, params)
+        val expandedQuery = kotlinToPostgresConverter.toPositionalQuery(sql, params)
         val updatedRows = jdbcTemplate.update(expandedQuery.sql, *expandedQuery.params.toTypedArray())
         assertThat(updatedRows).isEqualTo(1)
 

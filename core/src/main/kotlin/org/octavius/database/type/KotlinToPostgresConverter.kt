@@ -1,7 +1,6 @@
 package org.octavius.database.type
 
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.serialization.json.JsonElement
 import org.octavius.data.exception.ConversionException
 import org.octavius.data.exception.ConversionExceptionMessage
 import org.octavius.data.exception.TypeRegistryException
@@ -13,7 +12,6 @@ import org.octavius.data.type.PgTyped
 import org.octavius.database.config.DynamicDtoSerializationStrategy
 import org.octavius.database.type.registry.TypeRegistry
 import org.postgresql.util.PGobject
-import kotlin.reflect.KClass
 
 /**
  * Result of parameter expansion: SQL with positional markers and the converted values.
@@ -34,7 +32,7 @@ internal class KotlinToPostgresConverter(
 
     private val serializer = PgTextSerializer(typeRegistry, dynamicDtoStrategy)
 
-    fun expandParametersInQuery(sql: String, params: Map<String, Any?>): PositionalQuery {
+    fun toPositionalQuery(sql: String, params: Map<String, Any?>): PositionalQuery {
         val parsedParameters = PostgresNamedParameterParser.parse(sql)
         if (parsedParameters.isEmpty()) return PositionalQuery(sql, emptyList())
 
@@ -47,7 +45,7 @@ internal class KotlinToPostgresConverter(
             val paramValue = if (params.containsKey(paramName)) params[paramName] else 
                 throw IllegalArgumentException("Missing value for parameter: $paramName")
 
-            val (placeholder, value) = expandParameter(paramValue, appendTypeCast = true)
+            val (placeholder, value) = convertParameter(paramValue, appendTypeCast = true)
             sb.append(sql, lastIndex, parsedParam.startIndex).append(placeholder)
             finalParams.add(value)
             lastIndex = parsedParam.endIndex
@@ -55,7 +53,7 @@ internal class KotlinToPostgresConverter(
         return PositionalQuery(sb.append(sql, lastIndex, sql.length).toString(), finalParams)
     }
 
-    private fun expandParameter(value: Any?, appendTypeCast: Boolean, skipDynamicDto: Boolean = false): Pair<String, Any?> {
+    private fun convertParameter(value: Any?, appendTypeCast: Boolean, skipDynamicDto: Boolean = false): Pair<String, Any?> {
         if (value == null) return "?" to null
 
         var current = value
@@ -71,7 +69,7 @@ internal class KotlinToPostgresConverter(
 
         // 2. Try Dynamic DTO conversion (if not forced to composite/standard via PgTyped)
         if (!currentSkipDynamicDto) {
-            tryExpandAsDynamicDto(current, appendTypeCast)?.let { return it }
+            tryConvertAsDynamicDto(current, appendTypeCast)?.let { return it }
         }
 
         // 3. Delegate standard types to registry (handles String, Number, Boolean, Instant, JsonElement, etc.)
@@ -107,7 +105,7 @@ internal class KotlinToPostgresConverter(
         return (if (appendTypeCast) "?::$resolvedType" else "?") to pgValue
     }
 
-    private fun tryExpandAsDynamicDto(paramValue: Any, appendTypeCast: Boolean): Pair<String, Any?>? {
+    private fun tryConvertAsDynamicDto(paramValue: Any, appendTypeCast: Boolean): Pair<String, Any?>? {
         if (dynamicDtoStrategy == DynamicDtoSerializationStrategy.EXPLICIT_ONLY && paramValue !is DynamicDto) return null
         if (dynamicDtoStrategy == DynamicDtoSerializationStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS && typeRegistry.isPgType(paramValue::class)) return null
 
@@ -115,7 +113,7 @@ internal class KotlinToPostgresConverter(
         val dtSerializer = typeRegistry.getDynamicSerializer(dynamicTypeName)
 
         val dynamicDtoWrapper = DynamicDto.from(paramValue, dynamicTypeName, dtSerializer)
-        return expandParameter(dynamicDtoWrapper, appendTypeCast)
+        return convertParameter(dynamicDtoWrapper, appendTypeCast)
     }
 
     private fun validateTypedArrayParameter(arrayValue: Array<*>): Pair<String, Any?> {

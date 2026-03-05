@@ -35,26 +35,26 @@ Octavius Database provides automatic bidirectional mapping between PostgreSQL an
 
 Automatic conversion works out-of-the-box for the following types. Note that if a Kotlin type maps to multiple PostgreSQL types, Octavius uses a **priority-based inference** (see [Type Inference](#type-inference--safety)).
 
-| PostgreSQL                | Kotlin          | Notes                                            |
-|---------------------------|-----------------|--------------------------------------------------|
-| `int2`, `smallserial`     | `Short`         |                                                  |
-| `int4`, `serial`          | `Int`           |                                                  |
-| `int8`, `bigserial`       | `Long`          |                                                  |
-| `float4`                  | `Float`         |                                                  |
-| `float8`                  | `Double`        |                                                  |
-| `numeric`                 | `BigDecimal`    |                                                  |
-| `text`, `varchar`, `char` | `String`        |                                                  |
-| `bool`                    | `Boolean`       |                                                  |
-| `uuid`                    | `UUID`          | `java.util.UUID`                                 |
-| `bytea`                   | `ByteArray`     |                                                  |
-| `jsonb`, `json`           | `JsonElement`   | `kotlinx.serialization.json`                     |
-| `void`                    | `Unit`          | Return type of void functions (e.g. `pg_notify`) |
-| `date`                    | `LocalDate`     | `kotlinx.datetime` <sup>1</sup>                  |
-| `time`                    | `LocalTime`     | `kotlinx.datetime`                               |
-| `timetz`                  | `OffsetTime`    | `java.time`                                      |
-| `timestamp`               | `LocalDateTime` | `kotlinx.datetime` <sup>1</sup>                  |
-| `timestamptz`             | `Instant`       | `kotlin.time` <sup>1</sup>                       |
-| `interval`                | `Duration`      | `kotlin.time` <sup>2</sup>                       |
+| PostgreSQL                  | Kotlin          | Notes                                            |
+|-----------------------------|-----------------|--------------------------------------------------|
+| `int2`, `smallserial`       | `Short`         |                                                  |
+| `int4`, `serial`            | `Int`           |                                                  |
+| `int8`, `bigserial`         | `Long`          |                                                  |
+| `float4`                    | `Float`         |                                                  |
+| `float8`                    | `Double`        |                                                  |
+| `numeric`                   | `BigDecimal`    |                                                  |
+| `text`, `varchar`, `bpchar` | `String`        |                                                  |
+| `bool`                      | `Boolean`       |                                                  |
+| `uuid`                      | `UUID`          | `java.util.UUID`                                 |
+| `bytea`                     | `ByteArray`     |                                                  |
+| `jsonb`, `json`             | `JsonElement`   | `kotlinx.serialization.json`                     |
+| `void`                      | `Unit`          | Return type of void functions (e.g. `pg_notify`) |
+| `date`                      | `LocalDate`     | `kotlinx.datetime` <sup>1</sup>                  |
+| `time`                      | `LocalTime`     | `kotlinx.datetime`                               |
+| `timetz`                    | `OffsetTime`    | `java.time`                                      |
+| `timestamp`                 | `LocalDateTime` | `kotlinx.datetime` <sup>1</sup>                  |
+| `timestamptz`               | `Instant`       | `kotlin.time` <sup>1</sup>                       |
+| `interval`                  | `Duration`      | `kotlin.time` <sup>2</sup>                       |
 
 ### Arrays
 

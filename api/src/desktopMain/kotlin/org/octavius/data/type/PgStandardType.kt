@@ -22,7 +22,7 @@ enum class PgStandardType(val typeName: String, val isArray: Boolean = false) {
 
     // Text types
     VARCHAR("varchar"),
-    BPHAR("bpchar"),
+    BPCHAR("bpchar"),
     TEXT("text"),
 
     // Date and time

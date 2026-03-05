@@ -73,9 +73,10 @@ internal class KotlinToPostgresConverter(
         }
 
         // 3. Delegate standard types to registry (handles String, Number, Boolean, Instant, JsonElement, etc.)
-        StandardTypeMappingRegistry.getHandlerByClass(current::class)?.let { handler ->
+        StandardTypeMappingRegistry.getHandlerByClass(current::class)?.let { handler  ->
             val placeholder = if (appendTypeCast) "?::${outermostPgType ?: handler.pgTypeName}" else "?"
-            return placeholder to handler.toJdbc(current)
+            @Suppress("UNCHECKED_CAST")
+            return placeholder to (handler as StandardTypeHandler<Any>).toJdbc(current)
         }
 
         // 4. Handle specialized types
@@ -182,7 +183,10 @@ internal class KotlinToPostgresConverter(
             }
 
             // 1. Try registry first (handles built-ins including String, Number, Boolean, JSON)
-            StandardTypeMappingRegistry.getHandlerByClass(current::class)?.let { return it.toPgString(current) }
+            StandardTypeMappingRegistry.getHandlerByClass(current::class)?.let {
+                @Suppress("UNCHECKED_CAST")
+                return (it as StandardTypeHandler<Any>).toPgString(current)
+            }
 
             // 2. Try Dynamic DTO
             if (!wasPgTyped && !skipDynamicDto && current !is DynamicDto) {

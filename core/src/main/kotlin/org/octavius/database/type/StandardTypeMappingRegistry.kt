@@ -29,13 +29,13 @@ import java.time.LocalDateTime as JLocalDateTime
 import java.time.LocalTime as JLocalTime
 import java.time.OffsetDateTime as JOffsetDateTime
 
-internal data class StandardTypeHandler(
+internal data class StandardTypeHandler<T: Any>(
     val pgTypeName: String,
-    val kotlinClass: KClass<*>,
-    val fromResultSet: ((ResultSet, Int) -> Any?)?,
-    val fromString: (String) -> Any,
-    val toJdbc: (Any) -> Any,
-    val toPgString: (Any) -> String
+    val kotlinClass: KClass<T>,
+    val fromResultSet: ((ResultSet, Int) -> T?)?,
+    val fromString: (String) -> T,
+    val toJdbc: (T) -> Any,
+    val toPgString: (T) -> String
 )
 
 /**
@@ -59,12 +59,12 @@ internal object StandardTypeMappingRegistry {
         .appendPattern("X")
         .toFormatter()
 
-    private val mappings: Map<String, StandardTypeHandler> = buildMappings()
-    private val kotlinClassToHandler: Map<KClass<*>, StandardTypeHandler> = mappings.values
+    private val mappings: Map<String, StandardTypeHandler<*>> = buildMappings()
+    private val kotlinClassToHandler: Map<KClass<*>, StandardTypeHandler<*>> = mappings.values
         .associateBy { it.kotlinClass }
 
-    private fun buildMappings(): Map<String, StandardTypeHandler> {
-        val map = mutableMapOf<String, StandardTypeHandler>()
+    private fun buildMappings(): Map<String, StandardTypeHandler<*>> {
+        val map = mutableMapOf<String, StandardTypeHandler<*>>()
 
         PgStandardType.entries.forEach { pgType ->
             if (pgType.isArray) return@forEach
@@ -114,10 +114,10 @@ internal object StandardTypeMappingRegistry {
                 )
 
                 // Text types (with automatic cleaning)
-                PgStandardType.TEXT, PgStandardType.VARCHAR, PgStandardType.BPHAR -> fromStringOnly(
+                PgStandardType.TEXT, PgStandardType.VARCHAR, PgStandardType.BPCHAR -> fromStringOnly(
                     pgType.typeName,
                     String::class,
-                    toPgString = { (it as String).clean() }) { it }
+                    toPgString = { it.clean() }) { it }
 
                 // Date and time types
                 PgStandardType.DATE -> mapped(
@@ -133,19 +133,17 @@ internal object StandardTypeMappingRegistry {
                         ) { s -> LocalDate.parse(s) }
                     },
                     toJdbc = { v ->
-                        val date = v as LocalDate
-                        when (date) {
+                        when (v) {
                             LocalDate.DISTANT_FUTURE -> pgObject("date", "infinity")
                             LocalDate.DISTANT_PAST -> pgObject("date", "-infinity")
-                            else -> java.sql.Date.valueOf(date.toJavaLocalDate())
+                            else -> java.sql.Date.valueOf(v.toJavaLocalDate())
                         }
                     },
                     toPgString = { v ->
-                        val date = v as LocalDate
-                        when (date) {
+                        when (v) {
                             LocalDate.DISTANT_FUTURE -> "infinity"
                             LocalDate.DISTANT_PAST -> "-infinity"
-                            else -> date.toString()
+                            else -> v.toString()
                         }
                     }
                 )
@@ -163,18 +161,17 @@ internal object StandardTypeMappingRegistry {
                         ) { s -> LocalDateTime.parse(s.replace(' ', 'T')) }
                     },
                     toJdbc = { v ->
-                        when (val dateTime = v as LocalDateTime) {
+                        when (v) {
                             LocalDateTime.DISTANT_FUTURE -> pgObject("timestamp", "infinity")
                             LocalDateTime.DISTANT_PAST -> pgObject("timestamp", "-infinity")
-                            else -> java.sql.Timestamp.valueOf(dateTime.toJavaLocalDateTime())
+                            else -> java.sql.Timestamp.valueOf(v.toJavaLocalDateTime())
                         }
                     },
                     toPgString = { v ->
-                        val dateTime = v as LocalDateTime
-                        when (dateTime) {
+                        when (v) {
                             LocalDateTime.DISTANT_FUTURE -> "infinity"
                             LocalDateTime.DISTANT_PAST -> "-infinity"
-                            else -> dateTime.toString()
+                            else -> v.toString()
                         }
                     }
                 )
@@ -192,18 +189,17 @@ internal object StandardTypeMappingRegistry {
                         ) { s -> Instant.parse(s.replace(' ', 'T')) }
                     },
                     toJdbc = { v ->
-                        when (val instant = v as Instant) {
+                        when (v) {
                             Instant.DISTANT_FUTURE -> pgObject("timestamptz", "infinity")
                             Instant.DISTANT_PAST -> pgObject("timestamptz", "-infinity")
-                            else -> java.sql.Timestamp.from(instant.toJavaInstant())
+                            else -> java.sql.Timestamp.from(v.toJavaInstant())
                         }
                     },
                     toPgString = { v ->
-                        val instant = v as Instant
-                        when (instant) {
+                        when (v) {
                             Instant.DISTANT_FUTURE -> "infinity"
                             Instant.DISTANT_PAST -> "-infinity"
-                            else -> instant.toString()
+                            else -> v.toString()
                         }
                     }
                 )
@@ -214,7 +210,7 @@ internal object StandardTypeMappingRegistry {
                     { getObject(it, JLocalTime::class.java) },
                     { it.toKotlinLocalTime() },
                     { LocalTime.parse(it) },
-                    toJdbc = { java.sql.Time.valueOf((it as LocalTime).toJavaLocalTime()) },
+                    toJdbc = { java.sql.Time.valueOf(it.toJavaLocalTime()) },
                     toPgString = { it.toString() }
                 )
 
@@ -229,20 +225,19 @@ internal object StandardTypeMappingRegistry {
                     pgType.typeName,
                     Duration::class,
                     toJdbc = { v ->
-                        val duration = v as Duration
                         pgObject(
-                            "interval", when (duration) {
+                            "interval", when (v) {
                                 Duration.INFINITE -> "infinity"
                                 -Duration.INFINITE -> "-infinity"
-                                else -> duration.toIsoString()
+                                else -> v.toIsoString()
                             }
                         )
                     },
                     toPgString = { v ->
-                        when (val duration = v as Duration) {
+                        when (v) {
                             Duration.INFINITE -> "infinity"
                             -Duration.INFINITE -> "-infinity"
-                            else -> duration.toIsoString()
+                            else -> v.toIsoString()
                         }
                     }
                 ) {
@@ -264,7 +259,7 @@ internal object StandardTypeMappingRegistry {
                     pgType.typeName,
                     Boolean::class,
                     ResultSet::getBoolean,
-                    toPgString = { if (it as Boolean) "t" else "f" },
+                    toPgString = { if (it) "t" else "f" },
                     parser = { it == "t" })
 
                 // UUID type
@@ -280,7 +275,7 @@ internal object StandardTypeMappingRegistry {
                     pgType.typeName,
                     ByteArray::class,
                     ResultSet::getBytes,
-                    toPgString = { byteArrayToHexString(it as ByteArray) },
+                    toPgString = { byteArrayToHexString(it) },
                     parser = {
                         if (it.startsWith("\\x")) hexStringToByteArray(it.substring(2))
                         else throw UnsupportedOperationException("Unsupported bytea format. Only hex format (e.g. '\\xDEADBEEF') is supported.")
@@ -345,8 +340,8 @@ internal object StandardTypeMappingRegistry {
         return result.toString()
     }
 
-    fun getHandler(pgTypeName: String): StandardTypeHandler? = mappings[pgTypeName]
-    fun getHandlerByClass(kClass: KClass<*>): StandardTypeHandler? {
+    fun getHandler(pgTypeName: String): StandardTypeHandler<*>? = mappings[pgTypeName]
+    fun getHandlerByClass(kClass: KClass<*>): StandardTypeHandler<*>? {
         kotlinClassToHandler[kClass]?.let { return it }
         // Fallback to searching for a superclass match (important for JsonObject, etc.)
         return kotlinClassToHandler.values.firstOrNull { it.kotlinClass.isInstance(kClass) ||
@@ -356,7 +351,7 @@ internal object StandardTypeMappingRegistry {
 
     private inline fun <reified T : Any> primitive(
         pgTypeName: String, kClass: KClass<T>, crossinline getter: ResultSet.(Int) -> T,
-        noinline toPgString: ((Any) -> String)? = null, noinline parser: (String) -> T
+        noinline toPgString: ((T) -> String)? = null, noinline parser: (String) -> T
     ) = StandardTypeHandler(
         pgTypeName,
         kClass,
@@ -367,7 +362,7 @@ internal object StandardTypeMappingRegistry {
 
     private inline fun <reified T : Any> standard(
         pgTypeName: String, kClass: KClass<T>, crossinline getter: ResultSet.(Int) -> T?,
-        noinline toPgString: ((Any) -> String)? = null, noinline parser: (String) -> T
+        noinline toPgString: ((T) -> String)? = null, noinline parser: (String) -> T
     ) = StandardTypeHandler(
         pgTypeName,
         kClass,
@@ -382,12 +377,12 @@ internal object StandardTypeMappingRegistry {
         crossinline getter: ResultSet.(Int) -> SRC?,
         crossinline mapper: (SRC) -> T,
         noinline parser: (String) -> T,
-        noinline toJdbc: (Any) -> Any,
-        noinline toPgString: (Any) -> String
+        noinline toJdbc: (T) -> Any,
+        noinline toPgString: (T) -> String
     ) = StandardTypeHandler(pgTypeName, kClass, { rs, i -> rs.getter(i)?.let(mapper) }, parser, toJdbc, toPgString)
 
     private inline fun <reified T : Any> fromStringOnly(
-        pgTypeName: String, kClass: KClass<T>, noinline toJdbc: (Any) -> Any = { it },
-        noinline toPgString: (Any) -> String = { it.toString() }, noinline parser: (String) -> T
+        pgTypeName: String, kClass: KClass<T>, noinline toJdbc: (T) -> Any = { it },
+        noinline toPgString: (T) -> String = { it.toString() }, noinline parser: (String) -> T
     ) = StandardTypeHandler(pgTypeName, kClass, null, parser, toJdbc, toPgString)
 }

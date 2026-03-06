@@ -189,11 +189,14 @@ internal class KotlinToPostgresConverter(
             }
 
             // 2. Try Dynamic DTO
-            if (!wasPgTyped && !skipDynamicDto && current !is DynamicDto) {
-                if (dynamicDtoStrategy != DynamicDtoSerializationStrategy.EXPLICIT_ONLY && !typeRegistry.isPgType(current::class)) {
-                    typeRegistry.getDynamicTypeNameForClass(current::class)?.let { typeName ->
-                        current = DynamicDto.from(current, typeName, typeRegistry.getDynamicSerializer(typeName))
-                    }
+            if (!wasPgTyped && !skipDynamicDto && current !is DynamicDto
+                && (dynamicDtoStrategy == DynamicDtoSerializationStrategy.PREFER_DYNAMIC_DTO
+                        || dynamicDtoStrategy == DynamicDtoSerializationStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS && !typeRegistry.isPgType(
+                    current::class
+                ))
+            ) {
+                typeRegistry.getDynamicTypeNameForClass(current::class)?.let { typeName ->
+                    current = DynamicDto.from(current, typeName, typeRegistry.getDynamicSerializer(typeName))
                 }
             }
 

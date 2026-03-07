@@ -56,15 +56,6 @@ sealed class DatabaseException(
         cause: Throwable?
     ) : DatabaseException("Concurrency error: $errorType", queryContext, cause)
 
-    /**
-     * Errors during transaction execution.
-     */
-    class TransactionException(
-        message: String,
-        cause: Throwable,
-        queryContext: QueryContext? = null
-    ) : DatabaseException(message, queryContext, cause)
-
     override fun toString(): String {
         val contextStr = queryContext?.toString() ?: ""
         val nestedError = cause?.toString()?.prependIndent("|   ") ?: "|   No cause available"

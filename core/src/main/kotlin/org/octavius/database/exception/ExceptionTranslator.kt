@@ -15,6 +15,7 @@ object ExceptionTranslator {
             // StepDependencyException!!!
             is DatabaseException -> ex
             is DataAccessException -> translateSpringException(ex, queryContext)
+            // Probably possible inside listener
             else -> DatabaseException.DatabaseExecutionException(
                 errorType = DbErrorType.UNKNOWN,
                 queryContext = queryContext,

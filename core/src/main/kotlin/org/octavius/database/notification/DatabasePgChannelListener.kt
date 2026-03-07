@@ -22,7 +22,7 @@ internal class DatabasePgChannelListener(
     private val pgConnection: PGConnection = connection.unwrap(PGConnection::class.java)
 
     override fun listen(vararg channels: String): DataResult<Unit> {
-        val sql = channels.joinToString("; ") { "LISTEN ${it}" }
+        val sql = channels.joinToString("; ") { "LISTEN ${pgConnection.escapeIdentifier(it)}" }
         return try {
             channels.forEach { channel ->
                 connection.createStatement().use { stmt ->
@@ -38,7 +38,7 @@ internal class DatabasePgChannelListener(
     }
 
     override fun unlisten(vararg channels: String): DataResult<Unit> {
-        val sql = channels.joinToString("; ") { "UNLISTEN ${it}" }
+        val sql = channels.joinToString("; ") { "UNLISTEN ${pgConnection.escapeIdentifier(it)}" }
         return try {
             channels.forEach { channel ->
                 connection.createStatement().use { stmt ->

@@ -24,11 +24,11 @@
 ## Features
 
 - **Fluent Query Builders** — SELECT, INSERT, UPDATE, DELETE with a clean API
-- **Stored Procedures** — CALL with automatic IN/OUT/INOUT handling, composite & array expansion
 - **Automatic Type Mapping** — PostgreSQL `COMPOSITE`, `ENUM`, `ARRAY` ↔ Kotlin types
+- **Dynamic Type System** — Polymorphic storage & ad-hoc object mapping with `dynamic_dto`
 - **Transaction Plans** — Multi-step atomic operations with step dependencies
 - **Dynamic Filters** — Safe, composable `WHERE` clauses with `QueryFragment`
-- **Dynamic Type System** — Polymorphic storage & ad-hoc object mapping with `dynamic_dto`
+- **Stored Procedures** — CALL with automatic IN/OUT/INOUT handling, composite & array expansion
 - **LISTEN / NOTIFY** — Flow-based async notifications on a dedicated connection outside the pool
 
 ## Quick Start
@@ -76,81 +76,6 @@ dataAccess.deleteFrom("sessions")
     .execute()
 ```
 
-## Stored Procedures
-
-Call PostgreSQL procedures with full type support for IN, OUT, and INOUT parameters:
-
-```kotlin
-// Simple IN + OUT
-// CREATE PROCEDURE add_numbers(IN a int4, IN b int4, OUT result int4)
-val result = dataAccess.call("add_numbers")
-    .execute("a" to 17, "b" to 25)
-    .getOrThrow()  // { "result" to 42 }
-
-// Complex types work seamlessly — composites, arrays, enums
-// CREATE PROCEDURE complex_proc(IN person test_person, IN tags text[], OUT summary text)
-val result = dataAccess.call("complex_proc").execute(
-    "person" to TestPerson("Bob", 25, "bob@test.com", true, emptyList()),
-    "tags" to listOf("dev", "senior")
-)
-result.getOrThrow()["summary"]  // "Bob [dev, senior]"
-```
-
-Composites expand to `ROW(?,…)::type`, arrays to `ARRAY[?,…]`, enums to typed parameters — all automatically. See [Stored Procedures](docs/stored-procedures.md) for the full guide.
-
-## Safe Dynamic Filters
-
-Build complex `WHERE` clauses without SQL injection risks:
-
-```kotlin
-fun buildFilters(name: String?, minPrice: Int?, category: Category?) = listOfNotNull(
-    name?.let { "name ILIKE :name" withParam ("name" to "%$it%") },
-    minPrice?.let { "price >= :minPrice" withParam ("minPrice" to it) },
-    category?.let { "category = :cat" withParam ("cat" to it) }
-).join(" AND ")
-
-val filter = buildFilters(name = "Pro", minPrice = 100, category = null)
-val products = dataAccess.select("*")
-    .from("products")
-    .where(filter.sql)
-    .toListOf<Product>(filter.params)
-```
-
-## Transaction Plans
-
-Execute multi-step operations atomically with dependencies between steps:
-
-```kotlin
-val plan = TransactionPlan()
-
-// Step 1: Create order, get handle to future ID
-val orderIdHandle = plan.add(
-    dataAccess.insertInto("orders")
-        .values(listOf("user_id", "total"))
-        .returning("id")
-        .asStep()
-        .toField<Int>(mapOf("user_id" to userId, "total" to total))
-)
-
-// Step 2: Create order items using the handle
-for (item in cartItems) {
-    val orderItem: Map<String, Any?> = mapOf(
-        "order_id" to orderIdHandle.field(),  // Reference future value
-        "product_id" to item.productId,
-        "quantity" to item.quantity
-    )
-    
-    plan.add(
-        dataAccess.insertInto("order_items")
-            .values(orderItem)
-            .asStep()
-            .execute(orderItem)
-    )
-}
-
-// Execute all steps in single transaction
-dataAccess.executeTransactionPlan(plan)
-```
 
 ## Type Mapping
 
@@ -281,6 +206,81 @@ val users = dataAccess.rawQuery("""
 ```
 
 > **Why use this?** Usually, to get a user with their profile in one query, you'd fetch flat columns (`user_id`, `user_name`, `profile_role`...) and manually map them, or create a database VIEW. With ad-hoc mapping, you construct the nested structure directly in SQL. The database does the packaging, Octavius does the unpacking — zero boilerplate.
+
+
+## Stored Procedures
+
+Call PostgreSQL procedures with full type support for IN, OUT, and INOUT parameters:
+
+```kotlin
+// Simple IN + OUT
+// CREATE PROCEDURE add_numbers(IN a int4, IN b int4, OUT result int4)
+val result = dataAccess.call("add_numbers")
+    .executeCall("a" to 17, "b" to 25)
+    .getOrThrow()  // { "result" to 42 }
+
+// Complex types work seamlessly — composites, arrays, enums
+// CREATE PROCEDURE complex_proc(IN person test_person, IN tags text[], OUT summary text)
+val result = dataAccess.call("complex_proc").executeCall(
+    "person" to TestPerson("Bob", 25, "bob@test.com", true, emptyList()),
+    "tags" to listOf("dev", "senior")
+)
+result.getOrThrow()["summary"]  // "Bob [dev, senior]"
+```
+
+## Safe Dynamic Filters
+
+Build complex `WHERE` clauses without SQL injection risks:
+
+```kotlin
+fun buildFilters(name: String?, minPrice: Int?, category: Category?) = listOfNotNull(
+    name?.let { "name ILIKE :name" withParam ("name" to "%$it%") },
+    minPrice?.let { "price >= :minPrice" withParam ("minPrice" to it) },
+    category?.let { "category = :cat" withParam ("cat" to it) }
+).join(" AND ")
+
+val filter = buildFilters(name = "Pro", minPrice = 100, category = null)
+val products = dataAccess.select("*")
+    .from("products")
+    .where(filter.sql)
+    .toListOf<Product>(filter.params)
+```
+
+## Transaction Plans
+
+Execute multi-step operations atomically with dependencies between steps:
+
+```kotlin
+val plan = TransactionPlan()
+
+// Step 1: Create order, get handle to future ID
+val orderIdHandle = plan.add(
+    dataAccess.insertInto("orders")
+        .values(listOf("user_id", "total"))
+        .returning("id")
+        .asStep()
+        .toField<Int>(mapOf("user_id" to userId, "total" to total))
+)
+
+// Step 2: Create order items using the handle
+for (item in cartItems) {
+    val orderItem: Map<String, Any?> = mapOf(
+        "order_id" to orderIdHandle.field(),  // Reference future value
+        "product_id" to item.productId,
+        "quantity" to item.quantity
+    )
+    
+    plan.add(
+        dataAccess.insertInto("order_items")
+            .values(orderItem)
+            .asStep()
+            .execute(orderItem)
+    )
+}
+
+// Execute all steps in single transaction
+dataAccess.executeTransactionPlan(plan)
+```
 
 ## LISTEN / NOTIFY
 

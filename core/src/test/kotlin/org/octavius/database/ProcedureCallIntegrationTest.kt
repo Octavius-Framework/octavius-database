@@ -2,6 +2,7 @@ package org.octavius.database
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
+import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
@@ -9,8 +10,11 @@ import org.junit.jupiter.api.TestInstance
 import org.octavius.data.DataAccess
 import org.octavius.data.DataResult
 import org.octavius.data.builder.execute
+import org.octavius.data.builder.executeCall
 import org.octavius.data.builder.toSingle
+import org.octavius.data.builder.toSingleStrict
 import org.octavius.data.getOrThrow
+import org.octavius.data.transaction.TransactionPlan
 import org.octavius.database.config.DatabaseConfig
 import org.octavius.domain.test.pgtype.TestPerson
 import org.octavius.domain.test.pgtype.TestStatus
@@ -56,6 +60,7 @@ class ProcedureCallIntegrationTest {
         jdbcTemplate.execute(loadSql("init-complex-test-db.sql"))
         jdbcTemplate.execute(loadSql("init-procedure-test-db.sql"))
 
+
         dataAccess = OctaviusDatabase.fromDataSource(
             dataSource = dataSource,
             packagesToScan = listOf("org.octavius.domain.test.pgtype"),
@@ -67,7 +72,7 @@ class ProcedureCallIntegrationTest {
 
     @Test
     fun `should call procedure with no OUT params`() {
-        val result = dataAccess.call("void_proc").execute("p_text" to "hello")
+        val result = dataAccess.call("void_proc").executeCall("p_text" to "hello")
 
         assertThat(result).isInstanceOf(DataResult.Success::class.java)
         assertThat(result.getOrThrow()).isEmpty()
@@ -75,14 +80,14 @@ class ProcedureCallIntegrationTest {
 
     @Test
     fun `should call procedure with IN and OUT params`() {
-        val result = dataAccess.call("add_numbers").execute("a" to 17, "b" to 25)
+        val result = dataAccess.call("add_numbers").executeCall("a" to 17, "b" to 25)
 
         assertThat(result.getOrThrow()).containsEntry("result", 42)
     }
 
     @Test
     fun `should call procedure with multiple OUT params`() {
-        val result = dataAccess.call("split_text").execute("input" to "abcdef")
+        val result = dataAccess.call("split_text").executeCall("input" to "abcdef")
 
         val out = result.getOrThrow()
         assertThat(out).containsEntry("first_half", "abc")
@@ -92,14 +97,14 @@ class ProcedureCallIntegrationTest {
 
     @Test
     fun `should call procedure with INOUT param`() {
-        val result = dataAccess.call("increment").execute("counter" to 10, "step" to 3)
+        val result = dataAccess.call("increment").executeCall("counter" to 10, "step" to 3)
 
         assertThat(result.getOrThrow()).containsEntry("counter", 13)
     }
 
     @Test
     fun `should call procedure with array IN and OUT - index tracking`() {
-        val result = dataAccess.call("sum_array").execute("numbers" to listOf(10, 20, 30))
+        val result = dataAccess.call("sum_array").executeCall("numbers" to listOf(10, 20, 30))
 
         assertThat(result.getOrThrow()).containsEntry("total", 60)
     }
@@ -108,14 +113,14 @@ class ProcedureCallIntegrationTest {
     fun `should call procedure with composite IN and OUT - ROW index tracking`() {
         val person = TestPerson("Alice", 30, "alice@test.com", true, listOf("admin"))
 
-        val result = dataAccess.call("greet_person").execute("person" to person)
+        val result = dataAccess.call("greet_person").executeCall("person" to person)
 
         assertThat(result.getOrThrow()).containsEntry("greeting", "Hello, Alice! Age: 30")
     }
 
     @Test
     fun `should call procedure with enum IN and OUT`() {
-        val result = dataAccess.call("next_status").execute("current_status" to TestStatus.Pending)
+        val result = dataAccess.call("next_status").executeCall("current_status" to TestStatus.Pending)
 
         assertThat(result.getOrThrow()["next"]).isEqualTo(TestStatus.Active)
     }
@@ -124,7 +129,7 @@ class ProcedureCallIntegrationTest {
     fun `should call procedure with composite + array IN and OUT - complex index tracking`() {
         val person = TestPerson("Bob", 25, "bob@test.com", true, emptyList())
 
-        val result = dataAccess.call("complex_proc").execute(
+        val result = dataAccess.call("complex_proc").executeCall(
             "person" to person,
             "tags" to listOf("dev", "senior")
         )
@@ -134,7 +139,7 @@ class ProcedureCallIntegrationTest {
 
     @Test
     fun `should call procedure with map overload`() {
-        val result = dataAccess.call("add_numbers").execute(mapOf("a" to 100, "b" to 200))
+        val result = dataAccess.call("add_numbers").executeCall(mapOf("a" to 100, "b" to 200))
 
         assertThat(result.getOrThrow()).containsEntry("result", 300)
     }
@@ -155,5 +160,28 @@ class ProcedureCallIntegrationTest {
             .toSingle("a" to 17, "b" to 25)
 
         assertThat(result.getOrThrow()).containsEntry("result", 42)
+    }
+
+    @Test
+    fun `should call procedure asynchronously`() = runBlocking {
+        var asyncResult: DataResult<Map<String, Any?>?>? = null
+        val job = dataAccess.call("add_numbers")
+            .async(this)
+            .toSingle("a" to 10, "b" to 20) {
+                asyncResult = it
+            }
+        job.join()
+        assertThat(asyncResult?.getOrThrow()).containsEntry("result", 30)
+    }
+
+    @Test
+    fun `should call procedure as step in transaction plan`() {
+        val plan = TransactionPlan()
+        val step = dataAccess.call("add_numbers").asStep().toSingleStrict("a" to 5, "b" to 5)
+        val handle = plan.add(step)
+
+        val result = dataAccess.executeTransactionPlan(plan).getOrThrow()
+        val stepResult = result.get(handle)
+        assertThat(stepResult).containsEntry("result", 10)
     }
 }

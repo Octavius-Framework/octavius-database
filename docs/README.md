@@ -31,6 +31,7 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 - [Basic Usage](stored-procedures.md#basic-usage) - `dataAccess.call("proc").execute(...)`
 - [Parameter Modes](stored-procedures.md#parameter-modes) - IN, OUT, INOUT
 - [Complex Parameters](stored-procedures.md#complex-parameters) - Composites, arrays, enums
+- [Advanced Execution Modes](stored-procedures.md#advanced-execution-modes)
 - [How It Works](stored-procedures.md#how-it-works) - PreparedStatement, NULL::type, ResultSet extraction
 - [OUT Type Overrides](stored-procedures.md#out-type-overrides) - Concrete types for pseudo-type OUT params (`anyarray`, `anyelement`)
 - [Functions vs Procedures](stored-procedures.md#functions-vs-procedures) - CALL vs SELECT, when to use which

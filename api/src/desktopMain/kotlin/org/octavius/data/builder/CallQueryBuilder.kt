@@ -8,7 +8,7 @@ import org.octavius.data.DataResult
  * OUT/INOUT parameter values are returned as a map. If the procedure
  * has no OUT/INOUT parameters, the result map is empty.
  */
-interface CallQueryBuilder {
+interface CallQueryBuilder : TerminalReturningMethods, QueryBuilder<CallQueryBuilder> {
 
     /**
      * Overrides the PostgreSQL type used in `NULL::type` slots for OUT parameters.
@@ -25,14 +25,17 @@ interface CallQueryBuilder {
     /**
      * Executes the procedure with the given named parameters.
      *
+     * If the procedure has OUT/INOUT parameters, it returns them as a map
+     * (the first row of the result set). If it has none, it returns an empty map.
+     *
      * @param params Named parameters matching the procedure's IN/INOUT arguments.
      * @return [DataResult] containing a map of OUT/INOUT parameter names to their converted values.
      */
-    fun execute(params: Map<String, Any?> = emptyMap()): DataResult<Map<String, Any?>>
+    fun executeCall(params: Map<String, Any?> = emptyMap()): DataResult<Map<String, Any?>>
 }
 
 fun CallQueryBuilder.outTypes(vararg outTypes: Pair<String, String>): CallQueryBuilder =
     outTypes(outTypes.toMap())
 
-fun CallQueryBuilder.execute(vararg params: Pair<String, Any?>): DataResult<Map<String, Any?>> =
-    execute(params.toMap())
+fun CallQueryBuilder.executeCall(vararg params: Pair<String, Any?>): DataResult<Map<String, Any?>> =
+    executeCall(params.toMap())

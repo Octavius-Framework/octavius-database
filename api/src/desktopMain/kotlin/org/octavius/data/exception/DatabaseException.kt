@@ -92,7 +92,7 @@ sealed class CodeExecutionException(
     val details: String,
     queryContext: QueryContext?,
     cause: Throwable?
-) : DatabaseException("Code execution failed", queryContext, cause)
+) : DatabaseException(details, queryContext, cause)
 
 
 enum class DbErrorType {

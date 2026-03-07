@@ -9,6 +9,7 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.serializer
 import org.octavius.data.annotation.DynamicallyMappable
 import org.octavius.data.annotation.PgComposite
+import org.octavius.data.annotation.PgCompositeMapper
 import org.octavius.data.annotation.PgEnum
 import org.octavius.data.exception.TypeRegistryException
 import org.octavius.data.exception.TypeRegistryExceptionMessage
@@ -120,8 +121,14 @@ internal class ClasspathTypeScanner(
                 )
             }
 
+            val mapperClassInfo = annotation.parameterValues.getValue("mapper") as io.github.classgraph.AnnotationClassRef
+            val mapperClass = if (mapperClassInfo.name != "org.octavius.data.annotation.DefaultPgCompositeMapper") {
+                @Suppress("UNCHECKED_CAST")
+                mapperClassInfo.loadClass().kotlin as KClass<out PgCompositeMapper<*>>
+            } else null
+
             val kClass = classInfo.loadClass().kotlin
-            target.add(KtCompositeInfo(kClass, name))
+            target.add(KtCompositeInfo(kClass, name, mapperClass))
         }
     }
 

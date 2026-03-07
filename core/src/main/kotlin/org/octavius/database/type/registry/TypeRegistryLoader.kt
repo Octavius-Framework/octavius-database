@@ -6,6 +6,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.octavius.data.exception.TypeRegistryException
 import org.octavius.data.exception.TypeRegistryExceptionMessage
+import org.octavius.data.annotation.PgCompositeMapper
 import org.octavius.data.type.DYNAMIC_DTO
 import org.octavius.data.type.PgStandardType
 import org.octavius.data.util.CaseConverter
@@ -143,10 +144,24 @@ internal class TypeRegistryLoader(
                     cause = IllegalStateException("Class '${kt.kClass.qualifiedName}' expects DB type '${kt.pgName}'")
                 )
 
+            val mapperInstance = kt.mapperClass?.let { mapperKClass ->
+                try {
+                    // Try to get object instance first (for Kotlin objects)
+                    (mapperKClass.objectInstance ?: mapperKClass.java.getDeclaredConstructor().newInstance()) as PgCompositeMapper<Any>
+                } catch (e: Exception) {
+                    throw TypeRegistryException(
+                        TypeRegistryExceptionMessage.INITIALIZATION_FAILED,
+                        typeName = kt.pgName,
+                        cause = IllegalStateException("Failed to instantiate mapper ${mapperKClass.qualifiedName}. Ensure it is an 'object' or has a public no-arg constructor.", e)
+                    )
+                }
+            }
+
             definitions[kt.pgName] = PgCompositeDefinition(
                 typeName = kt.pgName,
                 attributes = dbAttributes,
-                kClass = kt.kClass
+                kClass = kt.kClass,
+                mapper = mapperInstance
             )
             classMap[kt.kClass] = kt.pgName
         }

@@ -189,7 +189,21 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
         }
 
         return try {
-            val result = constructorArgsMap.toDataObject(typeInfo.kClass)
+            val result = if (typeInfo.mapper != null) {
+                logger.trace { "Using manual mapper for ${typeInfo.typeName}" }
+                try {
+                    typeInfo.mapper.fromMap(constructorArgsMap)
+                } catch (e: Exception) {
+                    throw ConversionException(
+                        ConversionExceptionMessage.COMPOSITE_MAPPER_FAILED,
+                        targetType = typeInfo.typeName,
+                        rowData = constructorArgsMap,
+                        cause = e
+                    )
+                }
+            } else {
+                constructorArgsMap.toDataObject(typeInfo.kClass)
+            }
             logger.trace { "Successfully created instance of ${typeInfo.kClass.simpleName}" }
             result
         } catch (e: Exception) { // This should always be a ConversionException

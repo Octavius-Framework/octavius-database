@@ -1,6 +1,7 @@
 package org.octavius.database.type.registry
 
 import kotlinx.serialization.KSerializer
+import org.octavius.data.annotation.PgCompositeMapper
 import org.octavius.data.util.CaseConvention
 import kotlin.reflect.KClass
 
@@ -19,7 +20,8 @@ internal data class KtEnumInfo(
  */
 internal data class KtCompositeInfo(
     val kClass: KClass<*>,
-    val pgName: String
+    val pgName: String,
+    val mapperClass: KClass<out PgCompositeMapper<*>>? = null
 )
 
 /**

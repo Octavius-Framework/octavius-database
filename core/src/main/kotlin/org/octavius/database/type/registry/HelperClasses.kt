@@ -1,5 +1,6 @@
 package org.octavius.database.type.registry
 
+import org.octavius.data.annotation.PgCompositeMapper
 import kotlin.reflect.KClass
 
 // --- Data Models ---
@@ -22,7 +23,8 @@ internal data class PgEnumDefinition(
 internal data class PgCompositeDefinition(
     val typeName: String,
     val attributes: Map<String, String>, // colName -> colType (ordered)
-    val kClass: KClass<*>
+    val kClass: KClass<*>,
+    val mapper: PgCompositeMapper<Any>? = null
 ) {
     val dbAttributes = attributes.toList()
 }

@@ -25,7 +25,9 @@ enum class ConversionExceptionMessage {
     /** When a query returned no rows but at least one was expected */
     EMPTY_RESULT,
     /** When a single-row method received more than one row */
-    TOO_MANY_ROWS
+    TOO_MANY_ROWS,
+    /** Error during manual mapping via PgCompositeMapper */
+    COMPOSITE_MAPPER_FAILED
 }
 
 private fun generateDeveloperMessage(
@@ -57,6 +59,8 @@ private fun generateDeveloperMessage(
             "Query returned no rows but a result of type '$targetType' was expected. Use toField() instead of toFieldStrict() if empty results should return Success(null)."
         ConversionExceptionMessage.TOO_MANY_ROWS ->
             "Query returned multiple rows but only a single row was expected (target type: '$targetType'). Use toList() or toColumn() for multi-row results, or add LIMIT 1 to your query."
+        ConversionExceptionMessage.COMPOSITE_MAPPER_FAILED ->
+            "Custom PgCompositeMapper failed for type '$targetType'. Check the 'cause' for implementation-specific error."
     }
 }
 

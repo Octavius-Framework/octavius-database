@@ -196,7 +196,21 @@ internal class KotlinToPostgresConverter(
         fun serializeComposite(obj: Any, skipDynamicDto: Boolean, explicitType: String?): String {
             val typeName = explicitType ?: typeRegistry.getPgTypeNameForClass(obj::class)
             val typeInfo = typeRegistry.getCompositeDefinition(typeName)
-            val valueMap = obj.toMap()
+            
+            val valueMap = if (typeInfo.mapper != null) {
+                logger.trace { "Using manual mapper for serialization of ${typeInfo.typeName}" }
+                try {
+                    typeInfo.mapper.toMap(obj)
+                } catch (e: Exception) {
+                    throw ConversionException(
+                        ConversionExceptionMessage.COMPOSITE_MAPPER_FAILED,
+                        targetType = typeInfo.typeName,
+                        cause = e
+                    )
+                }
+            } else {
+                obj.toMap()
+            }
 
             return typeInfo.attributes.keys.joinToString(prefix = "(", postfix = ")", separator = ",") { key ->
                 val value = valueMap[key]

@@ -5,17 +5,13 @@ import org.junit.jupiter.api.*
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 import org.octavius.data.DataAccess
-import org.octavius.data.annotation.PgComposite
 import org.octavius.database.OctaviusDatabase
 import org.octavius.database.config.DatabaseConfig
+import org.octavius.domain.test.bulkinsert.PerformanceTestData
 import org.springframework.jdbc.core.JdbcTemplate
 import java.util.concurrent.ConcurrentHashMap
 import javax.sql.DataSource
 import kotlin.system.measureTimeMillis
-
-// Prosta data class do przechowywania naszych danych testowych
-@PgComposite(name = "performance_test")
-data class PerformanceTestData(val val1: Int, val val2: String)
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
@@ -78,7 +74,7 @@ class ComprehensiveBulkInsertBenchmark {
         // --- Krok 3: Inicjalizacja frameworka ---
         this.dataAccess = OctaviusDatabase.fromDataSource(
             dataSource = hikariDataSource,
-            packagesToScan = listOf("org.octavius.performance"),
+            packagesToScan = listOf("org.octavius.domain.test.bulkinsert"),
             dbSchemas = databaseConfig.dbSchemas,
             disableFlyway = true,
             disableCoreTypeInitialization = true

@@ -1,7 +1,5 @@
 package org.octavius.data.exception
 
-import org.octavius.data.exception.ExecutionContext
-
 enum class ConversionExceptionMessage {
     /** General standard type conversion error */
     VALUE_CONVERSION_FAILED,
@@ -76,14 +74,19 @@ class ConversionException(
     val targetType: String? = null,
     val rowData: Map<String, Any?>? = null,
     val propertyName: String? = null,
-    cause: Throwable? = null
-) : DatabaseException(
-    messageEnum.name,
-    cause
+    cause: Throwable? = null,
+    queryContext: QueryContext? = null
+) : OctaviusDatabaseException.CodeExecutionException(
+    errorType = CodeErrorType.CONVERSION_FAILED,
+    details = generateDeveloperMessage(messageEnum, value, targetType, propertyName),
+    queryContext = queryContext,
+    cause = cause
 ) {
     override fun toString(): String {
+        val contextStr = queryContext?.toString() ?: ""
 
         var s = """
+$contextStr
 
         -------------------------------
         |     CONVERSION FAILED     

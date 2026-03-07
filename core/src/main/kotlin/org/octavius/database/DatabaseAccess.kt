@@ -6,7 +6,7 @@ import org.octavius.data.DataResult
 import org.octavius.data.QueryOperations
 import org.octavius.data.builder.*
 import org.octavius.data.exception.DatabaseException
-import org.octavius.data.exception.TransactionException
+import org.octavius.data.exception.OctaviusDatabaseException
 import org.octavius.data.notification.PgChannelListener
 import org.octavius.data.transaction.TransactionPlan
 import org.octavius.data.transaction.TransactionPlanResult
@@ -102,7 +102,7 @@ internal class DatabaseAccess(
                 logger.error(e) { "An unexpected exception was thrown inside the transaction block. Rolling back." }
                 // Wrap it in our standard Failure
                 DataResult.Failure(
-                    TransactionException(cause = e)
+                    OctaviusDatabaseException.TransactionException("Unexpected exception inside transaction block", e)
                 )
             }
         }

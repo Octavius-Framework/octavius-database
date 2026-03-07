@@ -120,7 +120,7 @@ internal class TransactionPlanExecutor(
                 executeSingleStep(index, step, indexedResults, handleToIndexMap)
             } catch (e: Exception) {
                 // Wrap EVERY error in step context and throw it to rollback the transaction
-                throw TransactionStepExecutionException(stepIndex = index, cause = e)
+                throw OctaviusDatabaseException.TransactionStepExecutionException(stepIndex = index, cause = e)
             }
         }
 
@@ -179,8 +179,9 @@ internal class TransactionPlanExecutor(
 
     private fun handleTransactionError(error: Throwable): DataResult.Failure {
         val dbException = when (error) {
+            is OctaviusDatabaseException -> error
             is DatabaseException -> error
-            else -> TransactionException(error)
+            else -> OctaviusDatabaseException.TransactionException("Execution of transaction failed", error)
         }
         logger.error(dbException) { "Transaction failed and was rolled back." }
         return DataResult.Failure(dbException)

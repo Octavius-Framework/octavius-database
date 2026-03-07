@@ -25,11 +25,16 @@ class TypeRegistryException(
     val messageEnum: TypeRegistryExceptionMessage,
     val typeName: String? = null,
     cause: Throwable? = null,
-    executionContext: ExecutionContext? = null
-) : DatabaseException(messageEnum.name, cause, executionContext) {
+    queryContext: QueryContext? = null
+) : OctaviusDatabaseException.CodeExecutionException(
+    errorType = CodeErrorType.MAPPING_FAILED,
+    details = generateDeveloperMessage(messageEnum, typeName),
+    queryContext = queryContext,
+    cause = cause
+) {
 
     override fun toString(): String {
-        val contextStr = executionContext?.toString() ?: ""
+        val contextStr = queryContext?.toString() ?: ""
         
         return """
 $contextStr

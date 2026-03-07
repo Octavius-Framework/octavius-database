@@ -1,28 +1,24 @@
 package org.octavius.data.exception
 
-import org.octavius.data.exception.ExecutionContext
-
 /**
  * Base sealed exception for all data layer errors.
- *
- * All database access related exceptions inherit from this class,
- * enabling easy catching and handling of errors at different application levels.
+ * 
+ * NOTE: This class is being superseded by OctaviusDatabaseException.
+ * Existing code should migrate to catching OctaviusDatabaseException.
  */
 sealed class DatabaseException(
     message: String,
     cause: Throwable? = null,
-    val executionContext: ExecutionContext? = null
+    val queryContext: QueryContext? = null
 ) : RuntimeException(message, cause)
 
 /**
  * Errors during SQL query execution.
- *
- * Contains full error context: SQL query and parameters.
- * Thrown when:
- * - SQL query is syntactically incorrect
- * - Database constraint violation
- * - Database connection errors
+ * 
+ * @deprecated Use OctaviusDatabaseException.DatabaseExecutionException instead.
  */
+@Deprecated("Use OctaviusDatabaseException.DatabaseExecutionException instead", 
+    replaceWith = ReplaceWith("OctaviusDatabaseException.DatabaseExecutionException"))
 class QueryExecutionException(
     val sql: String,
     val params: Map<String, Any?>,
@@ -30,11 +26,11 @@ class QueryExecutionException(
     val expandedParams: List<Any?>? = null,
     message: String? = null,
     cause: Throwable? = null,
-    executionContext: ExecutionContext? = null
+    queryContext: QueryContext? = null
 ) : DatabaseException(
     message ?: "Error during query execution",
     cause,
-    executionContext ?: ExecutionContext(sql, params, expandedSql, expandedParams)
+    queryContext ?: QueryContext(sql, params, expandedSql, expandedParams)
 ) {
 
     override fun toString(): String {
@@ -42,7 +38,7 @@ class QueryExecutionException(
 
         return """
         
-$executionContext
+${this@QueryExecutionException.queryContext}
 
 ------------------------------------------------------------
 | ERROR CAUSE:
@@ -50,76 +46,5 @@ $executionContext
 $nestedError
 ------------------------------------------------------------
         """.trimIndent()
-    }
-}
-
-/**
- * Exception thrown when execution of a specific step within a batch transaction fails.
- *
- * Wraps the original exception (e.g., QueryExecutionException), adding context
- * about which step failed.
- *
- * @param stepIndex Index (0-based) of the step that failed.
- * @param cause Original exception that caused the error.
- * @param executionContext Context of the execution, if available.
- */
-class TransactionStepExecutionException(
-    val stepIndex: Int,
-    override val cause: Throwable,
-    executionContext: ExecutionContext? = null
-) : DatabaseException(
-    "Execution of transaction step $stepIndex failed",
-    cause,
-    executionContext
-) {
-    override fun toString(): String {
-        val nestedError = cause.toString().prependIndent("|   ")
-        val contextStr = executionContext?.toString() ?: ""
-
-        return """
-
-$contextStr
-
--------------------------------------
-| TRANSACTION STEP $stepIndex FAILED
--------------------------------------
-| Step error details:
-$nestedError
--------------------------------------
-"""
-    }
-}
-
-/**
- * Exception thrown when execution of a transaction fails.
- *
- * Wraps the original exception (e.g., ConcurrencyFailureException)
- *
- * @param cause Original exception that caused the error.
- * @param executionContext Context of the execution, if available.
- */
-class TransactionException(
-    override val cause: Throwable,
-    executionContext: ExecutionContext? = null
-) : DatabaseException(
-    "Execution of transaction failed",
-    cause,
-    executionContext
-) {
-    override fun toString(): String {
-        val nestedError = cause.toString().prependIndent("|   ")
-        val contextStr = executionContext?.toString() ?: ""
-
-        return """
-
-$contextStr
-
--------------------------------------
-| TRANSACTION FAILED
--------------------------------------
-| Error details:
-$nestedError
--------------------------------------
-"""
     }
 }

@@ -55,13 +55,23 @@ class StepDependencyException(
     val messageEnum: StepDependencyExceptionMessage,
     val referencedStepIndex: Int,
     vararg val args: Any,
-    cause: Throwable? = null
-) : DatabaseException(messageEnum.name, cause) {
+    cause: Throwable? = null,
+    queryContext: QueryContext? = null
+) : OctaviusDatabaseException.CodeExecutionException(
+    errorType = CodeErrorType.STEP_DEPENDENCY_ERROR,
+    details = generateDeveloperMessage(messageEnum, referencedStepIndex, args),
+    queryContext = queryContext,
+    cause = cause
+) {
     constructor(messageEnum: StepDependencyExceptionMessage, stepIndex: Int)
             : this(messageEnum, stepIndex, *emptyArray<Any>())
 
     override fun toString(): String {
+        val contextStr = queryContext?.toString() ?: ""
+        
         return """
+$contextStr
+
         -------------------------------
         |     STEP DEPENDENCY FAILED     
         | message: ${generateDeveloperMessage(this.messageEnum, referencedStepIndex, args)}

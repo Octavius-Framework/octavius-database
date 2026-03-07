@@ -9,6 +9,9 @@ object ExceptionTranslator {
 
     fun translate(ex: Throwable, queryContext: QueryContext): OctaviusDatabaseException {
         return when (ex) {
+            // CodeExecutionException (RuntimeTypeRegistryException and ConversionException) must be given context
+            is CodeExecutionException -> ex.withContext(queryContext)
+            // StepDependencyException!!!
             is OctaviusDatabaseException -> ex
             is DataAccessException -> translateSpringException(ex, queryContext)
             else -> OctaviusDatabaseException.DatabaseExecutionException(

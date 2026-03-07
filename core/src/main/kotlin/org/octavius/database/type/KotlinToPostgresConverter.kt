@@ -3,6 +3,8 @@ package org.octavius.database.type
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.octavius.data.exception.ConversionException
 import org.octavius.data.exception.ConversionExceptionMessage
+import org.octavius.data.exception.RuntimeTypeRegistryException
+import org.octavius.data.exception.RuntimeTypeRegistryExceptionMessage
 import org.octavius.data.exception.TypeRegistryException
 import org.octavius.data.exception.TypeRegistryExceptionMessage
 import org.octavius.data.toMap
@@ -95,7 +97,10 @@ internal class KotlinToPostgresConverter(
             else -> {
                 when {
                     value::class.isData -> pgObject("text", serializer.serializeComposite(value, skipDynamicDto, pgType))
-                    value::class.isValue -> throw TypeRegistryException(TypeRegistryExceptionMessage.KOTLIN_CLASS_NOT_MAPPED, value::class.qualifiedName)
+                    value::class.isValue -> throw RuntimeTypeRegistryException(
+                        RuntimeTypeRegistryExceptionMessage.KOTLIN_CLASS_NOT_MAPPED,
+                        value::class.qualifiedName
+                    )
                     else -> value
                 }
             }
@@ -257,7 +262,7 @@ internal class KotlinToPostgresConverter(
                     val kClass = current::class
                     when {
                         kClass.isData -> serializeComposite(current, skipDynamicDto || wasPgTyped, explicitType)
-                        kClass.isValue -> throw TypeRegistryException(TypeRegistryExceptionMessage.KOTLIN_CLASS_NOT_MAPPED, kClass.qualifiedName)
+                        kClass.isValue -> throw RuntimeTypeRegistryException(RuntimeTypeRegistryExceptionMessage.KOTLIN_CLASS_NOT_MAPPED, kClass.qualifiedName)
                         else -> current.toString()
                     }
                 }

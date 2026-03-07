@@ -4,6 +4,8 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.serialization.json.Json
 import org.octavius.data.exception.ConversionException
 import org.octavius.data.exception.ConversionExceptionMessage
+import org.octavius.data.exception.RuntimeTypeRegistryException
+import org.octavius.data.exception.RuntimeTypeRegistryExceptionMessage
 import org.octavius.data.exception.TypeRegistryException
 import org.octavius.data.exception.TypeRegistryExceptionMessage
 import org.octavius.data.toDataObject
@@ -30,7 +32,7 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
      * @param value Value from database as `String` (can be `null`).
      * @param pgTypeName Type name in PostgreSQL (e.g., "int4", "my_enum", "dynamic_dto").
      * @return Converted value or `null` if `value` was `null`.
-     * @throws org.octavius.data.exception.TypeRegistryException if type is unknown.
+     * @throws RuntimeTypeRegistryException if type is unknown.
      * @throws ConversionException if conversion fails.
      */
     fun convert(value: String?, pgTypeName: String): Any? {
@@ -119,6 +121,7 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
     private fun convertEnum(value: String, typeInfo: PgEnumDefinition): Any { // null handled in convert method
 
         return typeInfo.valueToEnumMap[value]
+            //Should this be RegistryException?
             ?: throw ConversionException(
                 messageEnum = ConversionExceptionMessage.ENUM_CONVERSION_FAILED,
                 value = value,
@@ -166,12 +169,10 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
 
         parseNestedStructure(value) { elementValue, _ ->
             if (index >= dbAttributes.size) {
-                val ex = TypeRegistryException(
-                    TypeRegistryExceptionMessage.WRONG_FIELD_NUMBER_IN_COMPOSITE,
+                throw RuntimeTypeRegistryException(
+                    RuntimeTypeRegistryExceptionMessage.WRONG_FIELD_NUMBER_IN_COMPOSITE,
                     typeName = typeInfo.typeName
                 )
-                logger.error(ex) { ex }
-                throw ex
             }
 
             val (dbAttributeName, dbAttributeType) = dbAttributes[index]
@@ -180,36 +181,30 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
         }
 
         if (index != dbAttributes.size) {
-            val ex = TypeRegistryException(
-                TypeRegistryExceptionMessage.WRONG_FIELD_NUMBER_IN_COMPOSITE,
+            throw RuntimeTypeRegistryException(
+                RuntimeTypeRegistryExceptionMessage.WRONG_FIELD_NUMBER_IN_COMPOSITE,
                 typeName = typeInfo.typeName
             )
-            logger.error(ex) { ex }
-            throw ex
         }
 
-        return try {
-            val result = if (typeInfo.mapper != null) {
-                logger.trace { "Using manual mapper for ${typeInfo.typeName}" }
-                try {
-                    typeInfo.mapper.fromMap(constructorArgsMap)
-                } catch (e: Exception) {
-                    throw ConversionException(
-                        ConversionExceptionMessage.COMPOSITE_MAPPER_FAILED,
-                        targetType = typeInfo.typeName,
-                        rowData = constructorArgsMap,
-                        cause = e
-                    )
-                }
-            } else {
-                constructorArgsMap.toDataObject(typeInfo.kClass)
+
+        val result = if (typeInfo.mapper != null) {
+            logger.trace { "Using manual mapper for ${typeInfo.typeName}" }
+            try {
+                typeInfo.mapper.fromMap(constructorArgsMap)
+            } catch (e: Exception) {
+                throw ConversionException(
+                    ConversionExceptionMessage.COMPOSITE_MAPPER_FAILED,
+                    targetType = typeInfo.typeName,
+                    rowData = constructorArgsMap,
+                    cause = e
+                )
             }
-            logger.trace { "Successfully created instance of ${typeInfo.kClass.simpleName}" }
-            result
-        } catch (e: Exception) { // This should always be a ConversionException
-            logger.error(e) { e }
-            throw e
+        } else {
+            constructorArgsMap.toDataObject(typeInfo.kClass)
         }
+        logger.trace { "Successfully created instance of ${typeInfo.kClass.simpleName}" }
+        return result
     }
 
     /**
@@ -231,8 +226,8 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
             count++
         }
 
-        if (count != 2) throw TypeRegistryException(
-            TypeRegistryExceptionMessage.WRONG_FIELD_NUMBER_IN_COMPOSITE,
+        if (count != 2) throw RuntimeTypeRegistryException(
+            RuntimeTypeRegistryExceptionMessage.WRONG_FIELD_NUMBER_IN_COMPOSITE,
             typeName = "dynamic_dto"
         )
         if (typeName == null || jsonDataString == null) throw ConversionException(

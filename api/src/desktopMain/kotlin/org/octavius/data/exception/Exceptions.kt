@@ -20,16 +20,6 @@ sealed class OctaviusDatabaseException(
     ) : OctaviusDatabaseException("DB Execution failed: $errorType${constraintName?.let { " (Constraint: $it)" } ?: ""}", queryContext, cause)
 
     /**
-     * Errors in the application code or framework logic (e.g., mapping failures, dependency errors).
-     */
-    open class CodeExecutionException(
-        val errorType: CodeErrorType,
-        val details: String,
-        queryContext: QueryContext?,
-        cause: Throwable?
-    ) : OctaviusDatabaseException("Code execution failed: $errorType - $details", queryContext, cause)
-
-    /**
      * Infrastructure and connectivity issues.
      */
     class ConnectionException(
@@ -91,13 +81,6 @@ enum class DbErrorType {
     BAD_SQL_GRAMMAR,
     DATA_INTEGRITY,
     UNKNOWN
-}
-
-enum class CodeErrorType {
-    CONVERSION_FAILED,
-    STEP_DEPENDENCY_ERROR,
-    MAPPING_FAILED,
-    ILLEGAL_STATE
 }
 
 enum class ConcurrencyErrorType {

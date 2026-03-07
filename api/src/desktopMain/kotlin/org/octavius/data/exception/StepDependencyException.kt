@@ -57,8 +57,7 @@ class StepDependencyException(
     vararg val args: Any,
     cause: Throwable? = null,
     queryContext: QueryContext? = null
-) : OctaviusDatabaseException.CodeExecutionException(
-    errorType = CodeErrorType.STEP_DEPENDENCY_ERROR,
+) : CodeExecutionException(
     details = generateDeveloperMessage(messageEnum, referencedStepIndex, args),
     queryContext = queryContext,
     cause = cause
@@ -78,5 +77,9 @@ $contextStr
         | referencedStepIndex: $referencedStepIndex
         ---------------------------------
         """.trimIndent()
+    }
+
+    override fun withContext(queryContext: QueryContext): CodeExecutionException {
+        TODO("Not yet implemented")
     }
 }

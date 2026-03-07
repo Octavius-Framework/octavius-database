@@ -32,11 +32,6 @@ object ExceptionTranslator {
                 queryContext = queryContext,
                 cause = ex
             )
-            is QueryTimeoutException, is TransientDataAccessException -> DatabaseException.ConcurrencyException(
-                errorType = ConcurrencyErrorType.TIMEOUT,
-                queryContext = queryContext,
-                cause = ex
-            )
             is PessimisticLockingFailureException -> DatabaseException.ConcurrencyException(
                 errorType = ConcurrencyErrorType.DEADLOCK,
                 queryContext = queryContext,
@@ -57,6 +52,11 @@ object ExceptionTranslator {
                     cause = ex
                 )
             }
+            is QueryTimeoutException, is TransientDataAccessException -> DatabaseException.ConcurrencyException(
+                errorType = ConcurrencyErrorType.TIMEOUT,
+                queryContext = queryContext,
+                cause = ex
+            )
             is DataAccessResourceFailureException -> DatabaseException.ConnectionException(
                 message = "Database connection failed",
                 cause = ex

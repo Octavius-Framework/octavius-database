@@ -14,7 +14,6 @@ class TypeRegistryException(
     cause: Throwable? = null,
     queryContext: QueryContext? = null
 ) : CodeExecutionException(
-    details = generateDeveloperMessage(messageEnum, typeName),
     queryContext = queryContext,
     message = messageEnum.name,
     cause = cause

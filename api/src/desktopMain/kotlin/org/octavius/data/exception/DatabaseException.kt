@@ -66,13 +66,10 @@ $causeSection
  * Errors that probably can't be fixed without database or code changes
  */
 sealed class CodeExecutionException(
-    val details: String,
     message: String,
     queryContext: QueryContext?,
     cause: Throwable?
-) : DatabaseException(message, cause, queryContext, includeCauseInToString = true) {
-    override fun getDetailedMessage(): String? = details
-}
+) : DatabaseException(message, cause, queryContext, includeCauseInToString = true)
 
 /**
  * Thrown when the SQL query is syntactically incorrect or references non-existent objects.

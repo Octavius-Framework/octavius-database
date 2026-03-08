@@ -37,7 +37,6 @@ class StepDependencyException(
     cause: Throwable? = null,
     queryContext: QueryContext? = null
 ) : CodeExecutionException(
-    details = generateDeveloperMessage(messageEnum, referencedStepIndex, args),
     queryContext = queryContext,
     message = messageEnum.name,
     cause = cause

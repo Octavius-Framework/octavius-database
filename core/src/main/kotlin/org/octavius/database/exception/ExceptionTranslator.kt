@@ -25,22 +25,23 @@ object ExceptionTranslator {
     }
 
     private fun translateSpringException(ex: DataAccessException, queryContext: QueryContext): DatabaseException {
+        val rootCause = ex.mostSpecificCause
         return when (ex) {
             is DuplicateKeyException -> DatabaseExecutionException(
                 errorType = DbErrorType.UNIQUE_CONSTRAINT_VIOLATION,
                 constraintName = extractConstraintName(ex),
                 queryContext = queryContext,
-                cause = ex
+                cause = rootCause
             )
             is PessimisticLockingFailureException -> ConcurrencyException(
                 errorType = ConcurrencyErrorType.DEADLOCK,
                 queryContext = queryContext,
-                cause = ex
+                cause = rootCause
             )
             is BadSqlGrammarException -> DatabaseExecutionException(
                 errorType = DbErrorType.BAD_SQL_GRAMMAR,
                 queryContext = queryContext,
-                cause = ex
+                cause = rootCause
             )
             is DataIntegrityViolationException -> {
                 val sqlException = findSqlException(ex)
@@ -49,19 +50,19 @@ object ExceptionTranslator {
                     errorType = type,
                     constraintName = constraint ?: extractConstraintName(ex),
                     queryContext = queryContext,
-                    cause = ex
+                    cause = rootCause
                 )
             }
             is QueryTimeoutException, is TransientDataAccessException -> ConcurrencyException(
                 errorType = ConcurrencyErrorType.TIMEOUT,
                 queryContext = queryContext,
-                cause = ex
+                cause = rootCause
             )
             is DataAccessResourceFailureException -> ConnectionException(
                 message = "Database connection failed",
-                cause = ex
+                cause = rootCause
             )
-            else -> DatabaseExecutionException(DbErrorType.UNKNOWN, null, queryContext, ex)
+            else -> DatabaseExecutionException(DbErrorType.UNKNOWN, null, queryContext, rootCause)
         }
     }
 

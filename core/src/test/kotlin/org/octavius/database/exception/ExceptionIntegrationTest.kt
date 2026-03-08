@@ -1,14 +1,16 @@
 package org.octavius.database.exception
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.*
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.octavius.data.DataResult
-import org.octavius.data.exception.*
+import org.octavius.data.exception.ConcurrencyErrorType
+import org.octavius.data.exception.ConcurrencyException
+import org.octavius.data.exception.ConnectionException
 import org.octavius.database.OctaviusDatabase
 import org.octavius.database.config.DatabaseConfig
-import java.util.Properties
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ExceptionIntegrationTest {

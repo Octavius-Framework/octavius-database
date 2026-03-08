@@ -12,8 +12,7 @@ import org.octavius.data.DataResult
 import org.octavius.data.builder.execute
 import org.octavius.data.builder.toColumn
 import org.octavius.data.builder.toField
-import org.octavius.data.exception.DatabaseException
-import org.octavius.data.exception.DatabaseExecutionException
+import org.octavius.data.exception.ConstraintViolationException
 import org.octavius.data.exception.StepDependencyException
 import org.octavius.data.transaction.TransactionPlan
 import org.octavius.database.OctaviusDatabase
@@ -170,7 +169,7 @@ class TransactionPlanExecutorTest {
         // Assert
         assertThat(result).isInstanceOf(DataResult.Failure::class.java)
         val failure = (result as DataResult.Failure).error
-        assertThat(failure).isInstanceOf(DatabaseExecutionException::class.java)
+        assertThat(failure).isInstanceOf(ConstraintViolationException::class.java)
         assertThat(failure.queryContext!!.transactionStepIndex).isEqualTo(1) // Błąd w drugim kroku (indeks 1)
 
         // Kluczowa asercja: Sprawdzamy, czy Krok 1 został wycofany

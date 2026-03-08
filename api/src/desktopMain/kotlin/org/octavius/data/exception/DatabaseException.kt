@@ -75,16 +75,22 @@ sealed class CodeExecutionException(
 }
 
 /**
- * Errors during SQL execution in the database (e.g., constraint violations, syntax errors).
+ * Thrown when the SQL query is syntactically incorrect or references non-existent objects.
  */
-class DatabaseExecutionException(
-    val errorType: DbErrorType,
-    val constraintName: String? = null,
+class GrammarException(
+    message: String,
     queryContext: QueryContext?,
     cause: Throwable?
-) : DatabaseException("DB Execution failed: $errorType${constraintName?.let { " (Constraint: $it)" } ?: ""}", cause, queryContext, includeCauseInToString = true) {
-    override fun getDetailedMessage(): String? = constraintName?.let { "Constraint: $it" }
-}
+) : DatabaseException(message, cause, queryContext, includeCauseInToString = true)
+
+/**
+ * Thrown when the database user lacks sufficient privileges to perform an operation.
+ */
+class PermissionException(
+    message: String,
+    queryContext: QueryContext?,
+    cause: Throwable?
+) : DatabaseException(message, cause, queryContext, includeCauseInToString = true)
 
 /**
  * Infrastructure and connectivity issues.
@@ -103,18 +109,12 @@ class ConcurrencyException(
     cause: Throwable?
 ) : DatabaseException("Concurrency error: $errorType", cause, queryContext, includeCauseInToString = false)
 
-
-enum class DbErrorType {
-    UNIQUE_CONSTRAINT_VIOLATION,
-    FOREIGN_KEY_VIOLATION,
-    NOT_NULL_VIOLATION,
-    CHECK_CONSTRAINT_VIOLATION,
-    BAD_SQL_GRAMMAR,
-    DATA_INTEGRITY,
-    UNKNOWN
-}
-
 enum class ConcurrencyErrorType {
     TIMEOUT,
     DEADLOCK
 }
+
+class UnknownDatabaseException(
+    message: String,
+    cause: Throwable?,
+): DatabaseException(message, cause, includeCauseInToString = true)

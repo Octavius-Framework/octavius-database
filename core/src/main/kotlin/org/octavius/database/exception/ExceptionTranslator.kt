@@ -1,6 +1,7 @@
 package org.octavius.database.exception
 
 import org.octavius.data.exception.*
+import org.postgresql.util.PSQLException
 import org.springframework.dao.*
 import org.springframework.jdbc.BadSqlGrammarException
 import java.sql.SQLException
@@ -9,66 +10,73 @@ object ExceptionTranslator {
 
     fun translate(ex: Throwable, queryContext: QueryContext): DatabaseException {
         return when (ex) {
-            is StepDependencyException -> ex // Context added inside TransactionPlanExecutor
-            // CodeExecutionException (RuntimeTypeRegistryException and ConversionException) must be given context
+            is StepDependencyException -> ex 
             is CodeExecutionException -> ex.withContext(queryContext)
-            // InitializationException -> impossible
             is DatabaseException -> ex
             is DataAccessException -> translateSpringException(ex, queryContext)
-            // Probably possible inside listener
-            else -> DatabaseExecutionException(
-                errorType = DbErrorType.UNKNOWN,
-                queryContext = queryContext,
-                cause = ex
-            )
+            else -> UnknownDatabaseException(message = ex.message ?: "N/A", ex)
         }
     }
 
     private fun translateSpringException(ex: DataAccessException, queryContext: QueryContext): DatabaseException {
-        val rootCause = ex.mostSpecificCause
+        val sqlException = findSqlException(ex)
+        val pgMetadata = extractPostgresMetadata(sqlException)
+
         return when (ex) {
-            is DuplicateKeyException -> DatabaseExecutionException(
-                errorType = DbErrorType.UNIQUE_CONSTRAINT_VIOLATION,
-                constraintName = extractConstraintName(ex),
+            is DuplicateKeyException -> ConstraintViolationException(
+                messageEnum = ConstraintViolationExceptionMessage.UNIQUE_CONSTRAINT_VIOLATION,
+                tableName = pgMetadata.table,
+                constraintName = pgMetadata.constraint,
                 queryContext = queryContext,
-                cause = rootCause
+                cause = sqlException
             )
             is PessimisticLockingFailureException -> ConcurrencyException(
                 errorType = ConcurrencyErrorType.DEADLOCK,
                 queryContext = queryContext,
-                cause = rootCause
+                cause = sqlException
             )
-            is BadSqlGrammarException -> DatabaseExecutionException(
-                errorType = DbErrorType.BAD_SQL_GRAMMAR,
+            is BadSqlGrammarException -> GrammarException(
+                message = sqlException?.message ?: "SQL Grammar error",
                 queryContext = queryContext,
-                cause = rootCause
+                cause = sqlException
             )
             is DataIntegrityViolationException -> {
-                val sqlException = findSqlException(ex)
                 val (type, constraint) = parsePostgresError(sqlException)
-                DatabaseExecutionException(
-                    errorType = type,
-                    constraintName = constraint ?: extractConstraintName(ex),
+                ConstraintViolationException(
+                    messageEnum = type,
+                    tableName = pgMetadata.table,
+                    columnName = pgMetadata.column,
+                    constraintName = pgMetadata.constraint ?: constraint ?: extractConstraintName(ex),
                     queryContext = queryContext,
-                    cause = rootCause
+                    cause = sqlException
                 )
             }
             is QueryTimeoutException, is TransientDataAccessException -> ConcurrencyException(
                 errorType = ConcurrencyErrorType.TIMEOUT,
                 queryContext = queryContext,
-                cause = rootCause
+                cause = sqlException
             )
             is DataAccessResourceFailureException -> ConnectionException(
                 message = "Database connection failed",
-                cause = rootCause
+                cause = sqlException
             )
-            else -> DatabaseExecutionException(DbErrorType.UNKNOWN, null, queryContext, rootCause)
+            else -> {
+                val state = sqlException?.sqlState
+                when {
+                    state?.startsWith("42") == true -> GrammarException(sqlException.message ?: "SQL Error", queryContext, sqlException)
+                    state == "28000" || state == "42501" -> PermissionException(sqlException.message ?: "Permission denied", queryContext, sqlException)
+                    else -> ConstraintViolationException(
+                        messageEnum = ConstraintViolationExceptionMessage.UNKNOWN,
+                        tableName = pgMetadata.table,
+                        queryContext = queryContext,
+                        cause = sqlException
+                    )
+                }
+            }
         }
     }
 
     private fun extractConstraintName(ex: DataAccessException): String? {
-        // Very basic extraction from message for PostgreSQL
-        // Usually looks like: ... constraint "unique_name" ...
         val message = ex.mostSpecificCause.message ?: return null
         val regex = "constraint \"([^\"]+)\"".toRegex()
         return regex.find(message)?.groupValues?.get(1)
@@ -83,15 +91,37 @@ object ExceptionTranslator {
         return null
     }
 
-    private fun parsePostgresError(sqlEx: SQLException?): Pair<DbErrorType, String?> {
-        if (sqlEx == null) return DbErrorType.DATA_INTEGRITY to null
+    private fun extractPostgresMetadata(sqlEx: SQLException?): PostgresErrorMetadata {
+        if (sqlEx is PSQLException) {
+            val serverError = sqlEx.serverErrorMessage
+            if (serverError != null) {
+                return PostgresErrorMetadata(
+                    table = serverError.table,
+                    column = serverError.column,
+                    constraint = serverError.constraint,
+                    detail = serverError.detail
+                )
+            }
+        }
+        return PostgresErrorMetadata()
+    }
+
+    private fun parsePostgresError(sqlEx: SQLException?): Pair<ConstraintViolationExceptionMessage, String?> {
+        if (sqlEx == null) return ConstraintViolationExceptionMessage.DATA_INTEGRITY to null
         
         return when (sqlEx.sqlState) {
-            "23505" -> DbErrorType.UNIQUE_CONSTRAINT_VIOLATION to null
-            "23503" -> DbErrorType.FOREIGN_KEY_VIOLATION to null
-            "23502" -> DbErrorType.NOT_NULL_VIOLATION to null
-            "23514" -> DbErrorType.CHECK_CONSTRAINT_VIOLATION to null
-            else -> DbErrorType.DATA_INTEGRITY to null
+            "23505" -> ConstraintViolationExceptionMessage.UNIQUE_CONSTRAINT_VIOLATION to null
+            "23503" -> ConstraintViolationExceptionMessage.FOREIGN_KEY_VIOLATION to null
+            "23502" -> ConstraintViolationExceptionMessage.NOT_NULL_VIOLATION to null
+            "23514" -> ConstraintViolationExceptionMessage.CHECK_CONSTRAINT_VIOLATION to null
+            else -> ConstraintViolationExceptionMessage.DATA_INTEGRITY to null
         }
     }
+
+    private data class PostgresErrorMetadata(
+        val table: String? = null,
+        val column: String? = null,
+        val constraint: String? = null,
+        val detail: String? = null
+    )
 }

@@ -14,7 +14,9 @@ class ConstraintIntegrationTest {
 
     @BeforeAll
     fun setup() {
-        val config = DatabaseConfig.loadFromFile("test-database.properties").copy(disableFlyway = true, disableCoreTypeInitialization = true)
+        val config = DatabaseConfig.loadFromFile("test-database.properties").copy(
+            disableFlyway = true,
+        )
         dataAccess = OctaviusDatabase.fromConfig(config)
 
         // Setup tables
@@ -43,9 +45,8 @@ class ConstraintIntegrationTest {
         val result = dataAccess.rawQuery("INSERT INTO constraint_test(id, name, email) VALUES (2, 'Test2', 'test@test.com')").execute()
         
         assertThat(result).isInstanceOf(DataResult.Failure::class.java)
-        val error = (result as DataResult.Failure).error as DatabaseExecutionException
-        assertThat(error.errorType).isEqualTo(DbErrorType.UNIQUE_CONSTRAINT_VIOLATION)
-        // Check if constraint name is extracted
+        val error = (result as DataResult.Failure).error as ConstraintViolationException
+        assertThat(error.messageEnum).isEqualTo(ConstraintViolationExceptionMessage.UNIQUE_CONSTRAINT_VIOLATION)
         assertThat(error.constraintName).contains("email")
     }
 
@@ -54,8 +55,8 @@ class ConstraintIntegrationTest {
         val result = dataAccess.rawQuery("INSERT INTO constraint_test(id, name) VALUES (3, NULL)").execute()
         
         assertThat(result).isInstanceOf(DataResult.Failure::class.java)
-        val error = (result as DataResult.Failure).error as DatabaseExecutionException
-        assertThat(error.errorType).isEqualTo(DbErrorType.NOT_NULL_VIOLATION)
+        val error = (result as DataResult.Failure).error as ConstraintViolationException
+        assertThat(error.messageEnum).isEqualTo(ConstraintViolationExceptionMessage.NOT_NULL_VIOLATION)
     }
 
     @Test
@@ -63,8 +64,8 @@ class ConstraintIntegrationTest {
         val result = dataAccess.rawQuery("INSERT INTO constraint_test(id, name, age) VALUES (4, 'Test', -1)").execute()
         
         assertThat(result).isInstanceOf(DataResult.Failure::class.java)
-        val error = (result as DataResult.Failure).error as DatabaseExecutionException
-        assertThat(error.errorType).isEqualTo(DbErrorType.CHECK_CONSTRAINT_VIOLATION)
+        val error = (result as DataResult.Failure).error as ConstraintViolationException
+        assertThat(error.messageEnum).isEqualTo(ConstraintViolationExceptionMessage.CHECK_CONSTRAINT_VIOLATION)
     }
 
     @Test
@@ -72,16 +73,17 @@ class ConstraintIntegrationTest {
         val result = dataAccess.rawQuery("INSERT INTO constraint_child(id, parent_id) VALUES (1, 999)").execute()
         
         assertThat(result).isInstanceOf(DataResult.Failure::class.java)
-        val error = (result as DataResult.Failure).error as DatabaseExecutionException
-        assertThat(error.errorType).isEqualTo(DbErrorType.FOREIGN_KEY_VIOLATION)
+        val error = (result as DataResult.Failure).error as ConstraintViolationException
+        assertThat(error.messageEnum).isEqualTo(ConstraintViolationExceptionMessage.FOREIGN_KEY_VIOLATION)
     }
 
     @Test
-    fun `should return BAD_SQL_GRAMMAR`() {
-        val result = dataAccess.rawQuery("SELECT * FROM non_existent_table").execute()
+    fun `should return GrammarException for bad SQL`() {
+        val result = dataAccess.rawQuery("SELECT * FROM non_existent_table_xyz").execute()
         
         assertThat(result).isInstanceOf(DataResult.Failure::class.java)
-        val error = (result as DataResult.Failure).error as DatabaseExecutionException
-        assertThat(error.errorType).isEqualTo(DbErrorType.BAD_SQL_GRAMMAR)
+        val error = (result as DataResult.Failure).error
+        assertThat(error).isInstanceOf(GrammarException::class.java)
+        assertThat(error.message).contains("non_existent_table_xyz")
     }
 }

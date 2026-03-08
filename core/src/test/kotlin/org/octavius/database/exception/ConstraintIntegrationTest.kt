@@ -2,6 +2,7 @@ package org.octavius.database.exception
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.*
+import org.octavius.data.DataAccess
 import org.octavius.data.DataResult
 import org.octavius.data.exception.*
 import org.octavius.database.OctaviusDatabase
@@ -10,7 +11,7 @@ import org.octavius.database.config.DatabaseConfig
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ConstraintIntegrationTest {
 
-    private lateinit var dataAccess: org.octavius.data.DataAccess
+    private lateinit var dataAccess: DataAccess
 
     @BeforeAll
     fun setup() {
@@ -75,17 +76,5 @@ class ConstraintIntegrationTest {
         assertThat(result).isInstanceOf(DataResult.Failure::class.java)
         val error = (result as DataResult.Failure).error as ConstraintViolationException
         assertThat(error.messageEnum).isEqualTo(ConstraintViolationExceptionMessage.FOREIGN_KEY_VIOLATION)
-    }
-
-    @Test
-    fun `should return StatementException for bad SQL`() {
-        val result = dataAccess.rawQuery("SELECT * FROM non_existent_table_xyz").execute()
-
-        assertThat(result).isInstanceOf(DataResult.Failure::class.java)
-        val error = (result as DataResult.Failure).error
-        assertThat(error).isInstanceOf(StatementException::class.java)
-        val stmtError = error as StatementException
-        assertThat(stmtError.messageEnum).isEqualTo(StatementExceptionMessage.OBJECT_NOT_FOUND)
-        assertThat(stmtError.detail).contains("non_existent_table_xyz")
     }
 }

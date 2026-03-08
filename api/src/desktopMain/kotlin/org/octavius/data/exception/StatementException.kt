@@ -32,7 +32,6 @@ class StatementException(
         return buildString {
             append("\n")
             appendLine("| message: ${generateDeveloperMessage(messageEnum)}")
-            detail?.let { appendLine("| detail: $it") }
         }
     }
 }

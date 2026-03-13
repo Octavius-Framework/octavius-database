@@ -3,6 +3,7 @@ package org.octavius.performance
 import org.junit.jupiter.api.*
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
+import org.octavius.data.type.QualifiedName
 import org.octavius.database.type.PostgresToKotlinConverter
 import org.octavius.database.type.registry.TypeRegistry
 import org.octavius.database.type.utils.createFakeTypeRegistry
@@ -55,7 +56,7 @@ class ConverterPerformanceBenchmark {
         typeRegistry = createFakeTypeRegistry()
         this.converter = PostgresToKotlinConverter(typeRegistry)
 
-        val oid = typeRegistry.getOidForName("public._test_project")
+        val oid = typeRegistry.getOidForName(QualifiedName.from("public._test_project"))
 
         println("\n--- WARM-UP RUN (500 projektów, wyniki ignorowane) ---")
         val warmupString = buildTestArrayString(500)
@@ -72,7 +73,7 @@ class ConverterPerformanceBenchmark {
         println("\n--- POMIAR DLA $projectCount PROJEKTÓW (x$ITERATIONS_PER_SIZE iteracji) ---")
         val testString = buildTestArrayString(projectCount)
         val timings = mutableListOf<Long>()
-        val oid = typeRegistry.getOidForName("public._test_project")
+        val oid = typeRegistry.getOidForName(QualifiedName.from("public._test_project"))
 
         repeat(ITERATIONS_PER_SIZE) {
             val time = measureNanoTime {

@@ -36,9 +36,9 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
     fun registerArray(elementTypeName: String, elementOid: Int, arrayOid: Int? = null) {
         val isStandard = elementTypeName in PgStandardType.entries.map { it.typeName }
         val qualifiedName = if (isStandard) {
-            QualifiedName("", "_$elementTypeName")
+            QualifiedName("", elementTypeName, isArray = true)
         } else {
-            QualifiedName("public", "_$elementTypeName")
+            QualifiedName("public", elementTypeName, isArray = true)
         }
         
         val finalArrayOid = arrayOid ?: nextOid++
@@ -131,7 +131,7 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
         "created_at" to oid("timestamp"),
         "updated_at" to oid("timestamp"),
         "version" to oid("int4"),
-        "tags" to oid("_text")
+        "tags" to oid("text[]")
     ))
 
     registerComposite("test_person", TestPerson::class, mapOf(
@@ -139,7 +139,7 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
         "age" to oid("int4"),
         "email" to oid("text"),
         "active" to oid("bool"),
-        "roles" to oid("_text")
+        "roles" to oid("text[]")
     ))
 
     registerComposite("test_task", TestTask::class, mapOf(
@@ -151,7 +151,7 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
         "category" to oid("public.test_category"),
         "assignee" to oid("public.test_person"),
         "metadata" to oid("public.test_metadata"),
-        "subtasks" to oid("_text"),
+        "subtasks" to oid("text[]"),
         "estimated_hours" to oid("numeric")
     ))
 

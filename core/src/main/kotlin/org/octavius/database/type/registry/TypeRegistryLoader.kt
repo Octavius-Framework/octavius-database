@@ -241,7 +241,7 @@ internal class TypeRegistryLoader(
             
             val arrayOid = dbEnums[qualifiedName.schema]?.get(qualifiedName.name)?.second ?: 0
             if (arrayOid != 0) {
-                val arrayQualifiedName = QualifiedName(qualifiedName.schema, "_${qualifiedName.name}")
+                val arrayQualifiedName = qualifiedName.asArray()
                 arrayDefinitions[arrayQualifiedName] = PgArrayDefinition(arrayOid, arrayQualifiedName.toString(), def.oid)
                 pgNameToOidMap[arrayQualifiedName] = arrayOid
             }
@@ -253,7 +253,7 @@ internal class TypeRegistryLoader(
             
             val arrayOid = dbComposites[qualifiedName.schema]?.get(qualifiedName.name)?.second ?: 0
             if (arrayOid != 0) {
-                val arrayQualifiedName = QualifiedName(qualifiedName.schema, "_${qualifiedName.name}")
+                val arrayQualifiedName = qualifiedName.asArray()
                 arrayDefinitions[arrayQualifiedName] = PgArrayDefinition(arrayOid, arrayQualifiedName.toString(), def.oid)
                 pgNameToOidMap[arrayQualifiedName] = arrayOid
             }
@@ -261,10 +261,10 @@ internal class TypeRegistryLoader(
 
         // Handle Standard Array Types
         PgStandardType.entries.filter { it.isArray }.forEach { pgType ->
-            val baseName = pgType.typeName.substring(1) // remove '_'
+            val baseName = if (pgType.typeName.startsWith("_")) pgType.typeName.substring(1) else pgType.typeName // remove '_' if present
             val elementOid = standardOids[QualifiedName("", baseName)] ?: 0
             if (elementOid != 0) {
-                val arrayQualifiedName = QualifiedName("", pgType.typeName)
+                val arrayQualifiedName = QualifiedName("", baseName, isArray = true)
                 arrayDefinitions[arrayQualifiedName] = PgArrayDefinition(pgType.oid, arrayQualifiedName.toString(), elementOid)
                 pgNameToOidMap[arrayQualifiedName] = pgType.oid
             }

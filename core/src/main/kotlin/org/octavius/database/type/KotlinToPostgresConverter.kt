@@ -119,7 +119,7 @@ internal class KotlinToPostgresConverter(
         var skipDynamicDto = initialSkip
 
         while (current is PgTyped) {
-            if (pgType == null) pgType = current.pgType.let { QualifiedName.from(it) }
+            if (pgType == null) pgType = current.pgType
             val nextValue = current.value ?: return Triple(null, pgType, true)
             current = nextValue
             skipDynamicDto = true

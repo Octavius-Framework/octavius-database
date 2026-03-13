@@ -64,9 +64,6 @@ internal class TypeRegistry(
     fun getDynamicTypeNameForClass(clazz: KClass<*>): String? = 
         classToDynamicNameMap[clazz]
 
-    fun getOidForName(pgTypeName: String): Int =
-        getOidForName(QualifiedName.from(pgTypeName))
-
     fun getOidForName(name: QualifiedName): Int =
         pgNameToOidMap[name] ?: throw TypeRegistryException(
             TypeRegistryExceptionMessage.PG_TYPE_NOT_FOUND,

@@ -6,6 +6,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.octavius.data.type.QualifiedName
 import org.octavius.database.type.PostgresToKotlinConverter
 import org.octavius.database.type.utils.createFakeTypeRegistry
 import org.octavius.domain.test.pgtype.*
@@ -52,7 +53,7 @@ class PostgresToKotlinConverterUnitTest {
     private val fakeTypeRegistry = createFakeTypeRegistry()
     private val converter = PostgresToKotlinConverter(fakeTypeRegistry)
 
-    private fun getOid(name: String) = fakeTypeRegistry.getOidForName(name)
+    private fun getOid(name: String) = fakeTypeRegistry.getOidForName(QualifiedName.from(name))
 
     @Test
     fun `should convert all standard types correctly`() {
@@ -79,24 +80,24 @@ class PostgresToKotlinConverterUnitTest {
     @Test
     fun `should convert all enum types correctly`() {
         assertThat(converter.convert(GOLDEN_STRING_SINGLE_STATUS, getOid("public.test_status"))).isEqualTo(TestStatus.Active)
-        assertThat(converter.convert(GOLDEN_STRING_STATUS_ARRAY, getOid("public._test_status"))).isEqualTo(listOf(TestStatus.Active, TestStatus.Pending, TestStatus.NotStarted))
+        assertThat(converter.convert(GOLDEN_STRING_STATUS_ARRAY, getOid("public.test_status[]"))).isEqualTo(listOf(TestStatus.Active, TestStatus.Pending, TestStatus.NotStarted))
     }
 
     @Test
     fun `should convert all simple array types correctly`() {
-        assertThat(converter.convert(GOLDEN_STRING_TEXT_ARRAY, getOid("_text"))).isEqualTo(listOf("first", "second", "third with \"quotes\"", "fourth with ąćę"))
-        assertThat(converter.convert(GOLDEN_STRING_NUMBER_ARRAY, getOid("_int4"))).isEqualTo(listOf(1, 2, 3, 4, 5))
-        assertThat(converter.convert(GOLDEN_STRING_NESTED_TEXT_ARRAY, getOid("_text"))).isEqualTo(listOf(listOf("a", "b"), listOf("c", "d"), listOf("e with \"quotes\"", "f")))
+        assertThat(converter.convert(GOLDEN_STRING_TEXT_ARRAY, getOid("text[]"))).isEqualTo(listOf("first", "second", "third with \"quotes\"", "fourth with ąćę"))
+        assertThat(converter.convert(GOLDEN_STRING_NUMBER_ARRAY, getOid("int4[]"))).isEqualTo(listOf(1, 2, 3, 4, 5))
+        assertThat(converter.convert(GOLDEN_STRING_NESTED_TEXT_ARRAY, getOid("text[]"))).isEqualTo(listOf(listOf("a", "b"), listOf("c", "d"), listOf("e with \"quotes\"", "f")))
 
         // JSON array
         val expectedJsonArray = listOf(
             Json.parseToJsonElement("{\"id\": 1}"),
             Json.parseToJsonElement("{\"id\": 2}")
         )
-        assertThat(converter.convert(GOLDEN_STRING_JSON_ARRAY, getOid("_jsonb"))).isEqualTo(expectedJsonArray)
+        assertThat(converter.convert(GOLDEN_STRING_JSON_ARRAY, getOid("jsonb[]"))).isEqualTo(expectedJsonArray)
 
         // Special text array (starts with {)
-        assertThat(converter.convert(GOLDEN_STRING_TEXT_ARRAY_SPECIAL, getOid("_text"))).isEqualTo(listOf("{starts with brace", "normal text"))
+        assertThat(converter.convert(GOLDEN_STRING_TEXT_ARRAY_SPECIAL, getOid("text[]"))).isEqualTo(listOf("{starts with brace", "normal text"))
     }
 
     @Test
@@ -119,7 +120,7 @@ class PostgresToKotlinConverterUnitTest {
             TestPerson("Bob \"Database\" Johnson", 35, "bob@example.com", false, listOf("dba", "backend")),
             TestPerson("Carol \"The Tester\" Williams", 28, "carol@example.com", true, listOf("qa", "automation"))
         )
-        val result = converter.convert(GOLDEN_STRING_PERSON_ARRAY, getOid("public._test_person"))
+        val result = converter.convert(GOLDEN_STRING_PERSON_ARRAY, getOid("public.test_person[]"))
         assertThat(result).isEqualTo(expected)
     }
 
@@ -205,7 +206,7 @@ class PostgresToKotlinConverterUnitTest {
         // Obiekt expected dla tego testu byłby gigantyczny, więc dla czytelności
         // sprawdzimy tylko kilka kluczowych pól, ale nadal porównując całe obiekty.
         @Suppress("UNCHECKED_CAST")
-        val result = converter.convert(GOLDEN_STRING_PROJECT_ARRAY, getOid("public._test_project")) as List<TestProject>
+        val result = converter.convert(GOLDEN_STRING_PROJECT_ARRAY, getOid("public.test_project[]")) as List<TestProject>
 
         assertThat(result).hasSize(2)
         // Porównajmy pierwszego całego taska w pierwszym projekcie

@@ -9,13 +9,7 @@ package org.octavius.data.type
  * @param value Value to embed in the query (avoid using with data classes where this is added automatically!).
  * @param pgType PostgreSQL type name to which the value should be cast.
  */
-data class PgTyped(val value: Any?, val pgType: QualifiedName) {
-    /**
-     * Compatibility constructor for String type names.
-     */
-    constructor(value: Any?, pgType: String) : this(value, QualifiedName.from(pgType))
-}
-
+data class PgTyped(val value: Any?, val pgType: QualifiedName)
 
 /**
  * Wraps a value in PgTyped to explicitly specify the target PostgreSQL type
@@ -25,20 +19,17 @@ fun Any?.withPgType(pgType: PgStandardType): PgTyped =
     PgTyped(this, QualifiedName("", pgType.typeName))
 
 /**
- * Wraps a value in PgTyped in a more fluid way.
- * Use this method only for custom or rare types that
- * are not defined in `PgStandardType`.
- *
- * @param pgType Full type name (e.g. "public.my_type" or "text[]").
- * @see PgStandardType
- */
-fun Any?.withPgType(pgType: String): PgTyped = PgTyped(this, pgType)
-
-/**
  * Wraps a value in PgTyped with explicit schema and name.
  * 
- * @param name Type name.
- * @param schema Schema name.
+ * @param name Type name (e.g. "my_type").
+ * @param schema Schema name (optional).
+ * @param isArray Whether it's an array type (optional).
  */
-fun Any?.withPgType(name: String, schema: String): PgTyped = 
-    PgTyped(this, QualifiedName(schema, name))
+fun Any?.withPgType(name: String, schema: String = "", isArray: Boolean = false): PgTyped = 
+    PgTyped(this, QualifiedName(schema, name, isArray))
+
+/**
+ * Wraps a value in PgTyped using explicit QualifiedName class.
+ */
+fun Any?.withPgType(pgType: QualifiedName): PgTyped =
+    PgTyped(this, pgType)

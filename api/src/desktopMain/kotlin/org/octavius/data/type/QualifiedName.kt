@@ -53,45 +53,4 @@ data class QualifiedName(
     }
 
     fun asArray(): QualifiedName = copy(isArray = true)
-
-    companion object {
-        fun from(fullName: String): QualifiedName {
-            val isArray = fullName.endsWith("[]")
-            val cleanName = if (isArray) fullName.dropLast(2) else fullName
-
-            val parts = mutableListOf<String>()
-            val currentPart = StringBuilder()
-            var inQuotes = false
-            
-            var i = 0
-            while (i < cleanName.length) {
-                val c = cleanName[i]
-                when {
-                    c == '"' -> {
-                        if (inQuotes && i + 1 < cleanName.length && cleanName[i + 1] == '"') {
-                            // Escaped quote
-                            currentPart.append("\"\"")
-                            i++ 
-                        } else {
-                            inQuotes = !inQuotes
-                            currentPart.append(c)
-                        }
-                    }
-                    c == '.' && !inQuotes -> {
-                        parts.add(currentPart.toString())
-                        currentPart.setLength(0)
-                    }
-                    else -> currentPart.append(c)
-                }
-                i++
-            }
-            parts.add(currentPart.toString())
-
-            return when (parts.size) {
-                1 -> QualifiedName("", parts[0], isArray)
-                2 -> QualifiedName(parts[0], parts[1], isArray)
-                else -> throw IllegalArgumentException("Invalid qualified name: $fullName. Expected at most one dot outside of quotes.")
-            }
-        }
-    }
 }

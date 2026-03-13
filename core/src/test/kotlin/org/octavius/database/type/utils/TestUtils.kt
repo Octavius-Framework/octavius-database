@@ -96,9 +96,9 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
     }
 
     // Helper for OID lookups in map
-    fun oid(name: String): Int {
-        return pgNameToOidMap[QualifiedName.from(name)] 
-            ?: pgNameToOidMap[QualifiedName("pg_catalog", name)]
+    fun oid(name: String, isArray: Boolean = false): Int {
+        return pgNameToOidMap[QualifiedName("public", name, isArray)]
+            ?: pgNameToOidMap[QualifiedName("", name, isArray)]
             ?: throw IllegalArgumentException("Type $name not registered")
     }
 
@@ -111,7 +111,7 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
 
     // 2. Tablice standardowe (używane w testach)
     PgStandardType.entries.filter { it.isArray }.forEach { pgType ->
-        val baseName = pgType.typeName.substring(1)
+        val baseName = pgType.typeName.removeSuffix("[]")
         val baseType = PgStandardType.entries.find { !it.isArray && it.typeName == baseName }
             ?: throw IllegalStateException("Base type not found for array: ${pgType.typeName}")
         
@@ -124,14 +124,14 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
     registerEnum("test_category", TestCategory::class)
 
     // Tablice enumów
-    registerArray("test_status", oid("public.test_status"))
+    registerArray("test_status", oid("test_status"))
 
     // 4. Kompozyty
     registerComposite("test_metadata", TestMetadata::class, mapOf(
         "created_at" to oid("timestamp"),
         "updated_at" to oid("timestamp"),
         "version" to oid("int4"),
-        "tags" to oid("text[]")
+        "tags" to oid("text", true)
     ))
 
     registerComposite("test_person", TestPerson::class, mapOf(
@@ -139,36 +139,36 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
         "age" to oid("int4"),
         "email" to oid("text"),
         "active" to oid("bool"),
-        "roles" to oid("text[]")
+        "roles" to oid("text", true)
     ))
 
     registerComposite("test_task", TestTask::class, mapOf(
         "id" to oid("int4"),
         "title" to oid("text"),
         "description" to oid("text"),
-        "status" to oid("public.test_status"),
-        "priority" to oid("public.test_priority"),
-        "category" to oid("public.test_category"),
-        "assignee" to oid("public.test_person"),
-        "metadata" to oid("public.test_metadata"),
-        "subtasks" to oid("text[]"),
+        "status" to oid("test_status"),
+        "priority" to oid("test_priority"),
+        "category" to oid("test_category"),
+        "assignee" to oid("test_person"),
+        "metadata" to oid("test_metadata"),
+        "subtasks" to oid("text", true),
         "estimated_hours" to oid("numeric")
     ))
 
     registerComposite("test_project", TestProject::class, mapOf(
         "name" to oid("text"),
         "description" to oid("text"),
-        "status" to oid("public.test_status"),
+        "status" to oid("test_status"),
         "team_members" to nextOid + 1, // HACK: Array of test_person (next available OID)
         "tasks" to nextOid + 2,        // HACK: Array of test_task
-        "metadata" to oid("public.test_metadata"),
+        "metadata" to oid("test_metadata"),
         "budget" to oid("numeric")
     ))
 
     // 5. Tablice kompozytów
-    registerArray("test_person", oid("public.test_person"))
-    registerArray("test_task", oid("public.test_task"))
-    registerArray("test_project", oid("public.test_project"))
+    registerArray("test_person", oid("test_person"))
+    registerArray("test_task", oid("test_task"))
+    registerArray("test_project", oid("test_project"))
 
 
     registerComposite("dynamic_dto", DynamicDto::class, mapOf(

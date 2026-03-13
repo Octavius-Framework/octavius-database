@@ -86,7 +86,7 @@ internal class KotlinToPostgresConverter(
 
         // 2. Delegate standard types to registry
         StandardTypeMappingRegistry.getHandlerByClass(unwrappedValue::class)?.let { handler ->
-            val finalType = pgType ?: QualifiedName.from(handler.pgTypeName)
+            val finalType = pgType ?: QualifiedName("", handler.pgTypeName)
             val castSuffix = if (appendTypeCast) "::${finalType.quote()}" else ""
             @Suppress("UNCHECKED_CAST")
             return ParameterConversion("?$castSuffix", (handler as StandardTypeHandler<Any>).toJdbc(unwrappedValue))
@@ -181,7 +181,7 @@ internal class KotlinToPostgresConverter(
                     typeRegistry.isPgType(kClass) -> typeRegistry.getPgTypeNameForClass(kClass)
                     else -> {
                         val standardName = StandardTypeMappingRegistry.getHandlerByClass(kClass)?.pgTypeName ?: "text"
-                        QualifiedName.from(standardName)
+                        QualifiedName("", standardName)
                     }
                 }
             }

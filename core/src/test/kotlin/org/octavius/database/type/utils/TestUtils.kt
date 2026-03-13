@@ -5,6 +5,7 @@ import org.octavius.data.type.DynamicDto
 import org.octavius.data.type.PgStandardType
 import org.octavius.data.util.CaseConvention
 import org.octavius.data.util.CaseConverter
+import org.octavius.data.util.quoteIdentifier
 import org.octavius.database.type.registry.*
 import org.octavius.domain.test.pgtype.*
 import kotlin.reflect.KClass
@@ -32,7 +33,9 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
     }
 
     fun registerArray(elementTypeName: String, elementOid: Int, arrayOid: Int? = null) {
-        val arrayName = "_$elementTypeName"
+        val isStandard = elementTypeName in PgStandardType.entries.map { it.typeName }
+        val arrayName = if (isStandard) "_$elementTypeName" else "public._$elementTypeName"
+        
         val finalArrayOid = arrayOid ?: nextOid++
         arraysByOid[finalArrayOid] = PgArrayDefinition(finalArrayOid, arrayName, elementOid)
         oidCategoryMap[finalArrayOid] = TypeCategory.ARRAY
@@ -55,16 +58,17 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
         }
 
         val oid = nextOid++
+        val qualifiedName = "public.$typeName"
         enumsByOid[oid] = PgEnumDefinition(
             oid = oid,
-            typeName = typeName,
+            typeName = qualifiedName,
             valueToEnumMap = lookupMap,
             kClass = kClass
         )
 
         oidCategoryMap[oid] = TypeCategory.ENUM
-        classToPgNameMap[kClass] = typeName
-        pgNameToOidMap[typeName] = oid
+        classToPgNameMap[kClass] = qualifiedName
+        pgNameToOidMap[qualifiedName] = oid
     }
 
     fun registerComposite(
@@ -73,16 +77,17 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
         attributes: Map<String, Int>
     ) {
         val oid = nextOid++
+        val qualifiedName = "public.$typeName"
         compositesByOid[oid] = PgCompositeDefinition(
             oid = oid,
-            typeName = typeName,
+            typeName = qualifiedName,
             attributes = attributes,
             kClass = kClass
         )
 
         oidCategoryMap[oid] = if (typeName == DYNAMIC_DTO) TypeCategory.DYNAMIC else TypeCategory.COMPOSITE
-        classToPgNameMap[kClass] = typeName
-        pgNameToOidMap[typeName] = oid
+        classToPgNameMap[kClass] = qualifiedName
+        pgNameToOidMap[qualifiedName] = oid
     }
 
     // ==========================================
@@ -95,7 +100,10 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
     // 2. Tablice standardowe (używane w testach)
     PgStandardType.entries.filter { it.isArray }.forEach { pgType ->
         val baseName = pgType.typeName.substring(1)
-        registerArray(baseName, pgType.oid, pgType.oid) // Standard array OID is already known
+        val baseType = PgStandardType.entries.find { !it.isArray && it.typeName == baseName }
+            ?: throw IllegalStateException("Base type not found for array: ${pgType.typeName}")
+        
+        registerArray(baseName, baseType.oid, pgType.oid) // Correctly pass baseType.oid as elementOid
     }
 
     // 3. Enumy
@@ -103,8 +111,8 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
     registerEnum("test_priority", TestPriority::class)
     registerEnum("test_category", TestCategory::class)
 
-    // Tablice enumów
-    registerArray("test_status", pgNameToOidMap["test_status"]!!)
+    // Tablice enumów (używamy OIDów z kwalifikowanymi nazwami)
+    registerArray("test_status", pgNameToOidMap["public.test_status"]!!)
 
     // 4. Kompozyty
     registerComposite("test_metadata", TestMetadata::class, mapOf(
@@ -126,11 +134,11 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
         "id" to pgNameToOidMap["int4"]!!,
         "title" to pgNameToOidMap["text"]!!,
         "description" to pgNameToOidMap["text"]!!,
-        "status" to pgNameToOidMap["test_status"]!!,
-        "priority" to pgNameToOidMap["test_priority"]!!,
-        "category" to pgNameToOidMap["test_category"]!!,
-        "assignee" to pgNameToOidMap["test_person"]!!,
-        "metadata" to pgNameToOidMap["test_metadata"]!!,
+        "status" to pgNameToOidMap["public.test_status"]!!,
+        "priority" to pgNameToOidMap["public.test_priority"]!!,
+        "category" to pgNameToOidMap["public.test_category"]!!,
+        "assignee" to pgNameToOidMap["public.test_person"]!!,
+        "metadata" to pgNameToOidMap["public.test_metadata"]!!,
         "subtasks" to pgNameToOidMap["_text"]!!,
         "estimated_hours" to pgNameToOidMap["numeric"]!!
     ))
@@ -138,17 +146,17 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
     registerComposite("test_project", TestProject::class, mapOf(
         "name" to pgNameToOidMap["text"]!!,
         "description" to pgNameToOidMap["text"]!!,
-        "status" to pgNameToOidMap["test_status"]!!,
-        "team_members" to nextOid + 1, // Pre-calculate array OID (this is bit hacky)
-        "tasks" to nextOid + 2,
-        "metadata" to pgNameToOidMap["test_metadata"]!!,
+        "status" to pgNameToOidMap["public.test_status"]!!,
+        "team_members" to nextOid + 1, // HACK: Array of test_person (next available OID)
+        "tasks" to nextOid + 2,        // HACK: Array of test_task
+        "metadata" to pgNameToOidMap["public.test_metadata"]!!,
         "budget" to pgNameToOidMap["numeric"]!!
     ))
 
     // 5. Tablice kompozytów
-    registerArray("test_person", pgNameToOidMap["test_person"]!!)
-    registerArray("test_task", pgNameToOidMap["test_task"]!!)
-    registerArray("test_project", pgNameToOidMap["test_project"]!!)
+    registerArray("test_person", pgNameToOidMap["public.test_person"]!!)
+    registerArray("test_task", pgNameToOidMap["public.test_task"]!!)
+    registerArray("test_project", pgNameToOidMap["public.test_project"]!!)
 
 
     registerComposite("dynamic_dto", DynamicDto::class, mapOf(

@@ -78,8 +78,8 @@ class PostgresToKotlinConverterUnitTest {
 
     @Test
     fun `should convert all enum types correctly`() {
-        assertThat(converter.convert(GOLDEN_STRING_SINGLE_STATUS, getOid("test_status"))).isEqualTo(TestStatus.Active)
-        assertThat(converter.convert(GOLDEN_STRING_STATUS_ARRAY, getOid("_test_status"))).isEqualTo(listOf(TestStatus.Active, TestStatus.Pending, TestStatus.NotStarted))
+        assertThat(converter.convert(GOLDEN_STRING_SINGLE_STATUS, getOid("public.test_status"))).isEqualTo(TestStatus.Active)
+        assertThat(converter.convert(GOLDEN_STRING_STATUS_ARRAY, getOid("public._test_status"))).isEqualTo(listOf(TestStatus.Active, TestStatus.Pending, TestStatus.NotStarted))
     }
 
     @Test
@@ -108,7 +108,7 @@ class PostgresToKotlinConverterUnitTest {
             active = true,
             roles = listOf("admin", "developer", "team-lead")
         )
-        val result = converter.convert(GOLDEN_STRING_SINGLE_PERSON, getOid("test_person"))
+        val result = converter.convert(GOLDEN_STRING_SINGLE_PERSON, getOid("public.test_person"))
         assertThat(result).isEqualTo(expected)
     }
 
@@ -119,7 +119,7 @@ class PostgresToKotlinConverterUnitTest {
             TestPerson("Bob \"Database\" Johnson", 35, "bob@example.com", false, listOf("dba", "backend")),
             TestPerson("Carol \"The Tester\" Williams", 28, "carol@example.com", true, listOf("qa", "automation"))
         )
-        val result = converter.convert(GOLDEN_STRING_PERSON_ARRAY, getOid("_test_person"))
+        val result = converter.convert(GOLDEN_STRING_PERSON_ARRAY, getOid("public._test_person"))
         assertThat(result).isEqualTo(expected)
     }
 
@@ -196,7 +196,7 @@ class PostgresToKotlinConverterUnitTest {
             ),
             budget = BigDecimal("150000.50")
         )
-        val result = converter.convert(GOLDEN_STRING_PROJECT_DATA, getOid("test_project"))
+        val result = converter.convert(GOLDEN_STRING_PROJECT_DATA, getOid("public.test_project"))
         assertThat(result).isEqualTo(expected)
     }
 
@@ -205,7 +205,7 @@ class PostgresToKotlinConverterUnitTest {
         // Obiekt expected dla tego testu byłby gigantyczny, więc dla czytelności
         // sprawdzimy tylko kilka kluczowych pól, ale nadal porównując całe obiekty.
         @Suppress("UNCHECKED_CAST")
-        val result = converter.convert(GOLDEN_STRING_PROJECT_ARRAY, getOid("_test_project")) as List<TestProject>
+        val result = converter.convert(GOLDEN_STRING_PROJECT_ARRAY, getOid("public._test_project")) as List<TestProject>
 
         assertThat(result).hasSize(2)
         // Porównajmy pierwszego całego taska w pierwszym projekcie

@@ -21,13 +21,15 @@ internal class DatabaseTypeScanner(
      * Scans configured schemas and returns discovered type definitions.
      */
     fun scan(): DatabaseScanResult {
-        val enums = mutableMapOf<String, Triple<Int, Int, MutableList<String>>>()
-        val composites = mutableMapOf<String, Triple<Int, Int, MutableMap<String, Int>>>()
+        // schema -> name -> data
+        val enums = mutableMapOf<String, MutableMap<String, Triple<Int, Int, MutableList<String>>>>()
+        val composites = mutableMapOf<String, MutableMap<String, Triple<Int, Int, MutableMap<String, Int>>>>()
 
         try {
             val schemas = dbSchemas.toTypedArray()
             jdbcTemplate.query(SQL_QUERY_ALL_TYPES, { rs, _ ->
                 val type = rs.getString("info_type")
+                val schema = rs.getString("schema_name")
                 val name = rs.getString("type_name")
                 val oid = rs.getInt("type_oid")
                 val arrayOid = rs.getInt("array_oid")
@@ -35,12 +37,14 @@ internal class DatabaseTypeScanner(
 
                 when (type) {
                     "enum" -> {
-                        val triple = enums.getOrPut(name) { Triple(oid, arrayOid, mutableListOf()) }
+                        val schemaEnums = enums.getOrPut(schema) { mutableMapOf() }
+                        val triple = schemaEnums.getOrPut(name) { Triple(oid, arrayOid, mutableListOf()) }
                         triple.third.add(col1)
                     }
                     "composite" -> {
                         val col2 = rs.getInt("col2")
-                        val triple = composites.getOrPut(name) { Triple(oid, arrayOid, mutableMapOf()) }
+                        val schemaComposites = composites.getOrPut(schema) { mutableMapOf() }
+                        val triple = schemaComposites.getOrPut(name) { Triple(oid, arrayOid, mutableMapOf()) }
                         triple.third[col1] = col2
                     }
                 }
@@ -53,8 +57,12 @@ internal class DatabaseTypeScanner(
         val procedures = scanProcedures()
 
         return DatabaseScanResult(
-            enums.mapValues { Triple(it.value.first, it.value.second, it.value.third.toList()) },
-            composites.mapValues { Triple(it.value.first, it.value.second, it.value.third.toMap()) },
+            enums.mapValues { schemaMap -> 
+                schemaMap.value.mapValues { Triple(it.value.first, it.value.second, it.value.third.toList()) } 
+            },
+            composites.mapValues { schemaMap -> 
+                schemaMap.value.mapValues { Triple(it.value.first, it.value.second, it.value.third.toMap()) } 
+            },
             procedures
         )
     }
@@ -105,11 +113,12 @@ internal class DatabaseTypeScanner(
         private const val SQL_QUERY_ENUM_TYPES = """
             SELECT
                 'enum' AS info_type,
+                n.nspname AS schema_name,
                 t.typname AS type_name,
                 t.oid AS type_oid,
                 t.typarray AS array_oid,
                 e.enumlabel AS col1,
-                NULL AS col2,
+                NULL::int AS col2,
                 e.enumsortorder::int AS sort_order
             FROM
                 pg_type t
@@ -122,6 +131,7 @@ internal class DatabaseTypeScanner(
         private const val SQL_QUERY_COMPOSITE_TYPES = """
             SELECT
                 'composite' AS info_type,
+                n.nspname AS schema_name,
                 t.typname AS type_name,
                 t.oid AS type_oid,
                 t.typarray AS array_oid,

@@ -9,6 +9,7 @@ import org.octavius.data.toMap
 import org.octavius.data.type.DYNAMIC_DTO
 import org.octavius.data.type.DynamicDto
 import org.octavius.data.type.PgTyped
+import org.octavius.data.util.quoteIdentifier
 import org.octavius.database.config.DynamicDtoSerializationStrategy
 import org.octavius.database.type.registry.TypeRegistry
 import org.postgresql.util.PGobject
@@ -71,7 +72,8 @@ internal class KotlinToPostgresConverter(
 
         val (unwrappedValue, pgType, updatedSkipDynamicDto) = unpackPgTyped(value, skipDynamicDto)
         if (unwrappedValue == null) {
-            return ParameterConversion(if (appendTypeCast && pgType != null) "?::$pgType" else "?", null)
+            val castSuffix = if (appendTypeCast && pgType != null) "::${quoteQualifiedName(pgType)}" else ""
+            return ParameterConversion("?$castSuffix", null)
         }
 
         // 1. Try Dynamic DTO conversion
@@ -81,30 +83,47 @@ internal class KotlinToPostgresConverter(
 
         // 2. Delegate standard types to registry
         StandardTypeMappingRegistry.getHandlerByClass(unwrappedValue::class)?.let { handler ->
-            val placeholder = if (appendTypeCast) "?::${pgType ?: handler.pgTypeName}" else "?"
+            val castSuffix = if (appendTypeCast) "::${quoteQualifiedName(pgType ?: handler.pgTypeName)}" else ""
             @Suppress("UNCHECKED_CAST")
-            return ParameterConversion(placeholder, (handler as StandardTypeHandler<Any>).toJdbc(unwrappedValue))
+            return ParameterConversion("?$castSuffix", (handler as StandardTypeHandler<Any>).toJdbc(unwrappedValue))
         }
 
         // 3. Handle specialized types
         val resolvedType = pgType ?: if (appendTypeCast) resolveSqlType(unwrappedValue) else "text"
+        val quotedResolvedType = quoteQualifiedName(resolvedType)
         val jdbcValue = when (unwrappedValue) {
             is Array<*> -> return handleArray(unwrappedValue)
             is List<*> -> handleList(unwrappedValue, pgType, updatedSkipDynamicDto)
             is Enum<*> -> handleEnum(unwrappedValue, pgType)
             else -> {
                 when {
-                    value::class.isData -> pgObject("text", serializer.serializeComposite(value, skipDynamicDto, pgType))
-                    value::class.isValue -> throw TypeRegistryException(
+                    unwrappedValue::class.isData -> pgObject("text", serializer.serializeComposite(unwrappedValue, updatedSkipDynamicDto, pgType))
+                    unwrappedValue::class.isValue -> throw TypeRegistryException(
                         TypeRegistryExceptionMessage.KOTLIN_CLASS_NOT_MAPPED,
-                        value::class.qualifiedName ?: value::class.simpleName ?: "unknown"
+                        unwrappedValue::class.qualifiedName ?: unwrappedValue::class.simpleName ?: "unknown"
                     )
-                    else -> value
+                    else -> unwrappedValue
                 }
             }
         }
 
-        return ParameterConversion(if (appendTypeCast) "?::$resolvedType" else "?", jdbcValue)
+        return ParameterConversion(if (appendTypeCast) "?::$quotedResolvedType" else "?", jdbcValue)
+    }
+
+    private fun quoteQualifiedName(name: String): String {
+        val isArray = name.endsWith("[]")
+        val baseName = if (isArray) name.substring(0, name.length - 2) else name
+        val suffix = if (isArray) "[]" else ""
+
+        // If it's already schema-qualified (contains dot)
+        val quotedName = if ("." in baseName) {
+            val parts = baseName.split(".")
+            parts.joinToString(".") { it.quoteIdentifier() }
+        } else {
+            baseName.quoteIdentifier()
+        }
+        
+        return "$quotedName$suffix"
     }
 
     private fun unpackPgTyped(value: Any, initialSkip: Boolean): Triple<Any?, String?, Boolean> {
@@ -166,7 +185,7 @@ internal class KotlinToPostgresConverter(
             else -> {
                 val kClass = value::class
                 when {
-                    shouldUseDynamicDto(kClass) -> DYNAMIC_DTO
+                    shouldUseDynamicDto(kClass) -> typeRegistry.getPgTypeNameForClass(DynamicDto::class)
                     typeRegistry.isPgType(kClass) -> typeRegistry.getPgTypeNameForClass(kClass)
                     else -> StandardTypeMappingRegistry.getHandlerByClass(kClass)?.pgTypeName ?: "text"
                 }

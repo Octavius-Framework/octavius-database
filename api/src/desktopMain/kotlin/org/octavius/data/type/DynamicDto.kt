@@ -12,11 +12,6 @@ import kotlin.reflect.KClass
 import kotlin.reflect.full.findAnnotation
 
 /**
- * DynamicDto Postgres type name
- */
-const val DYNAMIC_DTO = "public.dynamic_dto"
-
-/**
  * Represents a polymorphic object ready for database storage.
  *
  * This class is a public API and "transport container" that unambiguously

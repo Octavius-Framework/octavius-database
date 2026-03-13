@@ -34,7 +34,7 @@ internal class TypeRegistryLoader(
         // Parallel data fetching
         val classpathJob = async(Dispatchers.IO) { classpathScanner.scan() }
         val databaseJob = async(Dispatchers.IO) { databaseScanner.scan() }
-        val searchPathJob = async(Dispatchers.IO) { fetchSearchPath() }
+        val searchPathJob = async(Dispatchers.IO) { databaseScanner.fetchSearchPath() }
 
         val classpathData = classpathJob.await()
         val databaseData = databaseJob.await()
@@ -85,18 +85,9 @@ internal class TypeRegistryLoader(
             classToPgNameMap = classToPgNameMap,
             dynamicSerializers = classpathData.dynamicSerializers,
             classToDynamicNameMap = classpathData.dynamicReverseMap,
-            pgNameToOidMap = pgNameToOidMap
+            pgNameToOidMap = pgNameToOidMap,
+            oidToNameMap = databaseData.allOidNames
         )
-    }
-
-    private fun fetchSearchPath(): List<String> {
-        return try {
-            val raw = jdbcTemplate.queryForObject("SHOW search_path", String::class.java) ?: ""
-            raw.split(",").map { it.trim().removeSurrounding("\"") }.filter { it.isNotEmpty() }
-        } catch (e: Exception) {
-            logger.warn { "Failed to fetch search_path, falling back to default schemas. Error: ${e.message}" }
-            dbSchemas
-        }
     }
 
     private fun <T> resolveType(
@@ -290,7 +281,7 @@ internal class TypeRegistryLoader(
     ): Map<Int, TypeCategory> {
         val map = mutableMapOf<Int, TypeCategory>()
 
-        val dynamicDtoOid = finalComposites.values.find { it.typeName == "public.dynamic_dto" }?.oid
+        val dynamicDtoOid = finalComposites[DYNAMIC_DTO_QUALIFIED_NAME]?.oid
 
         enums.forEach { map[it] = TypeCategory.ENUM }
         composites.forEach { oid ->
@@ -304,5 +295,6 @@ internal class TypeRegistryLoader(
 
     companion object {
         private val logger = KotlinLogging.logger {}
+        private val DYNAMIC_DTO_QUALIFIED_NAME = QualifiedName("public", "dynamic_dto")
     }
 }

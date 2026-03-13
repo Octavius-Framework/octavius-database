@@ -24,6 +24,7 @@ internal class DatabaseTypeScanner(
         // schema -> name -> data
         val enums = mutableMapOf<String, MutableMap<String, Triple<Int, Int, MutableList<String>>>>()
         val composites = mutableMapOf<String, MutableMap<String, Triple<Int, Int, MutableMap<String, Int>>>>()
+        val allOidNames = mutableMapOf<Int, String>()
 
         try {
             val schemas = dbSchemas.toTypedArray()
@@ -34,6 +35,10 @@ internal class DatabaseTypeScanner(
                 val oid = rs.getInt("type_oid")
                 val arrayOid = rs.getInt("array_oid")
                 val col1 = rs.getString("col1")
+
+                // Cache names as we go
+                allOidNames[oid] = "$schema.$name"
+                if (arrayOid != 0) allOidNames[arrayOid] = "$schema.$name[]"
 
                 when (type) {
                     "enum" -> {
@@ -49,6 +54,14 @@ internal class DatabaseTypeScanner(
                     }
                 }
             }, schemas, schemas)
+
+            // Also fetch names for ALL other types in pg_type (standard types etc.)
+            jdbcTemplate.query(SQL_QUERY_OID_NAMES) { rs ->
+                val oid = rs.getInt("oid")
+                val name = rs.getString("typname")
+                // Only put if not already present (we prefer schema-qualified names from previous query)
+                allOidNames.putIfAbsent(oid, name)
+            }
         } catch (e: Exception) {
             throw InitializationException(InitializationExceptionMessage.DB_QUERY_FAILED, cause = e,
                 queryContext = QueryContext("", mapOf(), SQL_QUERY_ALL_TYPES, listOf(dbSchemas, dbSchemas)))
@@ -63,7 +76,8 @@ internal class DatabaseTypeScanner(
             composites.mapValues { schemaMap -> 
                 schemaMap.value.mapValues { Triple(it.value.first, it.value.second, it.value.third.toMap()) } 
             },
-            procedures
+            procedures,
+            allOidNames
         )
     }
 
@@ -105,6 +119,16 @@ internal class DatabaseTypeScanner(
         }
 
         return grouped.filterNot { it.key in overloaded }.mapValues { it.value.single() }
+    }
+
+    fun fetchSearchPath(): List<String> {
+        return try {
+            val raw = jdbcTemplate.queryForObject("SHOW search_path", String::class.java) ?: ""
+            raw.split(",").map { it.trim().removeSurrounding("\"") }.filter { it.isNotEmpty() }
+        } catch (e: Exception) {
+            logger.warn { "Failed to fetch search_path, falling back to default schemas. Error: ${e.message}" }
+            dbSchemas
+        }
     }
 
     companion object {
@@ -156,6 +180,10 @@ internal class DatabaseTypeScanner(
             $SQL_QUERY_COMPOSITE_TYPES
             ORDER BY
                 type_name, sort_order
+        """
+
+        private const val SQL_QUERY_OID_NAMES = """
+            SELECT oid, typname FROM pg_type
         """
 
         /**

@@ -31,7 +31,9 @@ internal class TypeRegistry(
     private val dynamicSerializers: Map<String, KSerializer<Any>>,
     private val classToDynamicNameMap: Map<KClass<*>, String>,
     // Reverse maps for name-based lookup
-    private val pgNameToOidMap: Map<QualifiedName, Int>
+    private val pgNameToOidMap: Map<QualifiedName, Int>,
+    // Human-readable names for OIDs (for error reporting)
+    private val oidToNameMap: Map<Int, String>
 ) {
     // --- READING (DB -> Kotlin) ---
 
@@ -84,7 +86,13 @@ internal class TypeRegistry(
     // --- HELPERS ---
 
     private fun throwNotFound(oid: Int, expected: String? = null): Nothing {
-        val details = if (expected != null) "OID: $oid (expected $expected)" else "OID: $oid"
+        val typeName = oidToNameMap[oid]
+        val details = when {
+            typeName != null && expected != null -> "Type '$typeName' (OID: $oid, expected $expected)"
+            typeName != null -> "Type '$typeName' (OID: $oid)"
+            expected != null -> "OID: $oid (expected $expected)"
+            else -> "OID: $oid"
+        }
         throw TypeRegistryException(TypeRegistryExceptionMessage.PG_TYPE_NOT_FOUND, typeName = details)
     }
 }

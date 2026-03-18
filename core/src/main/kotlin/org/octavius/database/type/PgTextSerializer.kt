@@ -33,7 +33,7 @@ internal class PgTextSerializer(
         if (list.isEmpty()) return "{}"
         return list.joinToString(prefix = "{", postfix = "}", separator = ",") { item ->
             if (item == null) "NULL" else {
-                val literal = serializeValue(item, skipDynamicDto, explicitElementType)
+                val literal = serializeValue(item, skipDynamicDto, explicitElementType, useNullLiteral = true)
                 if (shouldQuote(item)) escapeAndQuote(literal) else literal
             }
         }
@@ -65,20 +65,20 @@ internal class PgTextSerializer(
         return typeInfo.attributes.keys.joinToString(prefix = "(", postfix = ")", separator = ",") { key ->
             val value = valueMap[key]
             if (value == null) "" else {
-                val literal = serializeValue(value, skipDynamicDto, null)
+                val literal = serializeValue(value, skipDynamicDto, null, useNullLiteral = false)
                 if (shouldQuote(value)) escapeAndQuote(literal) else literal
             }
         }
     }
 
-    private fun serializeValue(value: Any, skipDynamicDto: Boolean, explicitType: QualifiedName?): String {
+    private fun serializeValue(value: Any, skipDynamicDto: Boolean, explicitType: QualifiedName?, useNullLiteral: Boolean): String {
         var current = value
         var wasPgTyped = false
 
         // Unpack @PgTyped wrappers
         while (current is PgTyped) {
             wasPgTyped = true
-            current = current.value ?: return "NULL"
+            current = current.value ?: return if (useNullLiteral) "NULL" else ""
         }
 
         // 1. Try standard handlers first

@@ -1,6 +1,7 @@
 package org.octavius.database.exception
 
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -18,9 +19,7 @@ class ConstraintIntegrationTest {
 
     @BeforeAll
     fun setup() {
-        val config = DatabaseConfig.loadFromFile("test-database.properties").copy(
-            disableFlyway = true,
-        )
+        val config = DatabaseConfig.loadFromFile("test-database.properties")
         dataAccess = OctaviusDatabase.fromConfig(config)
 
         // Setup tables
@@ -40,6 +39,11 @@ class ConstraintIntegrationTest {
                 parent_id INT REFERENCES constraint_test(id)
             );
         """.trimIndent()).execute()
+    }
+
+    @AfterAll
+    fun tearDown() {
+        dataAccess.close()
     }
 
     @Test

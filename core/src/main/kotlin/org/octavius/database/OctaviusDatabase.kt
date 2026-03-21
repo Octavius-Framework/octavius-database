@@ -17,6 +17,7 @@ import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.support.JdbcTransactionManager
 import java.sql.Connection
 import java.sql.DriverManager
+import java.util.Properties
 import javax.sql.DataSource
 import kotlin.time.measureTime
 
@@ -48,12 +49,22 @@ object OctaviusDatabase {
         }
 
         logger.debug { "Configuring HikariCP datasource with URL: ${config.dbUrl}" }
-        val hikariConfig = HikariConfig().apply {
-            jdbcUrl = config.dbUrl
-            username = config.dbUsername
-            password = config.dbPassword
-            maximumPoolSize = 10
-            this.connectionInitSql = connectionInitSql
+
+        val props = Properties().apply {
+            setProperty("jdbcUrl", config.dbUrl)
+            setProperty("username", config.dbUsername)
+            setProperty("password", config.dbPassword)
+            setProperty("maximumPoolSize", "10")
+
+            config.hikariProperties.forEach { (key, value) ->
+                setProperty(key, value)
+            }
+        }
+
+        val hikariConfig = HikariConfig(props).apply {
+            if (connectionInitSql != null) {
+                this.connectionInitSql = connectionInitSql
+            }
         }
 
         val dataSource = try {
@@ -75,7 +86,11 @@ object OctaviusDatabase {
             dynamicDtoStrategy = config.dynamicDtoStrategy,
             flywayBaselineVersion = config.flywayBaselineVersion,
             disableFlyway = config.disableFlyway,
-            disableCoreTypeInitialization = config.disableCoreTypeInitialization
+            disableCoreTypeInitialization = config.disableCoreTypeInitialization,
+            onClose = {
+                logger.info { "Closing internal HikariDataSource..." }
+                dataSource.close()
+            }
         )
     }
 
@@ -87,7 +102,8 @@ object OctaviusDatabase {
         flywayBaselineVersion: String? = null,
         disableFlyway: Boolean = false,
         disableCoreTypeInitialization: Boolean = false,
-        listenerConnectionFactory: (() -> Connection)? = null
+        listenerConnectionFactory: (() -> Connection)? = null,
+        onClose: (() -> Unit)? = null
     ): DataAccess {
         logger.info { "Initializing OctaviusDatabase..." }
         val jdbcTemplate = JdbcTemplate(dataSource)
@@ -130,7 +146,8 @@ object OctaviusDatabase {
             transactionManager,
             typeRegistry,
             kotlinToPostgresConverter,
-            resolvedListenerConnectionFactory
+            resolvedListenerConnectionFactory,
+            onClose
         )
     }
 

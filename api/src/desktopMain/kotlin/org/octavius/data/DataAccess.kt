@@ -63,7 +63,7 @@ interface QueryOperations {
  * 2. Executing atomic, complex operations within managed transaction blocks.
  * 3. Running predefined, declarative transaction plans.
  */
-interface DataAccess : QueryOperations {
+interface DataAccess : QueryOperations, AutoCloseable {
 
     /**
      * Executes a sequence of operations (plan) within a single, atomic transaction.
@@ -118,4 +118,9 @@ interface DataAccess : QueryOperations {
      * @return A new [PgChannelListener] ready to subscribe to channels.
      */
     fun createChannelListener(): PgChannelListener
+
+    /**
+     * Closes the data access object and releases any underlying resources (e.g., connection pool).
+     */
+    override fun close()
 }

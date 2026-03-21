@@ -2,7 +2,6 @@ package org.octavius.data.notification
 
 import kotlinx.coroutines.flow.Flow
 import org.octavius.data.DataResult
-import java.io.Closeable
 
 /**
  * Manages PostgreSQL LISTEN/UNLISTEN subscriptions on a dedicated database connection.
@@ -21,7 +20,7 @@ import java.io.Closeable
  * }
  * ```
  */
-interface PgChannelListener : Closeable {
+interface PgChannelListener : AutoCloseable {
 
     /**
      * Subscribes to the given channels. Executes `LISTEN` for each channel.

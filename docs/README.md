@@ -9,6 +9,7 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 | Document                                              | Description                                                                   |
 |-------------------------------------------------------|-------------------------------------------------------------------------------|
 | [Configuration](configuration.md)                     | Initialization, DatabaseConfig, Flyway, core types, DynamicDto strategy       |
+| [Lifecycle & Shutdown](lifecycle-and-shutdown.md)     | Proper cleanup, .use {} block, common integration patterns                    |
 | [Query Builders](query-builders.md)                   | SELECT, INSERT, UPDATE, DELETE, raw queries, CTEs, subqueries, ON CONFLICT    |
 | [Functions & Procedures](functions-and-procedures.md) | Calling functions and procedures                                              |
 | [Executing Queries](executing-queries.md)             | Terminal methods, DataResult, assertNotNull, async execution, streaming       |
@@ -96,6 +97,11 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 - [Flyway Migrations](configuration.md#flyway-migrations) - Automatic migrations and baselining
 - [Core Type Initialization](configuration.md#core-type-initialization) - `dynamic_dto` setup
 - [DynamicDto Strategy](configuration.md#dynamicdto-serialization-strategy) - Serialization options
+
+### Lifecycle & Shutdown
+- [AutoCloseable](lifecycle-and-shutdown.md#standard-usage) - Using `.use { }` for automatic cleanup
+- [Integration Patterns](lifecycle-and-shutdown.md#common-integration-patterns) - Ktor, Spring, and Koin integration
+- [DataSource Management](lifecycle-and-shutdown.md#behavior-with-existing-datasource) - External vs internal pool management
 
 ## API Reference
 

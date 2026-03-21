@@ -3,6 +3,7 @@ package org.octavius.database.type.dynamic
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -36,7 +37,7 @@ import javax.sql.DataSource
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class PolymorphicArrayRoundTripTest {
 
-    private lateinit var dataSource: DataSource
+    private lateinit var dataSource: HikariDataSource
     private lateinit var baseConfig: DatabaseConfig
     private lateinit var dataAccess: DataAccess
 
@@ -59,7 +60,6 @@ class PolymorphicArrayRoundTripTest {
         this.dataSource = hikariDataSource
 
         val jdbcTemplate = NamedParameterJdbcTemplate(dataSource)
-        val transactionManager = DataSourceTransactionManager(dataSource)
         jdbcTemplate.jdbcTemplate.execute("DROP SCHEMA IF EXISTS public CASCADE;")
         jdbcTemplate.jdbcTemplate.execute("CREATE SCHEMA public;")
         val initSql = String(Files.readAllBytes(Paths.get(this::class.java.classLoader.getResource("init-polymorphic-array-test-db.sql")!!.toURI())))
@@ -80,6 +80,11 @@ class PolymorphicArrayRoundTripTest {
     fun cleanup() {
         // Czyścimy tabelę przed każdym testem, żeby zapewnić pełną izolację
         dataAccess.rawQuery("TRUNCATE TABLE polymorphic_storage RESTART IDENTITY").execute()
+    }
+
+    @AfterAll
+    fun tearDown() {
+        dataSource.close()
     }
 
     @Test

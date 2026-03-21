@@ -363,6 +363,7 @@ Octavius Database integrates [Flyway](https://flywaydb.org/) for schema migratio
 For detailed guides and examples, see the [full documentation](docs/README.md):
 
 - [Configuration](docs/configuration.md) - Initialization, Flyway, core types, DynamicDto strategy
+- [Lifecycle & Shutdown](docs/lifecycle-and-shutdown.md) - Proper cleanup, .use {} block, common integration patterns
 - [Query Builders](docs/query-builders.md) - SELECT, INSERT, UPDATE, DELETE, CTEs, subqueries, ON CONFLICT
 - [Functions & Procedures](docs/functions-and-procedures.md) - CALL, SELECT, IN/OUT, functions vs procedures
 - [Executing Queries](docs/executing-queries.md) - Terminal methods, DataResult, async, streaming

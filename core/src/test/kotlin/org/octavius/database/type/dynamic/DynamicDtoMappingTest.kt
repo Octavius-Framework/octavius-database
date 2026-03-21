@@ -3,6 +3,7 @@ package org.octavius.database.type.dynamic
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -23,6 +24,7 @@ import java.nio.file.Paths
 class DynamicDtoMappingTest {
 
     private lateinit var dataAccess: DataAccess
+    private lateinit var dataSource: HikariDataSource
 
     @BeforeAll
     fun setup() {
@@ -36,7 +38,7 @@ class DynamicDtoMappingTest {
         println("Safety guard passed for Dynamic DTO tests. Connected to: $dbName")
 
         // --- Krok 2: Inicjalizacja bazy i DAL-a ---
-        val dataSource = HikariDataSource(HikariConfig().apply {
+        dataSource = HikariDataSource(HikariConfig().apply {
             jdbcUrl = databaseConfig.dbUrl
             username = databaseConfig.dbUsername
             password = databaseConfig.dbPassword
@@ -64,6 +66,11 @@ class DynamicDtoMappingTest {
             disableFlyway = true,
             disableCoreTypeInitialization = true
         )
+    }
+
+    @AfterAll
+    fun tearDown() {
+        dataSource.close()
     }
 
     @Test

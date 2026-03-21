@@ -61,6 +61,7 @@ val dataAccess = OctaviusDatabase.fromConfig(
 | `flywayBaselineVersion`         | `String?`                         | No       | `null`                       | Baseline version for existing schemas |
 | `disableFlyway`                 | `Boolean`                         | No       | `false`                      | Disable automatic migrations          |
 | `disableCoreTypeInitialization` | `Boolean`                         | No       | `false`                      | Disable `dynamic_dto` type creation   |
+| `hikariProperties`              | `Map<String, String>`             | No       | `emptyMap()`                 | HikariCP & Driver properties          |
 
 ---
 
@@ -82,6 +83,29 @@ db.dynamicDtoStrategy=AUTOMATIC_WHEN_UNAMBIGUOUS
 db.flywayBaselineVersion=
 db.disableFlyway=false
 db.disableCoreTypeInitialization=false
+
+# HikariCP Pool Settings (prefixed with db.hikari.)
+db.hikari.maximumPoolSize=20
+db.hikari.connectionTimeout=30000
+db.hikari.poolName=OctaviusPool
+db.hikari.leakDetectionThreshold=2000
+
+# PostgreSQL Driver Settings (prefixed with db.hikari.dataSource.)
+db.hikari.dataSource.sslmode=require
+db.hikari.dataSource.ApplicationName=RomaBackend
+db.hikari.dataSource.prepStmtCacheSize=250
+```
+
+### Property Details
+
+**`db.schemas`** - Comma-separated list of schemas:
+```properties
+db.schemas=public,aerarium
+```
+
+**`db.packagesToScan`** - Packages containing your `@PgEnum`, `@PgComposite`, `@DynamicallyMappable` classes:
+```properties
+db.packagesToScan=com.roma.domain.types,com.roma.dto
 ```
 
 ### Property Details

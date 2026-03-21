@@ -28,7 +28,7 @@ class PgCompositeReflectionVsMapperBenchmark {
     private val ITERATIONS_PER_SIZE = 5
     private val rowResults = ConcurrentHashMap<Int, Map<String, Long>>()
 
-    private lateinit var dataSource: DataSource
+    private lateinit var dataSource: HikariDataSource
     private lateinit var dataAccess: DataAccess
 
     companion object {
@@ -137,5 +137,10 @@ class PgCompositeReflectionVsMapperBenchmark {
             val t = rowResults[rowCount] ?: return@forEach
             println("Rows: $rowCount | Insert: Refl=${t["ins_refl"]}ms, Map=${t["ins_map"]}ms | Read: Refl=${t["read_refl"]}ms, Map=${t["read_map"]}ms")
         }
+    }
+
+    @AfterAll
+    fun tearDown() {
+        dataSource.close()
     }
 }

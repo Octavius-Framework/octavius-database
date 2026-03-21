@@ -3,6 +3,7 @@ package org.octavius.database.transaction
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -27,6 +28,8 @@ class TransactionPlanExecutorTest {
     private lateinit var dataAccess: DataAccess
     private lateinit var jdbcTemplate: JdbcTemplate
 
+    private lateinit var dataSource: HikariDataSource
+
     @BeforeAll
     fun setup() {
         // --- Krok 1: Bezpieczna konfiguracja i połączenie ---
@@ -36,7 +39,7 @@ class TransactionPlanExecutorTest {
             throw IllegalStateException("ABORTING TEST! Attempting to run on a non-test database: $dbUrl")
         }
 
-        val dataSource = HikariDataSource(HikariConfig().apply {
+        dataSource = HikariDataSource(HikariConfig().apply {
             jdbcUrl = dbConfig.dbUrl
             username = dbConfig.dbUsername
             password = dbConfig.dbPassword
@@ -55,6 +58,11 @@ class TransactionPlanExecutorTest {
             disableFlyway = true,
             disableCoreTypeInitialization = true
         )
+    }
+
+    @AfterAll
+    fun tearDown() {
+        dataSource.close()
     }
 
     @BeforeEach

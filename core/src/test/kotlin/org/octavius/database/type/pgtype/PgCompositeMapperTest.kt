@@ -1,6 +1,8 @@
 package org.octavius.database.type.pgtype
 
+import com.zaxxer.hikari.HikariDataSource
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -46,11 +48,12 @@ class ClassAddressMapper : PgCompositeMapper<ClassMappedAddress> {
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class PgCompositeMapperTest {
     private lateinit var dataAccess: DataAccess
+    private lateinit var dataSource: HikariDataSource
 
     @BeforeAll
     fun setup() {
         val config = DatabaseConfig.loadFromFile("test-database.properties")
-        val dataSource = com.zaxxer.hikari.HikariDataSource().apply {
+        dataSource = HikariDataSource().apply {
             jdbcUrl = config.dbUrl
             username = config.dbUsername
             password = config.dbPassword
@@ -71,6 +74,11 @@ class PgCompositeMapperTest {
             DynamicDtoSerializationStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS,
             disableFlyway = true
         )
+    }
+
+    @AfterAll
+    fun tearDown() {
+        dataSource.close()
     }
 
     @Test

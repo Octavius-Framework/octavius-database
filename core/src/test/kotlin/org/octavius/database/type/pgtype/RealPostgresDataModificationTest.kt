@@ -4,6 +4,7 @@ import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import kotlinx.datetime.LocalDateTime
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -35,6 +36,7 @@ import kotlin.reflect.typeOf
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class RealPostgresDataModificationTest {
 
+    private lateinit var dataSource: HikariDataSource
     private lateinit var jdbcTemplate: JdbcTemplate
     private lateinit var kotlinToPostgresConverter: KotlinToPostgresConverter
     private lateinit var mappers: RowMappers // Potrzebne do odczytu w celu weryfikacji
@@ -58,7 +60,7 @@ class RealPostgresDataModificationTest {
             username = databaseConfig.dbUsername
             password = databaseConfig.dbPassword
         }
-        val dataSource = HikariDataSource(hikariConfig)
+        dataSource = HikariDataSource(hikariConfig)
         jdbcTemplate = JdbcTemplate(dataSource)
 
         jdbcTemplate.execute("DROP SCHEMA IF EXISTS public CASCADE;")
@@ -89,6 +91,11 @@ class RealPostgresDataModificationTest {
         // Czyści tabelę przed każdym testem, zostawiając tylko oryginalny "złoty" rekord
         // To zapewnia, że testy są od siebie niezależne.
         jdbcTemplate.update("DELETE FROM complex_test_data WHERE id > 1")
+    }
+
+    @AfterAll
+    fun tearDown() {
+        dataSource.close()
     }
 
     @Test

@@ -1,7 +1,5 @@
 package org.octavius.database.notification
 
-import com.zaxxer.hikari.HikariConfig
-import com.zaxxer.hikari.HikariDataSource
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.take
@@ -9,6 +7,7 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -30,18 +29,12 @@ class NotificationTest {
             throw IllegalStateException("ABORTING TEST! Attempting to run on a non-test database: $dbUrl")
         }
 
-        val dataSource = HikariDataSource(HikariConfig().apply {
-            jdbcUrl = dbConfig.dbUrl
-            username = dbConfig.dbUsername
-            password = dbConfig.dbPassword
-        })
-        dataAccess = OctaviusDatabase.fromDataSource(
-            dataSource = dataSource,
-            packagesToScan = listOf(),
-            dbSchemas = dbConfig.dbSchemas,
-            disableFlyway = true,
-            disableCoreTypeInitialization = true
-        )
+        dataAccess = OctaviusDatabase.fromConfig(dbConfig)
+    }
+
+    @AfterAll
+    fun teardown() {
+        dataAccess.close()
     }
 
     @Test

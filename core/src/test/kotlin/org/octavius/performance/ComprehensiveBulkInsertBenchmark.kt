@@ -28,7 +28,7 @@ class ComprehensiveBulkInsertBenchmark {
     private val allUnnestTypedArrayResults = ConcurrentHashMap<Int, MutableList<Long>>()
 
     // --- Zmienne konfiguracyjne ---
-    private lateinit var dataSource: DataSource
+    private lateinit var dataSource: HikariDataSource
     private lateinit var dataAccess: DataAccess
 
     companion object {
@@ -49,13 +49,12 @@ class ComprehensiveBulkInsertBenchmark {
         }
         println("Safety guard passed. Connected to: $dbName")
 
-        val hikariDataSource = HikariDataSource().apply {
+        dataSource = HikariDataSource().apply {
             jdbcUrl = databaseConfig.dbUrl + "?reWriteBatchedInserts=true"
             username = databaseConfig.dbUsername
             password = databaseConfig.dbPassword
         }
-        this.dataSource = hikariDataSource
-        val jdbcTemplate = JdbcTemplate(hikariDataSource)
+        val jdbcTemplate = JdbcTemplate(dataSource)
 
         // --- Krok 2: Stworzenie tabeli testowej ---
         jdbcTemplate.execute("DROP TABLE IF EXISTS performance_test CASCADE;")
@@ -73,7 +72,7 @@ class ComprehensiveBulkInsertBenchmark {
         )
         // --- Krok 3: Inicjalizacja frameworka ---
         this.dataAccess = OctaviusDatabase.fromDataSource(
-            dataSource = hikariDataSource,
+            dataSource = dataSource,
             packagesToScan = listOf("org.octavius.domain.test.bulkinsert"),
             dbSchemas = databaseConfig.dbSchemas,
             disableFlyway = true,
@@ -156,6 +155,11 @@ class ComprehensiveBulkInsertBenchmark {
             println("|$keyStr |$jdbcStr |$rowStr |$parallelStr |$typedArrayStr |")
         }
         println("===========================================================================================================")
+    }
+
+    @AfterAll
+    fun tearDown() {
+        dataSource.close()
     }
 
     // --- Metody do testowania ---

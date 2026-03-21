@@ -34,7 +34,7 @@ class PgCompositeVsDynamicDtoBenchmark {
     private val filterReadResults = ConcurrentHashMap<Int, Pair<MutableList<Long>, MutableList<Long>>>()
 
     // --- Zmienne konfiguracyjne ---
-    private lateinit var dataSource: DataSource
+    private lateinit var dataSource: HikariDataSource
     private lateinit var dataAccess: DataAccess
 
     companion object {
@@ -170,6 +170,11 @@ class PgCompositeVsDynamicDtoBenchmark {
             )
         }
         println(separator)
+    }
+
+    @AfterAll
+    fun tearDown() {
+        dataSource.close()
     }
 
     // --- Metody realizujące operacje ---

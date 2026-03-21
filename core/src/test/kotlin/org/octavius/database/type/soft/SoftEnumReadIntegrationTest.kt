@@ -5,6 +5,7 @@ import com.zaxxer.hikari.HikariDataSource
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -31,6 +32,7 @@ enum class FeatureFlag {
 class SoftEnumReadIntegrationTest {
 
     private lateinit var dataAccess: DataAccess
+    private lateinit var dataSource: HikariDataSource
 
     @BeforeAll
     fun setup() {
@@ -42,7 +44,7 @@ class SoftEnumReadIntegrationTest {
         }
         println("Safety guard passed. Connected to: $dbName")
 
-        val dataSource = HikariDataSource(HikariConfig().apply {
+        dataSource = HikariDataSource(HikariConfig().apply {
             jdbcUrl = databaseConfig.dbUrl
             username = databaseConfig.dbUsername
             password = databaseConfig.dbPassword
@@ -82,6 +84,11 @@ class SoftEnumReadIntegrationTest {
             disableFlyway = true,
             disableCoreTypeInitialization = true
         )
+    }
+
+    @AfterAll
+    fun tearDown() {
+        dataSource.close()
     }
 
     @Test

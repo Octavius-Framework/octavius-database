@@ -38,6 +38,7 @@ class SimpleTypeOverheadBenchmark {
     private val oldFrameworkTimings = mutableListOf<Long>()
     private val optimizedFrameworkTimings = mutableListOf<Long>() // NOWA LISTA
 
+    private lateinit var dataSource: HikariDataSource
     private lateinit var jdbcTemplate: JdbcTemplate
     private lateinit var typesConverter: PostgresToKotlinConverter
     private lateinit var typeRegistry: TypeRegistry
@@ -55,14 +56,14 @@ class SimpleTypeOverheadBenchmark {
             )
         }
         println("Safety guard passed. Connected to the correct test database: $dbName")
-        val hikariDataSource = HikariDataSource().apply {
+        dataSource = HikariDataSource().apply {
             jdbcUrl = databaseConfig.dbUrl
             username = databaseConfig.dbUsername
             password = databaseConfig.dbPassword
             maximumPoolSize = 5
         }
 
-        jdbcTemplate = JdbcTemplate(hikariDataSource)
+        jdbcTemplate = JdbcTemplate(dataSource)
 
         typeRegistry =
             TypeRegistryLoader(
@@ -159,9 +160,14 @@ class SimpleTypeOverheadBenchmark {
             } ms (+${String.format("%.1f", overheadOptimizedPercent)}%)"
         )
         println("==================================================================================")
+
+    }
+
+    @AfterAll
+    fun tearDown() {
+        dataSource.close()
     }
 }
-
 // --- Implementacje Mapperów i klas pomocniczych ---
 
 /**

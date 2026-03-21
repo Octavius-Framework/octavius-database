@@ -31,6 +31,7 @@ data class DatabaseConfig(
     val flywayBaselineVersion: String? = null,
     val disableFlyway: Boolean = false,
     val disableCoreTypeInitialization: Boolean = false,
+    val hikariProperties: Map<String, String> = emptyMap(),
 ) {
     companion object {
         private val logger = KotlinLogging.logger {}
@@ -53,22 +54,32 @@ data class DatabaseConfig(
 
             resourceStream.use { props.load(it) }
 
+            return fromProperties(props)
+        }
+
+        /**
+         * Creates a [DatabaseConfig] from [Properties].
+         *
+         * @param props Properties object containing configuration.
+         * @return Created [DatabaseConfig] instance.
+         */
+        fun fromProperties(props: Properties): DatabaseConfig {
             // --- Basic database configuration ---
             val url = props.getProperty("db.url")
-                ?: throw IllegalArgumentException("Missing required property 'db.url' in '$fileName'")
+                ?: throw IllegalArgumentException("Missing required property 'db.url'")
             val username = props.getProperty("db.username")
-                ?: throw IllegalArgumentException("Missing required property 'db.username' in '$fileName'")
+                ?: throw IllegalArgumentException("Missing required property 'db.username'")
             val password = props.getProperty("db.password")
-                ?: throw IllegalArgumentException("Missing required property 'db.password' in '$fileName'")
+                ?: throw IllegalArgumentException("Missing required property 'db.password'")
             val schemasString = props.getProperty("db.schemas")
-                ?: throw IllegalArgumentException("Missing required property 'db.schemas' in '$fileName'")
+                ?: throw IllegalArgumentException("Missing required property 'db.schemas'")
             val schemas = schemasString.split(",").map { it.trim() }.filter { it.isNotEmpty() }
 
             // --- Application-specific configuration ---
             val setSearchPath = props.getProperty("db.setSearchPath", "true").toBoolean()
 
             val packagesString = props.getProperty("db.packagesToScan")
-                ?: throw IllegalArgumentException("Missing required property 'db.packagesToScan' in '$fileName'")
+                ?: throw IllegalArgumentException("Missing required property 'db.packagesToScan'")
             val packages = packagesString.split(",").map { it.trim() }.filter { it.isNotEmpty() }
 
             val dynamicDtoStrategyString: String? = props.getProperty("db.dynamicDtoStrategy")
@@ -80,6 +91,11 @@ data class DatabaseConfig(
             val disableFlyway: Boolean = props.getProperty("db.disableFlyway").toBoolean()
             val disableCoreTypeInitialization: Boolean = props.getProperty("db.disableCoreTypeInitialization").toBoolean()
 
+            // --- HikariCP specific configuration ---
+            val hikariProperties = props.stringPropertyNames()
+                .filter { it.startsWith("db.hikari.") }
+                .associate { it.removePrefix("db.hikari.") to props.getProperty(it) }
+
             logger.info { "Database configuration loaded successfully" }
             logger.debug { "Database URL: '$url'" }
             logger.debug { "Database schemas: ${schemas.joinToString()}" }
@@ -89,6 +105,9 @@ data class DatabaseConfig(
             logger.debug { "Flyway baseline version: $flywayBaselineVersion" }
             logger.debug { "Disable flyway migrations: $disableFlyway" }
             logger.debug { "Disable core type initialization: $disableCoreTypeInitialization" }
+            if (hikariProperties.isNotEmpty()) {
+                logger.debug { "HikariCP extra properties: ${hikariProperties.keys.joinToString()}" }
+            }
 
             return DatabaseConfig(
                 dbUrl = url,
@@ -97,10 +116,11 @@ data class DatabaseConfig(
                 dbSchemas = schemas,
                 setSearchPath = setSearchPath,
                 packagesToScan = packages,
-                dynamicDtoStrategy,
-                flywayBaselineVersion,
-                disableFlyway,
-                disableCoreTypeInitialization
+                dynamicDtoStrategy = dynamicDtoStrategy,
+                flywayBaselineVersion = flywayBaselineVersion,
+                disableFlyway = disableFlyway,
+                disableCoreTypeInitialization = disableCoreTypeInitialization,
+                hikariProperties = hikariProperties
             )
         }
     }

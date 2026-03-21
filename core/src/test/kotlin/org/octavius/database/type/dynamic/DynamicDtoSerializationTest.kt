@@ -16,12 +16,11 @@ import org.octavius.domain.test.dynamic.DynamicProfile
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
 import java.nio.file.Files
 import java.nio.file.Paths
-import javax.sql.DataSource
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class DynamicDtoSerializationTest {
 
-    private lateinit var dataSource: DataSource
+    private lateinit var dataSource: HikariDataSource
     private lateinit var baseConfig: DatabaseConfig
 
     // Dwa osobne obiekty DataAccess - jeden z włączoną, drugi z wyłączoną funkcją
@@ -78,6 +77,11 @@ class DynamicDtoSerializationTest {
     fun cleanup() {
         // Czyścimy tabelę przed każdym testem, żeby zapewnić izolację
         dataAccessWithFeature.rawQuery("TRUNCATE TABLE dynamic_storage RESTART IDENTITY").execute()
+    }
+
+    @AfterAll
+    fun tearDown() {
+        dataSource.close()
     }
 
     @Test

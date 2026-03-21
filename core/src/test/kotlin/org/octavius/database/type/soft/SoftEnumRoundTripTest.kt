@@ -3,6 +3,7 @@ package org.octavius.database.type.soft
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -34,7 +35,7 @@ import javax.sql.DataSource
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class SoftEnumRoundTripTest {
 
-    private lateinit var dataSource: DataSource
+    private lateinit var dataSource: HikariDataSource
     private lateinit var baseConfig: DatabaseConfig
     private lateinit var dataAccess: DataAccess
 
@@ -79,6 +80,11 @@ class SoftEnumRoundTripTest {
     fun cleanup() {
         // Czyścimy tabelę przed każdym testem, żeby zapewnić pełną izolację
         dataAccess.rawQuery("TRUNCATE TABLE soft_enum_storage RESTART IDENTITY").execute()
+    }
+
+    @AfterAll
+    fun tearDown() {
+        dataSource.close()
     }
 
     @Test

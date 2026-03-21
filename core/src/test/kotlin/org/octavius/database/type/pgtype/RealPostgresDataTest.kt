@@ -3,6 +3,7 @@ package org.octavius.database.type.pgtype
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -22,6 +23,7 @@ import java.nio.file.Paths
 class RealPostgresDataTest {
 
     // Te pola będą dostępne we wszystkich testach w tej klasie
+    private lateinit var dataSource: HikariDataSource
     private lateinit var jdbcTemplate: JdbcTemplate
     private lateinit var typeRegistry: TypeRegistry
 
@@ -50,7 +52,7 @@ class RealPostgresDataTest {
             username = databaseConfig.dbUsername
             password = databaseConfig.dbPassword
         }
-        val dataSource = HikariDataSource(hikariConfig)
+        dataSource = HikariDataSource(hikariConfig)
         jdbcTemplate = JdbcTemplate(dataSource)
 
         // 3. Wrzucamy skrypt testowy do bazy DOKŁADNIE RAZ
@@ -84,6 +86,11 @@ class RealPostgresDataTest {
     }
 
     // Nie potrzebujemy @BeforeEach, bo tylko czytamy dane!
+
+    @AfterAll
+    fun tearDown() {
+        dataSource.close()
+    }
 
     @Test
     fun `should convert a row with complex types into a map of correct Kotlin objects`() {

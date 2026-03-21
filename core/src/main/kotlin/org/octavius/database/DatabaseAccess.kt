@@ -29,7 +29,8 @@ internal class DatabaseAccess(
     private val transactionManager: DataSourceTransactionManager,
     typeRegistry: TypeRegistry,
     private val kotlinToPostgresConverter: KotlinToPostgresConverter,
-    private val listenerConnectionFactory: () -> Connection
+    private val listenerConnectionFactory: () -> Connection,
+    private val onClose: (() -> Unit)? = null
 ) : DataAccess {
     private val rowMappers = RowMappers(typeRegistry)
     val transactionPlanExecutor = TransactionPlanExecutor(transactionManager)
@@ -122,6 +123,10 @@ internal class DatabaseAccess(
     override fun createChannelListener(): PgChannelListener {
         val connection = listenerConnectionFactory()
         return DatabasePgChannelListener(connection)
+    }
+
+    override fun close() {
+        onClose?.invoke()
     }
 
     companion object {

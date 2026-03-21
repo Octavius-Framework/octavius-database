@@ -3,6 +3,7 @@ package org.octavius.database.type.value
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -30,7 +31,7 @@ import javax.sql.DataSource
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class PolymorphicPrimitivesRoundTripTest {
 
-    private lateinit var dataSource: DataSource
+    private lateinit var dataSource: HikariDataSource
     private lateinit var baseConfig: DatabaseConfig
     private lateinit var dataAccess: DataAccess
 
@@ -73,6 +74,11 @@ class PolymorphicPrimitivesRoundTripTest {
     @BeforeEach
     fun cleanup() {
         dataAccess.rawQuery("TRUNCATE TABLE primitive_payload_storage RESTART IDENTITY").execute()
+    }
+
+    @AfterAll
+    fun tearDown() {
+        dataSource.close()
     }
 
     @Test

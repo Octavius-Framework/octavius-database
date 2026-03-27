@@ -23,20 +23,33 @@ import javax.sql.DataSource
 import kotlin.time.measureTime
 
 /**
- * Database management system - central access point to database services.
+ * Central management and entry point for the Octavius Database framework.
  *
- * Initializes all necessary components for database work.
+ * This object is responsible for orchestrating the initialization of the data access layer,
+ * including connection pooling, database migrations, type discovery, and framework-level
+ * infrastructure.
  *
- * Responsible for:
- * - HikariCP connection pool configuration with PostgreSQL (for fromConfig method)
- * - Spring transaction manager initialization
- * - Automatic type registry loading from database and classpath
- * - Providing data access services through [DataAccess] interface
- *
+ * Primary responsibilities:
+ * - **DataSource Configuration:** Setting up HikariCP with PostgreSQL-optimized defaults.
+ * - **Schema Management:** Automatically running Flyway migrations.
+ * - **Type Discovery:** Coordinating [TypeRegistryLoader] to scan classpath and database for custom types (ENUMs, COMPOSITEs).
+ * - **Infrastructure Initialization:** Ensuring required PostgreSQL functions (e.g., for Dynamic DTOs) are present.
  */
 object OctaviusDatabase {
     private val logger = KotlinLogging.logger {}
 
+    /**
+     * Initializes [DataAccess] from a structured [DatabaseConfig].
+     *
+     * This is the preferred method for standard applications. It handles:
+     * 1. Building a [HikariDataSource] with provided credentials and pool settings.
+     * 2. Setting `search_path` automatically if configured.
+     * 3. Delegating to [fromDataSource] for the rest of the initialization.
+     *
+     * @param config The framework configuration object.
+     * @return A fully initialized, thread-safe [DataAccess] instance.
+     * @throws InitializationException if connection fails or migrations cannot be applied.
+     */
     fun fromConfig(config: DatabaseConfig): DataAccess {
         logger.info { "Initializing DataSource..." }
         // 1. Configuration-dependent setting of `connectionInitSql`
@@ -96,6 +109,32 @@ object OctaviusDatabase {
         )
     }
 
+    /**
+     * Initializes [DataAccess] using an existing [DataSource].
+     *
+     * This method provides fine-grained control over the initialization process and is suitable 
+     * for environments where the [DataSource] is managed externally (e.g., by a DI container 
+     * like Spring or a JavaEE application server).
+     *
+     * The initialization sequence includes:
+     * 1. **Core Type Initialization:** Ensures framework-specific types (like `dynamic_dto`) exist.
+     * 2. **Flyway Migrations:** Runs user-defined migrations from `db/migration`.
+     * 3. **Type Registry Loading:** Scans the database and classpath to build a type metadata map.
+     * 4. **Converter Setup:** Initializes bidirectional Kotlin-to-PostgreSQL mapping logic.
+     *
+     * @param dataSource The pre-configured [DataSource] to use for all database operations.
+     * @param packagesToScan List of package names to scan for annotated classes (@PgEnum, @PgComposite, etc.).
+     * @param dbSchemas List of database schemas to scan for type definitions and manage via Flyway.
+     * @param dynamicDtoStrategy Strategy for handling Dynamic DTO serialization. Defaults to [DynamicDtoSerializationStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS].
+     * @param flywayBaselineVersion Version to use as the baseline for Flyway. If null, baselining is disabled.
+     * @param disableFlyway If true, Flyway migrations will be skipped entirely.
+     * @param disableCoreTypeInitialization If true, skip ensuring framework-specific types exist.
+     * @param showBanner If true, prints the Octavius banner to standard output upon successful initialization.
+     * @param listenerConnectionFactory Optional factory for creating dedicated connections for LISTEN/NOTIFY. 
+     *                                  If null, a default strategy is used (direct DriverManager for Hikari, otherwise directly from DataSource).
+     * @param onClose Optional callback executed when the returned [DataAccess] is closed.
+     * @return A fully initialized [DataAccess] instance.
+     */
     fun fromDataSource(
         dataSource: DataSource,
         packagesToScan: List<String>,
@@ -164,7 +203,7 @@ object OctaviusDatabase {
         }
         logger.warn {
             "Cannot determine raw JDBC URL from the provided DataSource (${dataSource::class.simpleName}). " +
-            "LISTEN connections will use the main connection pool. " +
+            "LISTEN connections will use DataSource directly. " +
             "Pass a custom listenerConnectionFactory to fromDataSource() to avoid this."
         }
         return { dataSource.connection }

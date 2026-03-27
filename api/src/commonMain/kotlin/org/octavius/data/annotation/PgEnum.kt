@@ -22,6 +22,9 @@ import org.octavius.data.util.CaseConvention
  * @param name Optional, explicit name of the corresponding type in PostgreSQL database.
  *             If left empty, the name will be generated automatically
  *             according to the `CamelCase` -> `snake_case` convention.
+ * @param schema Optional, explicit schema name. If left empty, the type will be resolved
+ *               based on the database `search_path`, or by searching for an unambiguous
+ *               match in all scanned schemas.
  * @param pgConvention Naming convention for enum values in Postgres
  * @param kotlinConvention Naming convention for enum values in Kotlin
  *

@@ -4,11 +4,30 @@ import org.octavius.data.exception.*
 import org.postgresql.util.PSQLException
 import java.sql.SQLException
 
+/**
+ * A specialized translator that converts low-level database exceptions into a structured hierarchy 
+ * of Octavius [DatabaseException]s.
+ *
+ * This component is central to the "Fail-Safe SQL" philosophy of the framework. It categorizes 
+ * [SQLException]s and PostgreSQL-specific [PSQLException]s based on their `SQLSTATE` 
+ * error codes, providing developers with actionable, high-level information about:
+ * - **Integrity Violations:** Unique, Foreign Key, Not Null, and Check constraints.
+ * - **Statement Errors:** Syntax errors, permission denied, or missing objects (tables/columns).
+ * - **Concurrency Issues:** Deadlocks and lock timeouts.
+ * - **Connection Problems:** Pool exhaustion, server disconnection, or resource limits.
+ *
+ * Each translated exception is enriched with a [QueryContext], which includes the original 
+ * SQL statement and its parameters, making debugging and logging significantly more effective.
+ */
 object ExceptionTranslator {
 
     /**
      * Translates any [Throwable] into an Octavius [DatabaseException].
      * Prioritizes [SQLException] and its PostgreSQL-specific error codes (SQLSTATE).
+     *
+     * @param ex The original exception caught during database operation.
+     * @param queryContext Metadata about the failed query.
+     * @return A specialized [DatabaseException] subclass.
      */
     fun translate(ex: Throwable, queryContext: QueryContext): DatabaseException {
         // Already a domain exception, just pass through (possibly enrich with context)

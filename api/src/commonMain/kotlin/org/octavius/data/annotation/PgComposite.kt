@@ -56,6 +56,9 @@ object DefaultPgCompositeMapper : PgCompositeMapper<Any> {
  * @param name Optional, explicit name of the corresponding type in PostgreSQL database.
  *             If left empty, the name will be generated automatically
  *             according to the `CamelCase` -> `snake_case` convention.
+ * @param schema Optional, explicit schema name. If left empty, the type will be resolved
+ *               based on the database `search_path`, or by searching for an unambiguous
+ *               match in all scanned schemas.
  * @param mapper Optional, custom mapper implementation to use instead of reflection.
  *               Must implement [PgCompositeMapper].
  *

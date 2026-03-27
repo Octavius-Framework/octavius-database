@@ -12,11 +12,13 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
 /**
- * Factory providing various `RowMapper` implementations for `ResultSet` conversion.
+ * Factory providing high-level [RowMapper] implementations for converting PostgreSQL `ResultSet`
+ * rows into Kotlin data structures.
  *
- * Creates [ResultSetValueExtractor] internally from the provided [TypeRegistry].
+ * This class coordinates between Spring JDBC's mapping infrastructure and Octavius's custom
+ * type conversion logic provided by [ResultSetValueExtractor].
  *
- * @param typeRegistry Type registry for value extraction
+ * @param typeRegistry The registry containing OID-to-type mappings and custom type definitions.
  */
 @Suppress("FunctionName")
 internal class RowMappers(
@@ -28,8 +30,15 @@ internal class RowMappers(
     }
 
     /**
-     * Mapper mapping to `Map<String, Any?>`.
-     * Uses only column name as key. Ideal for reports and simple queries.
+     * Creates a mapper that converts each row into a `Map<String, Any?>`.
+     *
+     * Keys in the map correspond to column labels (aliases) from the SQL query.
+     * Values are automatically converted to their appropriate Kotlin types.
+     *
+     * Ideal for:
+     * - Dynamic queries where the result structure is not known at compile time.
+     * - Reporting and ad-hoc data analysis.
+     * - Simple queries where defining a data class is unnecessary.
      */
     fun ColumnNameMapper(): RowMapper<Map<String, Any?>> = RowMapper { rs, _ ->
         val data = mutableMapOf<String, Any?>()
@@ -44,8 +53,12 @@ internal class RowMappers(
     }
 
     /**
-     * Mapper mapping result from a single column to its value.
-     * Used for queries like `SELECT COUNT(*)`, `SELECT id FROM ...` etc.
+     * Creates a mapper that extracts a single value from the first column of the result set.
+     *
+     * This mapper is highly optimized for "scalar" queries.
+     *
+     * @param kType The expected Kotlin type of the field, used for validation and nullability checks.
+     * @return A mapper returning a single value or throwing [ConversionException] on type mismatch or unexpected null.
      */
     fun SingleValueMapper(kType: KType): RowMapper<Any?> = RowMapper { rs, _ ->
         val value = valueExtractor.extract(rs, 1)
@@ -64,10 +77,19 @@ internal class RowMappers(
     }
 
     /**
-     * Generic mapper that converts a row to a data class object.
-     * First maps the row to Map<String, Any?> using ColumnNameMapper,
-     * then uses reflection (via `toDataObject`) to create a class instance.
-     * @param kClass Target object class.
+     * Creates a mapper that converts each row into an instance of a specified Kotlin `data class`.
+     *
+     * The mapping process follows these steps:
+     * 1. Extracts the row as a [Map] using [ColumnNameMapper].
+     * 2. Uses [toDataObject][org.octavius.data.toDataObject] (reflection) to instantiate the class.
+     *
+     * Naming conventions:
+     * Column names in SQL (e.g., `user_id`) are automatically matched to class properties (e.g., `userId`)
+     * using the standard `snake_case` -> `camelCase` transformation, 
+     * for custom name mapping use [MapKey][org.octavius.data.MapKey] annotation.
+     *
+     * @param T The target type.
+     * @param kClass The Kotlin class to map into.
      */
     fun <T : Any> DataObjectMapper(kClass: KClass<T>): RowMapper<T> {
         val baseMapper = ColumnNameMapper()

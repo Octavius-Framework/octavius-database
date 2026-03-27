@@ -56,7 +56,7 @@ subprojects {
                 val javadocTask = project.tasks.register<Jar>("${pubName}JavadocJar") {
                     archiveClassifier.set("javadoc")
                     archiveAppendix.set(pubName)
-                    from(tasks.named("dokkaGenerateHtml"))
+                    from(tasks.named("dokkaGeneratePublicationHtml"))
                 }
                 artifact(javadocTask)
 

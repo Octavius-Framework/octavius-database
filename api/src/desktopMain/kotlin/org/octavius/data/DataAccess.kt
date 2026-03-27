@@ -56,24 +56,30 @@ interface QueryOperations {
 }
 
 /**
- * Main entry point to the data layer, offering a consistent API for database interaction.
+ * Main entry point to the data access layer, providing a unified API for interacting with PostgreSQL.
  *
- * This facade enables:
- * 1. Executing single queries (CRUD) in auto-commit mode, through [QueryOperations] implementation.
- * 2. Executing atomic, complex operations within managed transaction blocks.
- * 3. Running predefined, declarative transaction plans.
+ * This facade orchestrates different interaction patterns:
+ * 1. **Direct Queries:** Execution of single SELECT, INSERT, UPDATE, or DELETE operations in auto-commit mode.
+ * 2. **Managed Transactions:** Atomic execution of complex logic blocks where multiple operations must succeed or fail together.
+ * 3. **Declarative Transaction Plans:** Execution of pre-built sequences of operations ([TransactionPlan]) that can handle step dependencies.
+ * 4. **Pub/Sub Messaging:** Native integration with PostgreSQL LISTEN/NOTIFY mechanism for real-time updates.
+ *
+ * Implementation is typically thread-safe and manages an underlying connection pool (e.g., HikariCP).
+ * Call [close] or use the interface within a `use` block to ensure proper resource cleanup.
  */
 interface DataAccess : QueryOperations, AutoCloseable {
 
     /**
-     * Executes a sequence of operations (plan) within a single, atomic transaction.
+     * Executes a pre-configured [TransactionPlan] as a single, atomic transaction.
      *
-     * Ideal solution for scenarios where transaction steps are built dynamically,
-     * e.g., based on form data.
+     * Transaction Plans are specifically designed for scenarios where the sequence of operations
+     * is determined dynamically (e.g., at the service or UI layer) and steps may depend on
+     * results from previous operations (via [StepHandle][org.octavius.data.transaction.StepHandle]).
      *
-     * @param plan Transaction plan to execute.
-     * @param propagation Defines transaction behavior (e.g., whether to join existing or create new).
-     * @return [DataResult] containing [TransactionPlanResult] on success or error.
+     * @param plan The pre-built plan containing steps to be executed.
+     * @param propagation Specifies how this transaction should behave if another transaction is already active.
+     *                    Defaults to [TransactionPropagation.REQUIRED].
+     * @return [DataResult] containing the results of all steps in the plan on success, or a [DatabaseException][org.octavius.data.exception.DatabaseException] on failure.
      */
     fun executeTransactionPlan(
         plan: TransactionPlan,
@@ -81,16 +87,27 @@ interface DataAccess : QueryOperations, AutoCloseable {
     ): DataResult<TransactionPlanResult>
 
     /**
-     * Executes the given block of code within a new, managed transaction.
+     * Executes a block of code within a managed transaction scope.
      *
-     * Ensures that all operations inside the `block` are executed atomically.
-     * The transaction will be committed only if the block completes successfully
-     * and returns [DataResult.Success]. In any other case (returning [DataResult.Failure]
-     * or throwing an exception), the transaction will be automatically rolled back.
+     * The transaction follows a "fail-fast" commit policy:
+     * - **Success:** If the `block` returns [DataResult.Success], the transaction is committed.
+     * - **Failure:** If the `block` returns [DataResult.Failure], the transaction is automatically rolled back.
+     * - **Exception:** If the `block` throws any exception, the transaction is rolled back, and the exception is translated to [DataResult.Failure].
      *
-     * @param propagation Defines transaction behavior (e.g., whether to join existing or create new).
-     * @param block Lambda that receives a [QueryOperations] context for performing operations.
-     * @return [DataResult] with the result of the block operation (`T`) or error.
+     * **Warning:**
+     * Since the underlying implementation (on JVM) uses Spring JDBC and its `TransactionTemplate`,
+     * the transaction state is bound to the current thread via `ThreadLocal`.
+     * The `tx` object provided to the block is typically the same instance as the main [DataAccess]
+     * object. While you should prefer using `tx` for clarity, calling methods directly on
+     * the [DataAccess] instance inside the block will also participate in the same transaction,
+     * provided they are executed on the same thread. Conversely, launching new threads or
+     * coroutines with different dispatchers inside the block will NOT automatically
+     * participate in the transaction.
+     *
+     * @param T The return type of the result encapsulated in [DataResult].
+     * @param propagation Specifies how this transaction should behave if another transaction is already active.
+     * @param block A lambda providing [QueryOperations] context for performing database operations within the transaction.
+     * @return The result of the block as [DataResult].
      */
     fun <T> transaction(
         propagation: TransactionPropagation = TransactionPropagation.REQUIRED,
@@ -113,7 +130,7 @@ interface DataAccess : QueryOperations, AutoCloseable {
      * Creates a new [PgChannelListener] backed by a dedicated database connection.
      *
      * The returned listener holds an open connection until [PgChannelListener.close] is called.
-     * Always release the listener via [kotlin.io.use] or an explicit [PgChannelListener.close] call.
+     * Always release the listener via [use][kotlin.io.use] or an explicit [PgChannelListener.close] call.
      *
      * @return A new [PgChannelListener] ready to subscribe to channels.
      */

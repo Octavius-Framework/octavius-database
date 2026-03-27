@@ -6,7 +6,6 @@ import kotlinx.serialization.json.JsonElement
 import org.octavius.data.type.DISTANT_FUTURE
 import org.octavius.data.type.DISTANT_PAST
 import org.octavius.data.type.PgStandardType
-import org.octavius.data.util.clean
 import org.postgresql.util.PGInterval
 import org.postgresql.util.PGobject
 import java.math.BigDecimal
@@ -132,8 +131,7 @@ internal object StandardTypeMappingRegistry {
                 // Text types (with automatic cleaning)
                 PgStandardType.TEXT, PgStandardType.VARCHAR, PgStandardType.BPCHAR -> fromStringOnly(
                     pgType.typeName,
-                    String::class,
-                    toPgString = { it.clean() }) { it }
+                    String::class) { it }
 
                 // Date and time types
                 PgStandardType.DATE -> mapped(

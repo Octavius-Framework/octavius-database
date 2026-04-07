@@ -19,13 +19,11 @@ internal class ResultSetValueExtractor(
         // Unwrap to get PostgreSQL-specific OID directly from ResultSet
         val pgRs = rs.unwrap(PgResultSet::class.java)
         val oid = pgRs.getColumnOID(columnIndex)
-        
-        val pgTypeName = rs.metaData.getColumnTypeName(columnIndex)
 
-        // void is a special JDBC-level case — not a real column type.
+        // void (OID: 2278) is a special JDBC-level case — not a real column type.
         // Functions like pg_notify() return void; mapping it to Unit allows
         // SELECT-ing void functions via toField<Unit>() without error.
-        if (pgTypeName == "void") return Unit
+        if (oid == 2278) return Unit
 
         val typeCategory = typeRegistry.getCategory(oid)
 

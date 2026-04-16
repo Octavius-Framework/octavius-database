@@ -12,11 +12,11 @@ import org.octavius.data.exception.ConversionException
 import org.octavius.data.exception.ConversionExceptionMessage
 import org.octavius.data.exception.QueryContext
 import org.octavius.data.exception.checkBuilder
-import org.octavius.database.jdbc.RowMappers
 import org.octavius.database.exception.ExceptionTranslator
-import org.octavius.database.type.KotlinToPostgresConverter
 import org.octavius.database.jdbc.JdbcTemplate
 import org.octavius.database.jdbc.RowMapper
+import org.octavius.database.jdbc.RowMappers
+import org.octavius.database.type.KotlinToPostgresConverter
 import org.octavius.database.type.PositionalQuery
 import kotlin.reflect.KClass
 import kotlin.reflect.KType

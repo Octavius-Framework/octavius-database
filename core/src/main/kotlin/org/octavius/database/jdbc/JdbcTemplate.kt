@@ -2,13 +2,14 @@ package org.octavius.database.jdbc
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.octavius.database.type.PositionalQuery
-import org.springframework.jdbc.datasource.DataSourceUtils
 import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.SQLException
 import javax.sql.DataSource
 
-internal class JdbcTemplate(val dataSource: DataSource) {
+internal class JdbcTemplate(private val transactionProvider: JdbcTransactionProvider) {
+
+    val dataSource: DataSource get() = transactionProvider.dataSource
 
     companion object {
         private val logger = KotlinLogging.logger {}
@@ -16,20 +17,20 @@ internal class JdbcTemplate(val dataSource: DataSource) {
 
     @Throws(SQLException::class)
     fun execute(sql: String) {
-        val conn = DataSourceUtils.doGetConnection(dataSource)
+        val conn = transactionProvider.getConnection()
         try {
             conn.createStatement().use { stmt ->
                 @Suppress("SqlSourceToSinkFlow")
                 stmt.execute(sql)
             }
         } finally {
-            DataSourceUtils.doReleaseConnection(conn, dataSource)
+            transactionProvider.releaseConnection(conn)
         }
     }
 
     @Throws(SQLException::class)
     fun <T> query(query: PositionalQuery, rowMapper: RowMapper<T>): List<T> {
-        val conn = DataSourceUtils.doGetConnection(dataSource)
+        val conn = transactionProvider.getConnection()
         try {
             @Suppress("SqlSourceToSinkFlow")
             return conn.prepareStatement(query.sql).use { ps ->
@@ -44,13 +45,13 @@ internal class JdbcTemplate(val dataSource: DataSource) {
                 }
             }
         } finally {
-            DataSourceUtils.doReleaseConnection(conn, dataSource)
+            transactionProvider.releaseConnection(conn)
         }
     }
 
     @Throws(SQLException::class)
     fun update(query: PositionalQuery): Int {
-        val conn = DataSourceUtils.doGetConnection(dataSource)
+        val conn = transactionProvider.getConnection()
         try {
             @Suppress("SqlSourceToSinkFlow")
             return conn.prepareStatement(query.sql).use { ps ->
@@ -58,13 +59,13 @@ internal class JdbcTemplate(val dataSource: DataSource) {
                 ps.executeUpdate()
             }
         } finally {
-            DataSourceUtils.doReleaseConnection(conn, dataSource)
+            transactionProvider.releaseConnection(conn)
         }
     }
 
     @Throws(SQLException::class)
     fun query(query: PositionalQuery, fetchSize: Int, resultSetHandler: (ResultSet) -> Unit) {
-        val conn = DataSourceUtils.doGetConnection(dataSource)
+        val conn = transactionProvider.getConnection()
         try {
             @Suppress("SqlSourceToSinkFlow")
             conn.prepareStatement(query.sql).use { ps ->
@@ -84,7 +85,7 @@ internal class JdbcTemplate(val dataSource: DataSource) {
                 }
             }
         } finally {
-            DataSourceUtils.doReleaseConnection(conn, dataSource)
+            transactionProvider.releaseConnection(conn)
         }
     }
     

@@ -11,8 +11,8 @@ import org.octavius.data.DataAccess
 import org.octavius.data.getOrThrow
 import org.octavius.database.OctaviusDatabase
 import org.octavius.database.config.DatabaseConfig
+import org.octavius.database.jdbc.DefaultJdbcTransactionProvider
 import org.octavius.database.jdbc.JdbcTemplate
-import org.octavius.database.jdbc.SpringJdbcTransactionProvider
 import org.octavius.domain.test.pgtype.TestPerson
 import org.octavius.domain.test.pgtype.TestPriority
 import org.octavius.domain.test.pgtype.TestProject
@@ -51,7 +51,7 @@ class RealPostgresDataTest {
             password = databaseConfig.dbPassword
         }
         dataSource = HikariDataSource(hikariConfig)
-        val jdbcTemplate = JdbcTemplate(SpringJdbcTransactionProvider(dataSource))
+        val jdbcTemplate = JdbcTemplate(DefaultJdbcTransactionProvider(dataSource))
 
         // 3. Wrzucamy skrypt testowy do bazy DOKŁADNIE RAZ
         try {

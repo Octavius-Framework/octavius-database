@@ -12,8 +12,8 @@ import org.octavius.data.exception.TypeRegistryException
 import org.octavius.database.OctaviusDatabase
 import org.octavius.database.config.DatabaseConfig
 import org.octavius.database.config.DynamicDtoSerializationStrategy
+import org.octavius.database.jdbc.DefaultJdbcTransactionProvider
 import org.octavius.database.jdbc.JdbcTemplate
-import org.octavius.database.jdbc.SpringJdbcTransactionProvider
 import org.octavius.domain.test.dynamic.DynamicProfile
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -45,7 +45,7 @@ class DynamicDtoSerializationTest {
             password = baseConfig.dbPassword
         })
         this.dataSource = hikariDataSource
-        val jdbcTemplate = JdbcTemplate(SpringJdbcTransactionProvider(hikariDataSource))
+        val jdbcTemplate = JdbcTemplate(DefaultJdbcTransactionProvider(hikariDataSource))
 
         // Używamy nowego skryptu
         jdbcTemplate.execute("DROP SCHEMA IF EXISTS public CASCADE;")

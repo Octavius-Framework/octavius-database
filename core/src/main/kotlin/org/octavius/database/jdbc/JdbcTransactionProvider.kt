@@ -8,7 +8,7 @@ import javax.sql.DataSource
  * Interface for managing database connections and transactions.
  * Decouples the core logic from specific transaction management implementations (like Spring).
  */
-internal interface JdbcTransactionProvider {
+interface JdbcTransactionProvider {
     val dataSource: DataSource
     
     fun getConnection(): Connection
@@ -20,6 +20,6 @@ internal interface JdbcTransactionProvider {
 /**
  * Minimal interface to control the current transaction.
  */
-internal interface TransactionStatus {
+interface TransactionStatus {
     fun setRollbackOnly()
 }

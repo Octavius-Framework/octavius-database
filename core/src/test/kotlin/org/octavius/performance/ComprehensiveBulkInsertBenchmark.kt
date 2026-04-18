@@ -8,7 +8,7 @@ import org.octavius.data.DataAccess
 import org.octavius.database.OctaviusDatabase
 import org.octavius.database.config.DatabaseConfig
 import org.octavius.database.jdbc.JdbcTemplate
-import org.octavius.database.jdbc.SpringJdbcTransactionProvider
+import org.octavius.database.jdbc.DefaultJdbcTransactionProvider
 import org.octavius.domain.test.bulkinsert.PerformanceTestData
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.system.measureTimeMillis
@@ -54,7 +54,7 @@ class ComprehensiveBulkInsertBenchmark {
             username = databaseConfig.dbUsername
             password = databaseConfig.dbPassword
         }
-        val jdbcTemplate = JdbcTemplate(SpringJdbcTransactionProvider(dataSource))
+        val jdbcTemplate = JdbcTemplate(DefaultJdbcTransactionProvider(dataSource))
 
         // --- Krok 2: Stworzenie tabeli testowej ---
         jdbcTemplate.execute("DROP TABLE IF EXISTS performance_test CASCADE;")

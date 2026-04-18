@@ -10,7 +10,7 @@ import org.octavius.database.OctaviusDatabase
 import org.octavius.database.config.DatabaseConfig
 import org.octavius.database.config.DynamicDtoSerializationStrategy
 import org.octavius.database.jdbc.JdbcTemplate
-import org.octavius.database.jdbc.SpringJdbcTransactionProvider
+import org.octavius.database.jdbc.DefaultJdbcTransactionProvider
 import org.octavius.domain.test.compositevsdynamic.DynamicCharacter
 import org.octavius.domain.test.compositevsdynamic.DynamicStats
 import org.octavius.domain.test.compositevsdynamic.PgCharacter
@@ -65,7 +65,7 @@ class PgCompositeVsDynamicDtoBenchmark {
 
         // Inicjalizacja schematu
         val initSql = String(Files.readAllBytes(Paths.get(this::class.java.classLoader.getResource("init-composite-vs-dynamic-benchmark-db.sql")!!.toURI())))
-        val jdbcTemplate = JdbcTemplate(SpringJdbcTransactionProvider(hikariDataSource))
+        val jdbcTemplate = JdbcTemplate(DefaultJdbcTransactionProvider(hikariDataSource))
         jdbcTemplate.execute(initSql)
         println("Performance test schema for Composite vs Dynamic DTO created.")
 

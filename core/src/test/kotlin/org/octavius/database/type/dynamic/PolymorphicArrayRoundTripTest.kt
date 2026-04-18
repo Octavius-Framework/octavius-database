@@ -11,7 +11,7 @@ import org.octavius.database.OctaviusDatabase
 import org.octavius.database.config.DatabaseConfig
 import org.octavius.database.config.DynamicDtoSerializationStrategy
 import org.octavius.database.jdbc.JdbcTemplate
-import org.octavius.database.jdbc.SpringJdbcTransactionProvider
+import org.octavius.database.jdbc.DefaultJdbcTransactionProvider
 import org.octavius.domain.test.dynamic.DynamicProfile
 import org.octavius.domain.test.dynamic.UserStats
 import java.nio.file.Files
@@ -54,7 +54,7 @@ class PolymorphicArrayRoundTripTest {
         })
         this.dataSource = hikariDataSource
 
-        val jdbcTemplate = JdbcTemplate(SpringJdbcTransactionProvider(hikariDataSource))
+        val jdbcTemplate = JdbcTemplate(DefaultJdbcTransactionProvider(hikariDataSource))
         jdbcTemplate.execute("DROP SCHEMA IF EXISTS public CASCADE;")
         jdbcTemplate.execute("CREATE SCHEMA public;")
         val initSql = String(Files.readAllBytes(Paths.get(this::class.java.classLoader.getResource("init-polymorphic-array-test-db.sql")!!.toURI())))

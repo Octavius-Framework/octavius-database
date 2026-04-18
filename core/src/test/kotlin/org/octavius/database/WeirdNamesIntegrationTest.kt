@@ -12,7 +12,7 @@ import org.octavius.data.builder.execute
 import org.octavius.data.getOrThrow
 import org.octavius.database.config.DatabaseConfig
 import org.octavius.database.jdbc.JdbcTemplate
-import org.octavius.database.jdbc.SpringJdbcTransactionProvider
+import org.octavius.database.jdbc.DefaultJdbcTransactionProvider
 import org.octavius.domain.test.weird.WeirdComposite
 import org.octavius.domain.test.weird.WeirdEnum
 import java.nio.file.Files
@@ -34,7 +34,7 @@ class WeirdNamesIntegrationTest {
             password = databaseConfig.dbPassword
         }
         dataSource = HikariDataSource(hikariConfig)
-        val jdbcTemplate = JdbcTemplate(SpringJdbcTransactionProvider(dataSource))
+        val jdbcTemplate = JdbcTemplate(DefaultJdbcTransactionProvider(dataSource))
 
         // Drop schema if exists
         jdbcTemplate.execute("DROP SCHEMA IF EXISTS \"weird schema.with dots\" CASCADE;")

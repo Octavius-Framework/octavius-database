@@ -17,7 +17,7 @@ import org.octavius.data.transaction.TransactionPlan
 import org.octavius.database.OctaviusDatabase
 import org.octavius.database.config.DatabaseConfig
 import org.octavius.database.jdbc.JdbcTemplate
-import org.octavius.database.jdbc.SpringJdbcTransactionProvider
+import org.octavius.database.jdbc.DefaultJdbcTransactionProvider
 import org.octavius.database.type.PositionalQuery
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -44,7 +44,7 @@ class TransactionPlanExecutorTest {
             username = dbConfig.dbUsername
             password = dbConfig.dbPassword
         })
-        jdbcTemplate = JdbcTemplate(SpringJdbcTransactionProvider(dataSource))
+        jdbcTemplate = JdbcTemplate(DefaultJdbcTransactionProvider(dataSource))
 
         // --- Krok 2: Inicjalizacja schematu bazy danych ---
         val initSql = String(Files.readAllBytes(Paths.get(this::class.java.classLoader.getResource("init-transaction-test-db.sql")!!.toURI())))

@@ -12,8 +12,8 @@ import org.octavius.data.builder.toSingleStrict
 import org.octavius.data.getOrThrow
 import org.octavius.database.OctaviusDatabase
 import org.octavius.database.config.DatabaseConfig
+import org.octavius.database.jdbc.DefaultJdbcTransactionProvider
 import org.octavius.database.jdbc.JdbcTemplate
-import org.octavius.database.jdbc.SpringJdbcTransactionProvider
 import org.octavius.domain.test.pgtype.*
 import java.math.BigDecimal
 import java.nio.file.Files
@@ -58,7 +58,7 @@ class RealPostgresDataModificationTest {
             password = databaseConfig.dbPassword
         }
         dataSource = HikariDataSource(hikariConfig)
-        val jdbcTemplate = JdbcTemplate(SpringJdbcTransactionProvider(dataSource))
+        val jdbcTemplate = JdbcTemplate(DefaultJdbcTransactionProvider(dataSource))
 
         jdbcTemplate.execute("DROP SCHEMA IF EXISTS public CASCADE;")
         jdbcTemplate.execute("CREATE SCHEMA public;")

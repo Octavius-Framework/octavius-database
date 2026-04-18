@@ -14,8 +14,8 @@ import org.octavius.data.annotation.DynamicallyMappable
 import org.octavius.data.getOrThrow
 import org.octavius.database.OctaviusDatabase
 import org.octavius.database.config.DatabaseConfig
+import org.octavius.database.jdbc.DefaultJdbcTransactionProvider
 import org.octavius.database.jdbc.JdbcTemplate
-import org.octavius.database.jdbc.SpringJdbcTransactionProvider
 
 // Definicja Soft Enuma w kodzie testowym
 @DynamicallyMappable(typeName = "feature_flag")
@@ -50,7 +50,7 @@ class SoftEnumReadIntegrationTest {
             username = databaseConfig.dbUsername
             password = databaseConfig.dbPassword
         })
-        val jdbcTemplate = JdbcTemplate(SpringJdbcTransactionProvider(dataSource))
+        val jdbcTemplate = JdbcTemplate(DefaultJdbcTransactionProvider(dataSource))
 
         // Upewniamy się, że typ i funkcja istnieją (idempotentnie)
         jdbcTemplate.execute("""

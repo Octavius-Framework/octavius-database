@@ -8,7 +8,7 @@ import org.springframework.transaction.support.TransactionTemplate
 import java.sql.Connection
 import javax.sql.DataSource
 
-internal class SpringJdbcTransactionProvider(
+class SpringJdbcTransactionProvider(
     override val dataSource: DataSource
 ) : JdbcTransactionProvider {
 

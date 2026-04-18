@@ -6,20 +6,20 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 
 ## Guides
 
-| Document                                              | Description                                                                                             |
-|-------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
-| [Configuration](configuration.md)                     | Initialization, DatabaseConfig, Flyway, core types, DynamicDto strategy                                 |
-| [Lifecycle & Shutdown](lifecycle-and-shutdown.md)     | Proper cleanup, .use {} block, common integration patterns                                              |
-| [Query Builders](query-builders.md)                   | SELECT, INSERT, UPDATE, DELETE, raw queries, CTEs, subqueries, ON CONFLICT                              |
-| [Functions & Procedures](functions-and-procedures.md) | Calling functions and procedures                                                                        |
-| [Executing Queries](executing-queries.md)             | Terminal methods, DataResult, getOrThrow, async execution, streaming                                    |
-| [Parameter Handling](parameter-handling.md)           | Named parameters (@), JSONB operator escaping (?), collections & flattening, unnest and bulk operations |
-| [Data Mapping](data-mapping.md)                       | toDataMap(), toDataObject(), @MapKey - converting between objects and maps                              |
-| [ORM-Like Patterns](orm-patterns.md)                  | CRUD patterns, real-world examples, PostgreSQL composite types                                          |
-| [Transactions](transactions.md)                       | Transaction blocks, TransactionPlan, StepHandle, passing data between steps                             |
-| [Notifications](notifications.md)                     | PostgreSQL LISTEN/NOTIFY, PgChannelListener, Flow-based receiving                                       |
-| [Error Handling](error-handling.md)                   | Fatal errors vs. DataResult, Exception hierarchy, Statement/Constraint errors                           |
-| [Type System](type-system.md)                         | @PgEnum, @PgComposite, @DynamicallyMappable, dynamic data insertion, standard type mappings             |
+| Document                                              | Description                                                                                                                          |
+|-------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| [Configuration](configuration.md)                     | Initialization, DatabaseConfig, Flyway, core types, DynamicDto strategy                                                              |
+| [Lifecycle & Shutdown](lifecycle-and-shutdown.md)     | Proper cleanup, .use {} block, common integration patterns                                                                           |
+| [Query Builders](query-builders.md)                   | SELECT, INSERT, UPDATE, DELETE, raw queries, CTEs, subqueries, ON CONFLICT                                                           |
+| [Functions & Procedures](functions-and-procedures.md) | Calling functions and procedures                                                                                                     |
+| [Executing Queries](executing-queries.md)             | Terminal methods, DataResult, getOrThrow, async execution, streaming                                                                 |
+| [Parameter Handling](parameter-handling.md)           | Named parameters (@), JSONB operator escaping (?), collections & flattening, unnest and bulk operations                              |
+| [Data Mapping](data-mapping.md)                       | toDataMap(), toDataObject(), @MapKey - converting between objects and maps                                                           |
+| [ORM-Like Patterns](orm-patterns.md)                  | CRUD patterns, real-world examples, PostgreSQL composite types                                                                       |
+| [Transactions](transactions.md)                       | Transaction blocks, TransactionPlan, StepHandle, passing data between steps , propagation, isolation, read-only, timeouts and errors |
+| [Notifications](notifications.md)                     | PostgreSQL LISTEN/NOTIFY, PgChannelListener, Flow-based receiving                                                                    |
+| [Error Handling](error-handling.md)                   | Fatal errors vs. DataResult, Exception hierarchy, Statement/Constraint errors                                                        |
+| [Type System](type-system.md)                         | @PgEnum, @PgComposite, @DynamicallyMappable, dynamic data insertion, standard type mappings                                          |
 
 ## Quick Links
 
@@ -66,11 +66,15 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 
 ### Transactions
 - [Transaction Blocks](transactions.md#transaction-blocks) - `dataAccess.transaction { }`
+- [Concurrency & Thread Safety](transactions.md#concurrency--thread-safety) - ThreadLocal behavior and coroutines
 - [Transaction Plans](transactions.md#transaction-plans) - Declarative multi-step operations
 - [StepHandle API](transactions.md#stephandle-api) - `field()`, `column()`, `row()`
 - [Passing Data Between Steps](transactions.md#passing-data-between-steps) - Reference previous step results
 - [Null Handling in Transactions](transactions.md#null-handling-in-transactions) - Results nullability
 - [Transaction Propagation](transactions.md#transaction-propagation) - REQUIRED, REQUIRES_NEW, NESTED
+- [Isolation Levels & Read-Only Mode](transactions.md#isolation-levels--read-only-mode) - IsolationLevel Enum and readOnly
+- [Transaction Timeouts](transactions.md#transaction-timeouts) - Timeouts and implementation details
+- [Error Handling](transactions.md#error-handling) - Error handling inside transactions
 
 ### Notifications
 - [Sending Notifications](notifications.md#sending-notifications--notify) - `notify()` via `pg_notify`

@@ -26,14 +26,15 @@ Two ways to initialize Octavius Database:
 
 ```kotlin
 val dataAccess = OctaviusDatabase.fromConfig(
-    DatabaseConfig(
+    config = DatabaseConfig(
         dbUrl = "jdbc:postgresql://localhost:5432/roma",
         dbUsername = "augustus",
         dbPassword = "spqr",
         dbSchemas = listOf("public", "cursus_honorum"),
         setSearchPath = true,
         packagesToScan = listOf("com.roma.domain", "com.roma.dto")
-    )
+    ),
+    transactionProvider = null // Optional custom transaction manager
 )
 ```
 
@@ -385,11 +386,14 @@ val dataAccess = OctaviusDatabase.fromDataSource(
     dynamicDtoStrategy = DynamicDtoSerializationStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS,
     flywayBaselineVersion = null,
     disableFlyway = true,
-    disableCoreTypeInitialization = false
+    disableCoreTypeInitialization = false,
+    transactionProvider = null // Optional custom transaction manager
 )
 ```
 
 ### Spring Boot Integration
+
+To integrate with Spring Boot's transaction management (e.g., `@Transactional`), use the `SpringJdbcTransactionProvider` from the `:spring-integration` module.
 
 ```kotlin
 @Configuration
@@ -401,7 +405,8 @@ class OctaviusConfig {
             dataSource = dataSource,
             packagesToScan = listOf("com.roma.domain"),
             dbSchemas = listOf("public"),
-            disableFlyway = true  // Spring manages Flyway
+            disableFlyway = true,  // Spring manages Flyway
+            transactionProvider = SpringJdbcTransactionProvider(dataSource)
         )
     }
 }

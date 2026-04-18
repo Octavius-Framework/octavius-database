@@ -80,8 +80,8 @@ internal class DatabaseAccess(
         timeoutSeconds: Int?,
         block: (tx: QueryOperations) -> DataResult<T>
     ): DataResult<T> {
-        return transactionProvider.execute(propagation, isolation, readOnly, timeoutSeconds) { status ->
-            try {
+        return try {
+            transactionProvider.execute(propagation, isolation, readOnly, timeoutSeconds) { status ->
                 // `this` is an instance of `QueryOperations`, so we pass it directly.
                 val result = block(this)
 
@@ -92,25 +92,21 @@ internal class DatabaseAccess(
                     status.setRollbackOnly()
                 }
                 result // Return original result (Success or Failure)
-            } catch (e: BuilderException) {
-                status.setRollbackOnly()
-                throw e
-            } catch (e: DatabaseException) {
-                status.setRollbackOnly()
-                // There is no additional context here so there is nothing to do with this exception
-                // It should be logged - technically someone is throwing it instead of returning or it is from toDataMap/toDataObject
-                // Because it is unreasonable to throw from queries we are assuming that this error has not been logged
-                logger.error(e) { "A DatabaseException was thrown inside the transaction block. Rolling back." }
-                DataResult.Failure(e)
-            } catch (e: Exception) {
-                // Catch any other unexpected exception
-                status.setRollbackOnly()
-                // There is no additional context here
-                val ex = ExceptionTranslator.translate(e, QueryContext("N/A", mapOf()))
-                logger.error(e) { "An unexpected exception was thrown inside the transaction block. Rolling back." }
-                // Wrap it in standard Failure
-                DataResult.Failure(ex)
             }
+        } catch (e: DatabaseException) {
+            // There is no additional context here so there is nothing to do with this exception
+            // It should be logged - technically someone is throwing it instead of returning or it is from toDataMap/toDataObject
+            // Because it is unreasonable to throw from queries we are assuming that this error has not been logged
+            logger.error(e) { "A DatabaseException was thrown inside the transaction block. Rolling back." }
+            DataResult.Failure(e)
+        } catch (e: Exception) {
+            // Catch any other unexpected exception
+            // There is no additional context here
+            val context = QueryContext("TRANSACTION_OPERATION", emptyMap())
+            val ex = ExceptionTranslator.translate(e, context)
+            logger.error(e) { "An unexpected exception occurred during transaction management. Rolling back." }
+            // Wrap it in standard Failure
+            DataResult.Failure(ex)
         }
     }
 

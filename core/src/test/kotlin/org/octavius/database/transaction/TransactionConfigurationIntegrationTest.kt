@@ -9,7 +9,11 @@ import org.octavius.data.DataAccess
 import org.octavius.data.DataResult
 import org.octavius.data.builder.execute
 import org.octavius.data.builder.toField
+import org.octavius.data.builder.toFieldStrict
+import org.octavius.data.exception.ConcurrencyErrorType
+import org.octavius.data.exception.ConcurrencyException
 import org.octavius.data.exception.StatementException
+import org.octavius.data.exception.StatementExceptionMessage
 import org.octavius.data.getOrThrow
 import org.octavius.data.transaction.IsolationLevel
 import org.octavius.database.OctaviusDatabase
@@ -20,6 +24,7 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.concurrent.thread
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -64,18 +69,16 @@ class TransactionConfigurationIntegrationTest {
 
     @Test
     fun `should enforce transaction timeout using SET LOCAL statement_timeout`() {
-        // We set a 1s timeout and call pg_sleep(2s)
         assertThatThrownBy {
             dataAccess.transaction(timeoutSeconds = 1) { tx ->
                 tx.rawQuery("SELECT pg_sleep(2)").execute()
             }.getOrThrow()
-        }.isInstanceOf(StatementException::class.java)
-            .hasMessageContaining("statement_timeout")
+        }.isInstanceOf(ConcurrencyException::class.java)
+            .matches { (it as ConcurrencyException).errorType == ConcurrencyErrorType.TIMEOUT }
     }
 
     @Test
     fun `should enforce read-only mode`() {
-        // Try to insert in a read-only transaction
         val result = dataAccess.transaction(readOnly = true) { tx ->
             tx.insertInto("users")
                 .values(listOf("name"))
@@ -85,57 +88,68 @@ class TransactionConfigurationIntegrationTest {
         assertThat(result).isInstanceOf(DataResult.Failure::class.java)
         val failure = result as DataResult.Failure
         assertThat(failure.error).isInstanceOf(StatementException::class.java)
-        assertThat(failure.error.message).containsAnyOf("read-only", "cannot execute INSERT")
+        assertThat((failure.error as StatementException).messageEnum).isEqualTo(StatementExceptionMessage.INVALID_TRANSACTION_STATE)
     }
 
     @Test
-    fun `should respect serializable isolation level`() {
-        // Insert a base record
-        jdbcTemplate.execute("INSERT INTO users (name) VALUES ('Initial')")
+    fun `should correctly apply serializable isolation level to the session`() {
+        dataAccess.transaction(isolation = IsolationLevel.SERIALIZABLE) { tx ->
+            val level = tx.rawQuery("SHOW transaction_isolation").toFieldStrict<String>().getOrThrow()
+            assertThat(level).isEqualTo("serializable")
+            DataResult.Success(Unit)
+        }.getOrThrow()
+    }
+
+    @Test
+    fun `should catch serialization failure in SERIALIZABLE mode`() {
+        jdbcTemplate.execute("INSERT INTO users (name) VALUES ('User1'), ('User2')")
 
         val latch1 = CountDownLatch(1)
         val latch2 = CountDownLatch(1)
-        var threadError: Throwable? = null
+        val t1Error = AtomicReference<Throwable?>(null)
+        val t2Error = AtomicReference<Throwable?>(null)
 
-        // Thread 1: Start SERIALIZABLE transaction and update
         val t1 = thread {
             try {
                 dataAccess.transaction(isolation = IsolationLevel.SERIALIZABLE) { tx ->
-                    tx.update("users").setValue("name").where("name = 'Initial'").execute("name" to "Updated by T1")
-                    latch1.countDown() // Signal T1 updated
-                    latch2.await(5, TimeUnit.SECONDS) // Wait for T2 to update
+                    val u1 = tx.rawQuery("SELECT name FROM users WHERE name = 'User1'").toField<String>().getOrThrow()
+                    latch1.countDown()
+                    latch2.await(5, TimeUnit.SECONDS)
+                    
+                    tx.update("users").setValue("name").where("name = 'User2'").execute("name" to "Modified by T1 ($u1)")
                     DataResult.Success(Unit)
                 }.getOrThrow()
             } catch (e: Throwable) {
-                threadError = e
+                t1Error.set(e)
             }
         }
 
-        // Thread 2: Start SERIALIZABLE transaction and update the SAME row
         val t2 = thread {
-            latch1.await(5, TimeUnit.SECONDS) // Wait for T1 to start and update
             try {
+                latch1.await(5, TimeUnit.SECONDS)
                 dataAccess.transaction(isolation = IsolationLevel.SERIALIZABLE) { tx ->
-                    // This update should conflict with T1's uncommitted update when T1 tries to commit, 
-                    // or T2 might block and then fail with serialization error.
-                    tx.update("users").setValue("name").where("name = 'Initial'").execute("name" to "Updated by T2")
+                    val u2 = tx.rawQuery("SELECT name FROM users WHERE name = 'User2'").toField<String>().getOrThrow()
                     latch2.countDown()
+                    
+                    tx.update("users").setValue("name").where("name = 'User1'").execute("name" to "Modified by T2 ($u2)")
                     DataResult.Success(Unit)
                 }.getOrThrow()
             } catch (e: Throwable) {
-                // We expect a serialization failure here (or in T1)
-                // In Postgres, the second one to commit/update the same row will fail.
+                t2Error.set(e)
             }
         }
 
         t1.join(10000)
         t2.join(10000)
 
-        // At least one of them should have failed or we should see a serialization error
-        // Postgres error code for serialization_failure is 40001
+        val error1 = t1Error.get()
+        val error2 = t2Error.get()
         
-        // Let's check the result in DB
-        val finalName = dataAccess.rawQuery("SELECT name FROM users LIMIT 1").toField<String>().getOrThrow()
-        assertThat(finalName).isIn("Updated by T1", "Updated by T2")
+        val anySerializationError = (error1 is ConcurrencyException && error1.errorType == ConcurrencyErrorType.SERIALIZATION_FAILURE) ||
+                                    (error2 is ConcurrencyException && error2.errorType == ConcurrencyErrorType.SERIALIZATION_FAILURE)
+
+        assertThat(anySerializationError)
+            .withFailMessage("Expected at least one thread to fail with SERIALIZATION_FAILURE, but errors were: T1=$error1, T2=$error2")
+            .isTrue()
     }
 }

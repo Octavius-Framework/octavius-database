@@ -98,10 +98,14 @@ object ExceptionTranslator {
                 )
             }
 
+            // Class 25 — Invalid Transaction State (includes read-only violations)
+            state.startsWith("25") -> StatementException(StatementExceptionMessage.INVALID_TRANSACTION_STATE, sqlEx.message, queryContext, sqlEx)
+
             // Class 40 — Transaction Rollback
             state.startsWith("40") -> {
                 val errorType = when (state) {
                     "40P01" -> ConcurrencyErrorType.DEADLOCK
+                    "40001" -> ConcurrencyErrorType.SERIALIZATION_FAILURE
                     else -> ConcurrencyErrorType.TIMEOUT
                 }
                 ConcurrencyException(errorType, queryContext, sqlEx)

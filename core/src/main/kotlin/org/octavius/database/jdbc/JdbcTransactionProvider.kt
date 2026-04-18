@@ -3,6 +3,7 @@ package org.octavius.database.jdbc
 import org.octavius.data.transaction.IsolationLevel
 import org.octavius.data.transaction.TransactionPropagation
 import java.sql.Connection
+import java.sql.Statement
 import javax.sql.DataSource
 
 /**
@@ -22,6 +23,9 @@ interface JdbcTransactionProvider {
         timeoutSeconds: Int? = null,
         block: (TransactionStatus) -> T
     ): T
+
+    // Spring...
+    fun applyTimeout(statement: Statement)
 }
 
 /**

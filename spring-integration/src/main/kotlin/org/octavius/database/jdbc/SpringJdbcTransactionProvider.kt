@@ -7,6 +7,7 @@ import org.springframework.jdbc.datasource.DataSourceUtils
 import org.springframework.transaction.TransactionDefinition
 import org.springframework.transaction.support.TransactionTemplate
 import java.sql.Connection
+import java.sql.Statement
 import javax.sql.DataSource
 
 class SpringJdbcTransactionProvider(
@@ -49,5 +50,9 @@ class SpringJdbcTransactionProvider(
             }
             block(wrappedStatus)
         }
+    }
+
+    override fun applyTimeout(statement: Statement) {
+        DataSourceUtils.applyTransactionTimeout(statement, dataSource)
     }
 }

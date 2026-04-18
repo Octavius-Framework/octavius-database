@@ -3,6 +3,7 @@ package org.octavius.database.jdbc
 import org.octavius.data.transaction.IsolationLevel
 import org.octavius.data.transaction.TransactionPropagation
 import java.sql.Connection
+import java.sql.Statement
 import javax.sql.DataSource
 
 /**
@@ -151,6 +152,10 @@ internal class DefaultJdbcTransactionProvider(override val dataSource: DataSourc
             runCatching { context.connection.rollback(savepoint) }
             throw e
         }
+    }
+
+    override fun applyTimeout(statement: Statement) {
+        // Spring...
     }
 
     private class TransactionContext(

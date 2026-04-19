@@ -228,9 +228,32 @@ val senators = dataAccess.select("*")
     .toListOf<Senator>(filter.params)
 ```
 
-## Transaction Plans
+## Transactions
 
-Execute multi-step operations atomically with dependencies between steps:
+Octavius supports two powerful interaction patterns for atomic operations.
+
+### 1. Transaction Blocks (Imperative)
+The simplest way to execute multiple operations. Transactions follow a fail-fast policy: they are automatically rolled back if the block returns `DataResult.Failure` or throws an exception.
+
+```kotlin
+val result = dataAccess.transaction { tx ->
+    val citizenId = tx.insertInto("citizens")
+        .value("name")
+        .returning("id")
+        .toField<Int>("name" to "Marcus Aurelius")
+        .getOrElse { return@transaction DataResult.Failure(it) }
+
+    tx.insertInto("citizen_profiles")
+        .values(listOf("citizen_id", "bio"))
+        .execute("citizen_id" to citizenId, "bio" to "Stoic philosopher")
+        .getOrElse { return@transaction DataResult.Failure(it) }
+
+    DataResult.Success(citizenId)
+}
+```
+
+### 2. Transaction Plans (Declarative)
+Execute multi-step operations with complex dependencies between steps. Results from previous steps can be referenced in subsequent steps without nested callbacks or manual state management.
 
 ```kotlin
 val plan = TransactionPlan()
@@ -358,14 +381,15 @@ For detailed guides and examples, see the [full documentation](docs/README.md):
 - [Parameter Handling](docs/parameter-handling.md) - Named parameters (@), JSONB operator escaping (?), collections & flattening, unnest and bulk operations
 - [Data Mapping](docs/data-mapping.md) - toDataMap(), toDataObject(), @MapKey, nested structures
 - [ORM-Like Patterns](docs/orm-patterns.md) - CRUD patterns, real-world examples
-- [Transactions](docs/transactions.md) - Transaction plans, StepHandle, passing data between steps
+- [Transactions](docs/transactions.md) - Transaction blocks, TransactionPlan, StepHandle, passing data between steps , propagation, isolation, read-only, timeouts, errors and Concurrency & Thread Safety
 - [Notifications](docs/notifications.md) - LISTEN/NOTIFY, PgChannelListener, Flow-based receiving
 - [Error Handling](docs/error-handling.md) - Exception hierarchy, debugging
 - [Type System](docs/type-system.md) - @PgEnum, @PgComposite, @DynamicallyMappable, dynamic data insertion, standard type mappings
 
 ## Architecture
 
-| Module | Platform      | Description                                                   |
-|--------|---------------|---------------------------------------------------------------|
-| `api`  | Multiplatform | Public API, interfaces; annotations with no JVM dependencies. |
-| `core` | JVM           | Implementation using Spring JDBC & HikariCP.                  |
+| Module               | Platform      | Description                                                      |
+|----------------------|---------------|------------------------------------------------------------------|
+| `api`                | Multiplatform | Public API, interfaces; annotations with no JVM dependencies.    |
+| `core`               | JVM           | **Zero-dependency** core engine. Pure JDBC & HikariCP.           |
+| `spring-integration` | JVM           | Optional integration for Spring Boot (`@Transactional` support). |

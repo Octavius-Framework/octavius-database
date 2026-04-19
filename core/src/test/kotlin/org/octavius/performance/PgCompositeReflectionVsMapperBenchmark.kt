@@ -11,7 +11,7 @@ import org.octavius.database.OctaviusDatabase
 import org.octavius.database.config.DatabaseConfig
 import org.octavius.database.config.DynamicDtoSerializationStrategy
 import org.octavius.database.jdbc.JdbcTemplate
-import org.octavius.database.jdbc.SpringJdbcTransactionProvider
+import org.octavius.database.jdbc.DefaultJdbcTransactionProvider
 import org.octavius.domain.test.reflvsmap.CharMap
 import org.octavius.domain.test.reflvsmap.CharRefl
 import org.octavius.domain.test.reflvsmap.StatsMap
@@ -46,7 +46,7 @@ class PgCompositeReflectionVsMapperBenchmark {
             maximumPoolSize = 5
         }
 
-        val jdbcTemplate = JdbcTemplate(SpringJdbcTransactionProvider(dataSource))
+        val jdbcTemplate = JdbcTemplate(DefaultJdbcTransactionProvider(dataSource))
         jdbcTemplate.execute("DROP TABLE IF EXISTS perf_refl CASCADE")
         jdbcTemplate.execute("DROP TABLE IF EXISTS perf_map CASCADE")
         jdbcTemplate.execute("DROP TYPE IF EXISTS perf_char_refl CASCADE")

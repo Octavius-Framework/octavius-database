@@ -4,10 +4,10 @@ package org.octavius.performance
 import com.zaxxer.hikari.HikariDataSource
 import org.junit.jupiter.api.*
 import org.octavius.database.config.DatabaseConfig
+import org.octavius.database.jdbc.DefaultJdbcTransactionProvider
 import org.octavius.database.jdbc.JdbcTemplate
 import org.octavius.database.jdbc.RowMapper
 import org.octavius.database.jdbc.RowMappers
-import org.octavius.database.jdbc.SpringJdbcTransactionProvider
 import org.octavius.database.type.PositionalQuery
 import org.octavius.database.type.PostgresToKotlinConverter
 import org.octavius.database.type.registry.TypeRegistry
@@ -63,7 +63,7 @@ class SimpleTypeOverheadBenchmark {
             maximumPoolSize = 5
         }
 
-        jdbcTemplate = JdbcTemplate(SpringJdbcTransactionProvider(dataSource))
+        jdbcTemplate = JdbcTemplate(DefaultJdbcTransactionProvider(dataSource))
 
         typeRegistry =
             TypeRegistryLoader(

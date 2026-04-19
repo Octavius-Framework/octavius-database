@@ -14,7 +14,10 @@ enum class StatementExceptionMessage {
     INVALID_AUTHORIZATION,
 
     /** Invalid data format, value out of range, or division by zero (SQLSTATE Class 22). */
-    DATA_EXCEPTION
+    DATA_EXCEPTION,
+
+    /** Operation cannot be performed in the current transaction state (SQLSTATE Class 25). */
+    INVALID_TRANSACTION_STATE
 }
 
 class StatementException(
@@ -54,5 +57,8 @@ private fun generateDeveloperMessage(
         
         StatementExceptionMessage.DATA_EXCEPTION -> 
             "Data exception. The provided data is invalid (e.g., value out of range, division by zero, or incorrect format)."
+
+        StatementExceptionMessage.INVALID_TRANSACTION_STATE ->
+            "Invalid transaction state. The operation cannot be performed in the current state of the transaction (e.g., trying to write in a read-only transaction or after a previous error)."
     }
 }

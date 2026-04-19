@@ -14,8 +14,8 @@ import org.octavius.data.getOrThrow
 import org.octavius.database.OctaviusDatabase
 import org.octavius.database.config.DatabaseConfig
 import org.octavius.database.config.DynamicDtoSerializationStrategy
+import org.octavius.database.jdbc.DefaultJdbcTransactionProvider
 import org.octavius.database.jdbc.JdbcTemplate
-import org.octavius.database.jdbc.SpringJdbcTransactionProvider
 
 @PgComposite(name = "mapped_address", mapper = AddressMapper::class)
 data class MappedAddress(val street: String, val city: String)
@@ -61,7 +61,7 @@ class PgCompositeMapperTest {
             password = config.dbPassword
         }
 
-        val jdbcTemplate = JdbcTemplate(SpringJdbcTransactionProvider(dataSource))
+        val jdbcTemplate = JdbcTemplate(DefaultJdbcTransactionProvider(dataSource))
         jdbcTemplate.execute("DROP TABLE IF EXISTS mapper_test CASCADE")
         jdbcTemplate.execute("DROP TYPE IF EXISTS mapped_address CASCADE")
         jdbcTemplate.execute("DROP TYPE IF EXISTS class_mapped_address CASCADE")

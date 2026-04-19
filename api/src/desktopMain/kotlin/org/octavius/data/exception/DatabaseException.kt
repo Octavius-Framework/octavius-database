@@ -82,7 +82,8 @@ class ConcurrencyException(
 
 enum class ConcurrencyErrorType {
     TIMEOUT,
-    DEADLOCK
+    DEADLOCK,
+    SERIALIZATION_FAILURE
 }
 
 class UnknownDatabaseException(

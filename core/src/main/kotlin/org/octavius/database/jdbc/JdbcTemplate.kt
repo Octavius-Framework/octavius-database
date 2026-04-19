@@ -2,9 +2,11 @@ package org.octavius.database.jdbc
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.octavius.database.type.PositionalQuery
+import java.sql.Connection
 import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.SQLException
+import java.sql.Statement
 import javax.sql.DataSource
 
 internal class JdbcTemplate(private val transactionProvider: JdbcTransactionProvider) {
@@ -15,10 +17,22 @@ internal class JdbcTemplate(private val transactionProvider: JdbcTransactionProv
         private val logger = KotlinLogging.logger {}
     }
 
+    private fun Connection.createWrappedStatement(): Statement {
+        return this.createStatement().also {
+            transactionProvider.applyTimeout(it)
+        }
+    }
+
+    private fun Connection.prepareWrappedStatement(sql: String): PreparedStatement {
+        return this.prepareStatement(sql).also {
+            transactionProvider.applyTimeout(it)
+        }
+    }
+
     fun execute(sql: String) {
         val conn = transactionProvider.getConnection()
         try {
-            conn.createStatement().use { stmt ->
+            conn.createWrappedStatement().use { stmt ->
                 @Suppress("SqlSourceToSinkFlow")
                 stmt.execute(sql)
             }
@@ -30,8 +44,7 @@ internal class JdbcTemplate(private val transactionProvider: JdbcTransactionProv
     fun <T> query(query: PositionalQuery, rowMapper: RowMapper<T>): List<T> {
         val conn = transactionProvider.getConnection()
         try {
-            @Suppress("SqlSourceToSinkFlow")
-            return conn.prepareStatement(query.sql).use { ps ->
+            return conn.prepareWrappedStatement(query.sql).use { ps ->
                 setParameters(ps, query.params)
                 ps.executeQuery().use { rs ->
                     val results = mutableListOf<T>()
@@ -50,8 +63,7 @@ internal class JdbcTemplate(private val transactionProvider: JdbcTransactionProv
     fun update(query: PositionalQuery): Int {
         val conn = transactionProvider.getConnection()
         try {
-            @Suppress("SqlSourceToSinkFlow")
-            return conn.prepareStatement(query.sql).use { ps ->
+            return conn.prepareWrappedStatement(query.sql).use { ps ->
                 setParameters(ps, query.params)
                 ps.executeUpdate()
             }
@@ -63,8 +75,7 @@ internal class JdbcTemplate(private val transactionProvider: JdbcTransactionProv
     fun query(query: PositionalQuery, fetchSize: Int, resultSetHandler: (ResultSet) -> Unit) {
         val conn = transactionProvider.getConnection()
         try {
-            @Suppress("SqlSourceToSinkFlow")
-            conn.prepareStatement(query.sql).use { ps ->
+            conn.prepareWrappedStatement(query.sql).use { ps ->
                 setParameters(ps, query.params)
 
                 if (conn.autoCommit) {

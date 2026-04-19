@@ -7,11 +7,12 @@ Octavius Database provides two approaches to transaction management:
 1. **Transaction Blocks** - Imperative transactions using `transaction { }`
 2. **Transaction Plans** - Declarative, multi-step operations with step dependencies
 
-Both approaches support configurable propagation behavior.
+Both approaches support configurable propagation behavior, isolation levels, read-only mode, and timeouts.
 
 ## Table of Contents
 
 - [Transaction Blocks](#transaction-blocks)
+- [Concurrency & Thread Safety](#concurrency--thread-safety)
 - [Transaction Plans](#transaction-plans)
 - [StepHandle API](#stephandle-api)
 - [TransactionValue](#transactionvalue)
@@ -19,6 +20,8 @@ Both approaches support configurable propagation behavior.
 - [TransactionPlanResult](#transactionplanresult)
 - [Null Handling in Transactions](#null-handling-in-transactions)
 - [Transaction Propagation](#transaction-propagation)
+- [Isolation Levels & Read-Only Mode](#isolation-levels--read-only-mode)
+- [Transaction Timeouts](#transaction-timeouts)
 - [Error Handling](#error-handling)
 
 ---
@@ -54,14 +57,26 @@ val result = dataAccess.transaction { tx ->
   - Block returns `DataResult.Failure`
   - An exception is thrown inside the block
 
-### With Propagation
+---
 
+## Concurrency & Thread Safety
+
+### The Thread-Bound Transaction Model
+
+Octavius Database (on JVM) uses a **Thread-Bound Transaction Model**. When you start a transaction, the transaction state and the underlying database connection are bound to the **current thread** using `ThreadLocal`.
+
+The `tx` object provided in the block:
 ```kotlin
-dataAccess.transaction(propagation = TransactionPropagation.REQUIRES_NEW) { tx ->
-    // Always runs in a new, independent transaction
-    // ...
-}
+dataAccess.transaction { tx -> ... }
 ```
+is effectively a handle to the `DataAccess` instance. It does not carry the transaction state itself; instead, any query executed on the **same thread** will automatically pick up the active transaction from the provider.
+
+### Critical Constraints
+
+1. **No Implicit Multi-threading**: Do **NOT** launch new threads inside the transaction block and expect them to participate in the transaction. A new thread will not see the `ThreadLocal` state of the parent thread and will execute its queries in "auto-commit" mode on a fresh connection.
+2. **Coroutine Awareness**: The transaction block is **synchronous**. You cannot call `suspend` functions (like `delay`) directly inside it.
+   - If you need to perform asynchronous operations, they must be completed **before** or **after** the transaction block, or you should use [Transaction Plans](#transaction-plans) which are thread-agnostic during construction.
+   - Do **NOT** use `runBlocking` inside a transaction to call suspend functions, as this can lead to thread starvation and doesn't change the fact that the transaction is bound to the starting thread.
 
 ---
 
@@ -514,6 +529,57 @@ dataAccess.transaction { tx ->
     DataResult.Success(Unit)
 }
 ```
+
+---
+
+## Isolation Levels & Read-Only Mode
+
+Octavius supports standard SQL isolation levels and a read-only flag for optimized performance and consistency.
+
+### IsolationLevel Enum
+
+| Level              | JDBC Equivalent                | Description                                                                  |
+|--------------------|--------------------------------|------------------------------------------------------------------------------|
+| `DEFAULT`          | `TRANSACTION_READ_COMMITTED`   | Uses the current database default (PostgreSQL defaults to Read Committed)    |
+| `READ_UNCOMMITTED` | `TRANSACTION_READ_UNCOMMITTED` | Allows dirty reads (PostgreSQL treats this as Read Committed)                |
+| `READ_COMMITTED`   | `TRANSACTION_READ_COMMITTED`   | Default level. Prevents dirty reads.                                         |
+| `REPEATABLE_READ`  | `TRANSACTION_REPEATABLE_READ`  | Prevents non-repeatable reads.                                               |
+| `SERIALIZABLE`     | `TRANSACTION_SERIALIZABLE`     | Highest isolation. Prevents all anomalies including phantoms and write skew. |
+
+### Usage
+
+```kotlin
+dataAccess.transaction(
+    isolation = IsolationLevel.SERIALIZABLE,
+    readOnly = true  // Optimized for read-only workloads
+) { tx ->
+    // ...
+}
+```
+
+**Note:** In PostgreSQL, flag `readOnly` prevents any modifications to the database during the transaction.
+
+---
+
+## Transaction Timeouts
+
+You can set a timeout for the entire transaction. If the transaction takes longer than the specified time, it will be automatically aborted.
+
+### Usage
+
+```kotlin
+dataAccess.transaction(timeoutSeconds = 5) { tx ->
+    // If operations take > 5s, the transaction fails
+    // ...
+}
+```
+
+### Implementation Details
+
+The mechanism used to enforce the timeout depends on your `JdbcTransactionProvider`:
+
+> - **Core Engine**: Octavius uses PostgreSQL's native `SET LOCAL statement_timeout` at the start of the transaction. This applies directly at the database engine level, resulting in zero JVM overhead and precise query cancellation.
+> - **Spring Integration**: If you use the optional `spring-integration` module, timeouts are delegated to Spring's `DataSourceUtils.applyTransactionTimeout(statement, dataSource)` on every JDBC `Statement` created within the transaction. This ensures that the global transaction timeout is correctly propagated and enforced by the JDBC driver (via `Statement.setQueryTimeout`).
 
 ---
 

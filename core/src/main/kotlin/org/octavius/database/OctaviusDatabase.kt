@@ -12,8 +12,9 @@ import org.octavius.database.OctaviusDatabase.fromDataSource
 import org.octavius.database.config.AppInfo
 import org.octavius.database.config.DatabaseConfig
 import org.octavius.database.config.DynamicDtoSerializationStrategy
+import org.octavius.database.jdbc.DefaultJdbcTransactionProvider
 import org.octavius.database.jdbc.JdbcTemplate
-import org.octavius.database.jdbc.SpringJdbcTransactionProvider
+import org.octavius.database.jdbc.JdbcTransactionProvider
 import org.octavius.database.type.KotlinToPostgresConverter
 import org.octavius.database.type.registry.TypeRegistry
 import org.octavius.database.type.registry.TypeRegistryLoader
@@ -48,10 +49,11 @@ object OctaviusDatabase {
      * 3. Delegating to [fromDataSource] for the rest of the initialization.
      *
      * @param config The framework configuration object.
+     * @param transactionProvider Optional custom transaction manager.
      * @return A fully initialized, thread-safe [DataAccess] instance.
      * @throws InitializationException if connection fails or migrations cannot be applied.
      */
-    fun fromConfig(config: DatabaseConfig): DataAccess {
+    fun fromConfig(config: DatabaseConfig, transactionProvider: JdbcTransactionProvider? = null): DataAccess {
         logger.info { "Initializing DataSource..." }
         // 1. Configuration-dependent setting of `connectionInitSql`
         val connectionInitSql = if (config.setSearchPath && config.dbSchemas.isNotEmpty()) {
@@ -103,6 +105,7 @@ object OctaviusDatabase {
             disableFlyway = config.disableFlyway,
             disableCoreTypeInitialization = config.disableCoreTypeInitialization,
             showBanner = config.showBanner,
+            transactionProvider = transactionProvider,
             onClose = {
                 logger.info { "Closing internal HikariDataSource..." }
                 dataSource.close()
@@ -131,6 +134,7 @@ object OctaviusDatabase {
      * @param disableFlyway If true, Flyway migrations will be skipped entirely.
      * @param disableCoreTypeInitialization If true, skip ensuring framework-specific types exist.
      * @param showBanner If true, prints the Octavius banner to standard output upon successful initialization.
+     * @param transactionProvider Optional custom transaction manager. Defaults to [DefaultJdbcTransactionProvider].
      * @param listenerConnectionFactory Optional factory for creating dedicated connections for LISTEN/NOTIFY. 
      *                                  If null, a default strategy is used (direct DriverManager for Hikari, otherwise directly from DataSource).
      * @param onClose Optional callback executed when the returned [DataAccess] is closed.
@@ -145,11 +149,12 @@ object OctaviusDatabase {
         disableFlyway: Boolean = false,
         disableCoreTypeInitialization: Boolean = false,
         showBanner: Boolean = true,
+        transactionProvider: JdbcTransactionProvider? = null,
         listenerConnectionFactory: (() -> Connection)? = null,
         onClose: (() -> Unit)? = null
     ): DataAccess {
         logger.info { "Initializing OctaviusDatabase..." }
-        val transactionManager = SpringJdbcTransactionProvider(dataSource)
+        val transactionManager = transactionProvider ?: DefaultJdbcTransactionProvider(dataSource)
         val jdbcTemplate = JdbcTemplate(transactionManager)
 
         // 1. Framework Infrastructure (Idempotent)

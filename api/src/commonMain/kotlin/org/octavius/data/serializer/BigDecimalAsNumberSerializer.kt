@@ -1,20 +1,15 @@
-package org.octavius.data.helper
+package org.octavius.data.serializer
 
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.json.JsonDecoder
-import kotlinx.serialization.json.JsonEncoder
-import kotlinx.serialization.json.JsonUnquotedLiteral
-import kotlinx.serialization.json.jsonPrimitive
-import java.math.BigDecimal
+import org.octavius.data.model.BigDecimal
 
 /**
- * JSON serializer for [BigDecimal] that preserves numeric precision.
+ * JSON serializer for [BigDecimal][BigDecimal] that preserves numeric precision.
  *
  * Encodes BigDecimal as an unquoted JSON number literal (not a string),
  * which is important for PostgreSQL's JSONB type to correctly interpret
@@ -32,18 +27,16 @@ import java.math.BigDecimal
  */
 object BigDecimalAsNumberSerializer : KSerializer<BigDecimal> {
     override val descriptor: SerialDescriptor =
-        PrimitiveSerialDescriptor("java.math.BigDecimal", PrimitiveKind.STRING)
+        PrimitiveSerialDescriptor("org.octavius.data.serializer.BigDecimalAsNumberSerializer", PrimitiveKind.STRING)
 
-    @OptIn(ExperimentalSerializationApi::class)
     override fun serialize(encoder: Encoder, value: BigDecimal) {
-        (encoder as JsonEncoder).encodeJsonElement(JsonUnquotedLiteral(value.toPlainString()))
+        encodeBigDecimalNative(encoder, value)
     }
 
     override fun deserialize(decoder: Decoder): BigDecimal {
-        val jsonElement = (decoder as JsonDecoder).decodeJsonElement()
-
-        val content = jsonElement.jsonPrimitive.content
-
-        return BigDecimal(content)
+        return decodeBigDecimalNative(decoder)
     }
 }
+
+internal expect fun encodeBigDecimalNative(encoder: Encoder, value: BigDecimal)
+internal expect fun decodeBigDecimalNative(decoder: Decoder): BigDecimal

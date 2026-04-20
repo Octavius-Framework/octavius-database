@@ -413,11 +413,14 @@ For maximum performance in high-volume scenarios (using **Parallel Lists**), see
 When using enums inside `@DynamicallyMappable` classes, `kotlinx.serialization` defaults to outputting the exact Kotlin enum name. To match PostgreSQL conventions inside the JSON payload, you **must** use `DynamicDtoEnumSerializer`.
 
 ```kotlin
+import org.octavius.data.serializer.DynamicDtoEnumSerializer
+
 // 1. Create a serializer
 object MagistratureSerializer : DynamicDtoEnumSerializer<Magistrature>(
-    serialName = "Magistrature",
+    enumName = "Magistrature",
     entries = Magistrature.entries,
-    pgConvention = CaseConvention.SNAKE_CASE_LOWER
+    pgConvention = CaseConvention.SNAKE_CASE_LOWER,
+    kotlinConvention = CaseConvention.PASCAL_CASE
 )
 
 // 2. Attach it to your Enum
@@ -440,18 +443,64 @@ The library cannot intercept or modify this behavior internally — the serializ
 
 ### Helper Serializers
 
-Octavius provides `BigDecimalAsNumberSerializer` to serialize `java.math.BigDecimal` as an unquoted JSON number literal, preserving full numeric precision in JSONB.
+Octavius provides specialized serializers in the `org.octavius.data.serializer` package to ensure correct mapping between Kotlin types and PostgreSQL's JSONB (`dynamic_dto`) format.
+
+#### High-Precision Numbers (BigDecimal)
+
+The `BigDecimalAsNumberSerializer` ensures that `BigDecimal` is serialized as an unquoted JSON number literal, preserving full numeric precision in JSONB without converting it to a String.
 
 ```kotlin
-import org.octavius.data.helper.BigDecimalAsNumberSerializer
+import org.octavius.data.serializer.BigDecimalAsNumberSerializer
 
-@DynamicallyMappable(typeName = "tribute_record")
 @Serializable
+@DynamicallyMappable("tribute_record")
 data class TributeRecord(
     @Serializable(with = BigDecimalAsNumberSerializer::class)
     val amount: BigDecimal
 )
 // JSONB Output: {"amount": 42000.00} (number, not string)
+```
+
+#### Date and Time with Infinity Support
+
+Standard `kotlinx-datetime` serializers do not support PostgreSQL's `infinity` and `-infinity` values. When these types are used within a `@DynamicallyMappable` class, you should use the Octavius-provided serializers:
+
+| Kotlin Type      | Serializer                            | Description                                      |
+|------------------|---------------------------------------|--------------------------------------------------|
+| `LocalDate`      | `DynamicDtoLocalDateSerializer`       | Maps `DISTANT_FUTURE`/`PAST` to `infinity`       |
+| `LocalDateTime`  | `DynamicDtoLocalDateTimeSerializer`   | Maps `DISTANT_FUTURE`/`PAST` to `infinity`       |
+| `Instant`        | `DynamicDtoInstantSerializer`         | Maps `DISTANT_FUTURE`/`PAST` to `infinity`       |
+
+**Example:**
+```kotlin
+import org.octavius.data.serializer.DynamicDtoLocalDateSerializer
+
+@Serializable
+@DynamicallyMappable("contract_v1")
+data class Contract(
+    @Serializable(with = DynamicDtoLocalDateSerializer::class)
+    val expiryDate: LocalDate
+)
+```
+
+#### The Octavius Serializers Module
+
+To avoid manually attaching serializers to every property, you can use the pre-configured `OctaviusJson` instance or add the `createOctaviusSerializersModule()` to your own `Json` configuration.
+
+```kotlin
+import kotlinx.serialization.Contextual
+import org.octavius.data.serializer.OctaviusJson
+
+// 1. DTO uses @Contextual
+@Serializable
+@DynamicallyMappable("trade_treaty")
+data class TradeTreaty(
+    @Contextual val validUntil: LocalDate,
+    @Contextual val tributeAmount: BigDecimal
+)
+
+// 2. Use the pre-configured Json instance
+val jsonString = OctaviusJson.encodeToString(treaty)
 ```
 
 ---

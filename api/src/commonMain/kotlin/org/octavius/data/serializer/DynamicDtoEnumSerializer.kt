@@ -1,4 +1,4 @@
-package org.octavius.data.helper
+package org.octavius.data.serializer
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
@@ -9,12 +9,20 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import org.octavius.data.util.CaseConvention
 import org.octavius.data.util.CaseConverter
+import kotlin.enums.EnumEntries
 
 /**
- * Base serializer for enum values used within [DynamicDto][org.octavius.data.type.DynamicDto].
+ * A specialized serializer for mapping Kotlin Enums to their PostgreSQL representations 
+ * within `dynamic_dto`.
  *
- * Handles conversion between Kotlin enum names and PostgreSQL storage conventions.
- * Extend this class to create a serializer for your specific enum type.
+ * This serializer is essential when your Enums use different naming conventions 
+ * in Kotlin (e.g., `PascalCase`) and PostgreSQL (e.g., `SNAKE_CASE_UPPER`). 
+ * It ensures that the value stored in the JSONB payload of a `dynamic_dto` 
+ * correctly matches the database's expectations.
+ *
+ * ### Key Features
+ * - **Bidirectional Mapping**: Automatically converts names during both serialization and deserialization.
+ * - **Convention Support**: Integrates with [CaseConvention] for flexible name transformations.
  *
  * ### Usage Example
  * ```kotlin
@@ -23,30 +31,28 @@ import org.octavius.data.util.CaseConverter
  * enum class OrderStatus { Pending, InProgress, Completed }
  *
  * object OrderStatusSerializer : DynamicDtoEnumSerializer<OrderStatus>(
- *     serialName = "OrderStatus",
+ *     enumName = "OrderStatus",
  *     entries = OrderStatus.entries,
  *     pgConvention = CaseConvention.SNAKE_CASE_UPPER,
  *     kotlinConvention = CaseConvention.PASCAL_CASE
  * )
  * ```
  *
- * @param E The enum type to serialize.
- * @param serialName Name used in the serialization descriptor.
- * @param entries List of all enum values (use `EnumClass.entries`).
- * @param pgConvention Naming convention used in PostgreSQL (e.g., 'PENDING', 'in_progress').
- * @param kotlinConvention Naming convention used in Kotlin enum (e.g., Pending, InProgress).
+ * @param E The enum class to be serialized.
+ * @param enumName A unique identifier for the enum in the serialization descriptor.
+ * @param entries The list of all enum values (typically provided via `EnumClass.entries`).
+ * @param pgConvention The naming convention used in the database (default: `SNAKE_CASE_UPPER`).
+ * @param kotlinConvention The naming convention used in your Kotlin code (default: `PASCAL_CASE`).
  */
 open class DynamicDtoEnumSerializer<E : Enum<E>>(
-    serialName: String,
-    private val entries: List<E>, // Pass the list of values
-    // How values are stored in PostgreSQL database (e.g., 'PENDING', 'in_progress')
+    enumName: String,
+    private val entries: EnumEntries<E>,
     private val pgConvention: CaseConvention = CaseConvention.SNAKE_CASE_UPPER,
-    // How values are stored in Kotlin Enum class (e.g., Pending, InProgress)
     private val kotlinConvention: CaseConvention = CaseConvention.PASCAL_CASE
 ) : KSerializer<E> {
 
     override val descriptor: SerialDescriptor =
-        PrimitiveSerialDescriptor(serialName, PrimitiveKind.STRING)
+        PrimitiveSerialDescriptor("org.octavius.data.serializer.$enumName", PrimitiveKind.STRING)
 
     override fun serialize(encoder: Encoder, value: E) {
         val pgName = CaseConverter.convert(
@@ -60,9 +66,7 @@ open class DynamicDtoEnumSerializer<E : Enum<E>>(
     override fun deserialize(decoder: Decoder): E {
         val string = decoder.decodeString()
 
-        // Reverse logic is also here ONCE
-        // Note: This can be optimized with a map if performance is critical,
-        // but for enums this is usually negligible.
+        // Convert from database convention back to Kotlin convention
         val kotlinName = CaseConverter.convert(
             string,
             pgConvention,
@@ -70,6 +74,6 @@ open class DynamicDtoEnumSerializer<E : Enum<E>>(
         )
 
         return entries.firstOrNull { it.name == kotlinName }
-            ?: throw SerializationException("Unknown $descriptor name: $string")
+            ?: throw SerializationException("Unknown $descriptor name: $string (mapped from $kotlinName)")
     }
 }

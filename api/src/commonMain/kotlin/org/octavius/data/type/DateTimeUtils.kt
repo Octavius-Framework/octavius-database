@@ -2,10 +2,6 @@ package org.octavius.data.type
 
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.toKotlinLocalDate
-import kotlinx.datetime.toKotlinLocalDateTime
-import java.time.LocalDate as JLocalDate
-import java.time.LocalDateTime as JLocalDateTime
 
 /**
  * Extension properties for kotlinx.datetime types to support PostgreSQL infinity values.
@@ -37,32 +33,20 @@ import java.time.LocalDateTime as JLocalDateTime
 
 /**
  * The minimum LocalDate value, maps to PostgreSQL '-infinity' for DATE type.
- *
- * @see java.time.LocalDate.MIN
  */
-actual val LocalDate.Companion.DISTANT_PAST: LocalDate
-    get() = JLocalDate.MIN.toKotlinLocalDate()
+expect val LocalDate.Companion.DISTANT_PAST: LocalDate
 
 /**
  * The maximum LocalDate value, maps to PostgreSQL 'infinity' for DATE type.
- *
- * @see java.time.LocalDate.MAX
  */
-actual val LocalDate.Companion.DISTANT_FUTURE: LocalDate
-    get() = JLocalDate.MAX.toKotlinLocalDate()
+expect val LocalDate.Companion.DISTANT_FUTURE: LocalDate
 
 /**
  * The minimum LocalDateTime value, maps to PostgreSQL '-infinity' for TIMESTAMP type.
- *
- * @see java.time.LocalDateTime.MIN
  */
-actual val LocalDateTime.Companion.DISTANT_PAST: LocalDateTime
-    get() = JLocalDateTime.MIN.toKotlinLocalDateTime()
+expect val LocalDateTime.Companion.DISTANT_PAST: LocalDateTime
 
 /**
  * The maximum LocalDateTime value, maps to PostgreSQL 'infinity' for TIMESTAMP type.
- *
- * @see java.time.LocalDateTime.MAX
  */
-actual val LocalDateTime.Companion.DISTANT_FUTURE: LocalDateTime
-    get() = JLocalDateTime.MAX.toKotlinLocalDateTime()
+expect val LocalDateTime.Companion.DISTANT_FUTURE: LocalDateTime

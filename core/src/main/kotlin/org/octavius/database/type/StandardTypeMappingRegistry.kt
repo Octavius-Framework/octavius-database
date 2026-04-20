@@ -41,7 +41,6 @@ internal data class StandardTypeHandler<T : Any>(
  * - **Reading**: Result Set -> Kotlin, String (Literal) -> Kotlin
  * - **Writing**: Kotlin -> JDBC Parameter, Kotlin -> String (Text Protocol/Literal)
  */
-@OptIn(ExperimentalTime::class)
 internal object StandardTypeMappingRegistry {
 
     private const val PG_INFINITY = "infinity"

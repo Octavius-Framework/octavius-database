@@ -8,29 +8,32 @@ import org.octavius.data.annotation.DynamicallyMappable
 import org.octavius.data.annotation.PgComposite
 import org.octavius.data.exception.ConversionException
 import org.octavius.data.exception.ConversionExceptionMessage
+import org.octavius.data.serializer.OctaviusJson
 import kotlin.reflect.KClass
 import kotlin.reflect.full.findAnnotation
 
 /**
- * Represents a polymorphic object ready for database storage.
+ * Represents a polymorphic object for database storage, mapping to the `dynamic_dto` PostgreSQL type.
  *
- * This class is a public API and "transport container" that unambiguously
- * wraps any object marked with the [DynamicallyMappable] annotation into a structure
- * understandable by the framework and PostgreSQL database. Corresponds to the
- * `dynamic_dto` type in the database.
+ * `DynamicDto` acts as a "transport container" that bundles a type name and a JSON payload. 
+ * This allows PostgreSQL to store and query polymorphic data structures without requiring
+ * dedicated `COMPOSITE` types. Corresponds to the `dynamic_dto` type in the database.
  *
- * Serves as an explicit, controlled way to prepare polymorphic data for writing,
- * providing an alternative to the framework's fully automatic conversion mechanism.
+ * ### Asymmetric Data Flow
+ * - **Writing (Kotlin -> DB)**: Wrap your domain object in a `DynamicDto` using [DynamicDto.from]. 
+ *   The framework converts this into the database's `dynamic_dto(text, jsonb)` structure.
+ * - **Reading (DB -> Kotlin)**: The framework automatically unmarshals `dynamic_dto` values 
+ *   directly into your domain classes (annotated with [DynamicallyMappable]).
  *
- * **Write and Read Asymmetry:**
- * - **On write:** You use this class (or its `from()` factory) to "pack"
- *   your domain object.
- * - **On read:** The framework automatically "unpacks" data and returns
- *   directly the domain object (e.g., `DynamicProfile`), not a `DynamicDto` instance.
+ * ### Example: Writing Polymorphic Data
+ * ```kotlin
+ * val profile: UserProfile = UserProfile(bio = "Hello!")
+ * val dto = DynamicDto.from(profile)
+ * dataAccess.insertInto("users").values("id" to 1, "profile_data" to dto).execute()
+ * ```
  *
- * @property typeName Key identifying the object type, retrieved from the [DynamicallyMappable] annotation.
- * @property dataPayload Object serialized to [JsonElement] form.
- * @see DynamicallyMappable
+ * @property typeName Identifier linked to a [DynamicallyMappable] class.
+ * @property dataPayload The serialized state of the object as a [JsonElement].
  */
 @ConsistentCopyVisibility
 @PgComposite(name = "dynamic_dto", schema = "public")
@@ -40,17 +43,16 @@ data class DynamicDto private constructor(
 ) {
     companion object {
         /**
-         * Convenient factory method for creating a [DynamicDto] instance from a domain object.
+         * Creates a [DynamicDto] instance from a domain object.
          *
-         * This is the preferred path for end users. Uses reflection to
-         * automatically find the `typeName` from the [DynamicallyMappable] annotation
-         * and serializes the object to [JsonElement].
+         * This factory method uses reflection to find the [DynamicallyMappable] annotation
+         * on the object's class to determine the `typeName` and serializes the object's 
+         * properties into a JSON payload.
          *
-         * @param value Object instance to wrap. Must have the
-         *              [DynamicallyMappable] and `@Serializable` annotations.
-         * @return New, fully constructed [DynamicDto] instance.
-         * @throws ConversionException if the object's class doesn't have the required annotation
-         *                           or if an error occurs during JSON serialization.
+         * @param value The object to wrap. Must be annotated with [DynamicallyMappable] 
+         *              and `@Serializable`.
+         * @return A constructed [DynamicDto] ready for database operations.
+         * @throws ConversionException if annotations are missing or serialization fails.
          */
         inline fun <reified T: Any> from(value: T): DynamicDto {
             @Suppress("UNCHECKED_CAST")
@@ -88,7 +90,7 @@ data class DynamicDto private constructor(
         fun from(value: Any, typeName: String, serializer: KSerializer<Any>): DynamicDto {
             try {
                 // Serialization to JsonElement
-                val jsonPayload = Json.encodeToJsonElement(serializer, value)
+                val jsonPayload = OctaviusJson.encodeToJsonElement(serializer, value)
 
                 return DynamicDto(typeName, jsonPayload)
             } catch (e: Exception) {

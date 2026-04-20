@@ -1,5 +1,6 @@
 package org.octavius.data
 
+import org.octavius.data.annotation.MapKey
 import org.octavius.data.exception.ConversionException
 import org.octavius.data.exception.ConversionExceptionMessage
 import org.octavius.data.util.toSnakeCase
@@ -8,23 +9,6 @@ import kotlin.reflect.*
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.full.primaryConstructor
-
-/**
- * Annotation used to specify a custom key for a property
- * during object to/from map conversion.
- *
- * By default, the property name is used with snake_case <-> camelCase conversion. This annotation allows overriding it,
- * which is useful when map key names should not match property names
- * e.g., userId vs user
- *
- * @property name Key name that will be used in the map.
- *
- * @see toDataObject
- * @see toDataMap
- */
-@Target(AnnotationTarget.PROPERTY)
-@Retention(AnnotationRetention.RUNTIME)
-annotation class MapKey(val name: String)
 
 // --- Shared Cache and Metadata for both conversions ---
 

@@ -1,6 +1,6 @@
 package org.octavius.domain.test.weird
 
-import org.octavius.data.MapKey
+import org.octavius.data.annotation.MapKey
 import org.octavius.data.annotation.PgComposite
 import org.octavius.data.annotation.PgEnum
 

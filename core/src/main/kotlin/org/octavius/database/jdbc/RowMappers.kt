@@ -85,7 +85,7 @@ internal class RowMappers(
      * Naming conventions:
      * Column names in SQL (e.g., `user_id`) are automatically matched to class properties (e.g., `userId`)
      * using the standard `snake_case` -> `camelCase` transformation,
-     * for custom name mapping use [MapKey][org.octavius.data.MapKey] annotation.
+     * for custom name mapping use [MapKey][org.octavius.data.annotation.MapKey] annotation.
      *
      * @param T The target type.
      * @param kClass The Kotlin class to map into.

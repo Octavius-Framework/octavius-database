@@ -311,6 +311,33 @@ dataAccess.createChannelListener().use { listener ->
 
 Each `PgChannelListener` holds its own dedicated JDBC connection, separate from the query pool. Notifications sent inside a transaction are only delivered after commit.
 
+## Error Handling
+
+Octavius distinguishes between **Database Execution Errors** (returned safely) and **Fatal/Setup Errors** (thrown).
+
+- **Queries Never Throw:** If a query reaches the database, it returns a `DataResult.Failure(error)` instead of throwing. This forces explicit handling of database errors like constraint violations or syntax issues.
+- **Rich Context:** Every `DatabaseException` includes a `QueryContext` that provides a framed visualization of the SQL and parameters involved (great for logging!).
+- **Structured Exceptions:** Specific types like `ConstraintViolationException` provide direct access to table and constraint names.
+
+```kotlin
+val result = dataAccess.insertInto("citizens")
+    .value("name")
+    .returning("id")
+    .toField<Int>("name" to "Marcus Aurelius")
+
+result
+    .onSuccess { id -> println("New citizen ID: $id") }
+    .onFailure { error ->
+        when (error) {
+            is ConstraintViolationException -> println("Conflict in: ${error.constraintName}")
+            is StatementException -> println("SQL Syntax error: ${error.messageEnum}")
+            else -> println("Database error: $error")
+        }
+    }
+```
+
+See [Error Handling](docs/error-handling.md) for the full exception hierarchy and debugging tips.
+
 ## Configuration
 
 ### Using Properties File

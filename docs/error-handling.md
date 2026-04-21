@@ -114,13 +114,14 @@ Returned when the SQL statement itself is invalid or fails due to database-level
 
 ### Error Types (`StatementExceptionMessage`)
 
-| Enum Value              | PostgreSQL Class / State | Description                                     |
-|-------------------------|--------------------------|-------------------------------------------------|
-| `SYNTAX_ERROR`          | Class 426xx              | Malformed SQL or syntax errors                  |
-| `OBJECT_NOT_FOUND`      | Class 42Pxx / 427xx      | Missing table, column, or function              |
-| `PERMISSION_DENIED`     | 42501                    | Insufficient privileges for the operation       |
-| `INVALID_AUTHORIZATION` | Class 28                 | Failed authentication or invalid role           |
-| `DATA_EXCEPTION`        | Class 22                 | Invalid data format, value out of range, etc.   |
+| Enum Value                  | PostgreSQL Class / State | Description                                   |
+|-----------------------------|--------------------------|-----------------------------------------------|
+| `SYNTAX_ERROR`              | Class 426xx              | Malformed SQL or syntax errors                |
+| `OBJECT_NOT_FOUND`          | Class 42Pxx / 427xx      | Missing table, column, or function            |
+| `PERMISSION_DENIED`         | 42501                    | Insufficient privileges for the operation     |
+| `INVALID_AUTHORIZATION`     | Class 28                 | Failed authentication or invalid role         |
+| `DATA_EXCEPTION`            | Class 22                 | Invalid data format, value out of range, etc. |
+| `INVALID_TRANSACTION_STATE` | Class 25                 | Invalid state (e.g. read-only violation)      |
 
 ---
 
@@ -155,9 +156,9 @@ Returned during transaction-related conflicts or when query execution takes too 
 
 ### Properties
 
-| Property    | Type                   | Description                               |
-|-------------|------------------------|-------------------------------------------|
-| `errorType` | `ConcurrencyErrorType` | Either `TIMEOUT` or `DEADLOCK`            |
+| Property    | Type                   | Description                                       |
+|-------------|------------------------|---------------------------------------------------|
+| `errorType` | `ConcurrencyErrorType` | `TIMEOUT`, `DEADLOCK`, or `SERIALIZATION_FAILURE` |
 
 ---
 

@@ -53,7 +53,6 @@ class JsonCompositeIntegrationTest {
             dataSource = dataSource,
             packagesToScan = listOf("org.octavius.domain.test.json"),
             dbSchemas = databaseConfig.dbSchemas,
-            disableFlyway = true,
             disableCoreTypeInitialization = false
         )
     }

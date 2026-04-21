@@ -49,8 +49,7 @@ class JsonOperatorIntegrationTest {
         dataAccess = OctaviusDatabase.fromDataSource(
             dataSource = dataSource,
             packagesToScan = emptyList(),
-            dbSchemas = listOf("public"),
-            disableFlyway = true
+            dbSchemas = listOf("public")
         )
     }
 

@@ -75,7 +75,6 @@ class ComprehensiveBulkInsertBenchmark {
             dataSource = dataSource,
             packagesToScan = listOf("org.octavius.domain.test.bulkinsert"),
             dbSchemas = databaseConfig.dbSchemas,
-            disableFlyway = true,
             disableCoreTypeInitialization = true
         )
         println("Performance test table and composite type created.")

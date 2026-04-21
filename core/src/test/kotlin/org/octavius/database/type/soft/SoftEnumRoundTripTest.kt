@@ -69,7 +69,6 @@ class SoftEnumRoundTripTest {
             listOf("org.octavius.database.type.soft"),
             baseConfig.dbSchemas,
             DynamicDtoSerializationStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS,
-            disableFlyway = true
         )
     }
 

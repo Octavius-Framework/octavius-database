@@ -32,7 +32,6 @@ dependencies {
     implementation(libs.postgres)
     implementation(libs.hikari)
     implementation(libs.classgraph)
-    implementation(libs.flyway.postgres)
 
     // Test dependencies
     testImplementation(platform(libs.junit.bom))

@@ -14,4 +14,4 @@ dependencyResolutionManagement {
     }
 }
 
-include(":api", ":core", ":spring-integration")
+include(":api", ":core", ":spring-integration", ":flyway-integration")

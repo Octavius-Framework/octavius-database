@@ -19,7 +19,7 @@ class ExceptionIntegrationTest {
 
     @BeforeAll
     fun setup() {
-        config = DatabaseConfig.loadFromFile("test-database.properties").copy(disableFlyway = true, disableCoreTypeInitialization = true)
+        config = DatabaseConfig.loadFromFile("test-database.properties")
     }
 
     @Test

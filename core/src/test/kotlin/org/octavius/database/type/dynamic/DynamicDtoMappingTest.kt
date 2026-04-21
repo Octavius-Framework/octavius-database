@@ -62,7 +62,6 @@ class DynamicDtoMappingTest {
             dataSource = dataSource,
             packagesToScan = listOf("org.octavius.domain.test.dynamic"),
             dbSchemas = databaseConfig.dbSchemas,
-            disableFlyway = true,
             disableCoreTypeInitialization = true
         )
     }

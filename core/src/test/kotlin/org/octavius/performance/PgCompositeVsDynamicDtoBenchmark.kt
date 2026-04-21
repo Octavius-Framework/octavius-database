@@ -76,7 +76,6 @@ class PgCompositeVsDynamicDtoBenchmark {
             listOf("org.octavius.domain.test.compositevsdynamic"),
             databaseConfig.dbSchemas,
             DynamicDtoSerializationStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS,
-            disableFlyway = true,
             disableCoreTypeInitialization = true
         )
 

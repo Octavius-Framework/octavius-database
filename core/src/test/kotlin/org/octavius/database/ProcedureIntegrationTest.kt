@@ -20,7 +20,6 @@ class ProcedureIntegrationTest {
     @BeforeAll
     fun setup() {
         val config = DatabaseConfig.loadFromFile("test-database.properties").copy(
-            disableFlyway = true,
             disableCoreTypeInitialization = true
         )
         dataAccess = OctaviusDatabase.fromConfig(config)

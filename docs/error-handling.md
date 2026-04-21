@@ -67,7 +67,7 @@ It inherits directly from **`RuntimeException`** and is **NOT** wrapped in `Data
 | `CONNECTION_FAILED`                 | Failed to establish connection or initialize pool        |
 | `CLASSPATH_SCAN_FAILED`             | Error scanning project for annotations                   |
 | `DB_QUERY_FAILED`                   | Failed to fetch metadata from PostgreSQL                 |
-| `MIGRATION_FAILED`                  | Flyway migration failed                                  |
+| `MIGRATION_FAILED`                  | Database migration failed (e.g., via Flyway integration) |
 | `TYPE_DEFINITION_MISSING_IN_DB`     | Annotated class exists, but CREATE TYPE is missing in DB |
 | `DUPLICATE_PG_TYPE_DEFINITION`      | Conflict between two @PgType names                       |
 | `DUPLICATE_DYNAMIC_TYPE_DEFINITION` | Conflict between two @DynamicallyMappable keys           |

@@ -9,7 +9,7 @@ import org.octavius.database.jdbc.JdbcTemplate
 /**
  * Manages the initialization of core PostgreSQL types and functions required by the Octavius framework.
  *
- * This component runs immediately after connection establishment and before any Flyway migrations,
+ * This component runs immediately after connection establishment and before any migrations,
  * ensuring that the database infrastructure is ready for the framework to operate.
  *
  * ## The `dynamic_dto` Type

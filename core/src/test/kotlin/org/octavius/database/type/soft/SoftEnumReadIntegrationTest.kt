@@ -82,7 +82,6 @@ class SoftEnumReadIntegrationTest {
             dataSource = dataSource,
             packagesToScan = listOf("org.octavius.database.type.soft"),
             dbSchemas = databaseConfig.dbSchemas,
-            disableFlyway = true,
             disableCoreTypeInitialization = true
         )
     }

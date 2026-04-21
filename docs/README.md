@@ -8,7 +8,7 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 
 | Document                                              | Description                                                                                                                          |
 |-------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
-| [Configuration](configuration.md)                     | Initialization, DatabaseConfig, Flyway, core types, DynamicDto strategy                                                              |
+| [Configuration](configuration.md)                     | Initialization, DatabaseConfig, Flyway (optional), core types, DynamicDto strategy                                                              |
 | [Lifecycle & Shutdown](lifecycle-and-shutdown.md)     | Proper cleanup, .use {} block, common integration patterns                                                                           |
 | [Query Builders](query-builders.md)                   | SELECT, INSERT, UPDATE, DELETE, raw queries, CTEs, subqueries, ON CONFLICT                                                           |
 | [Functions & Procedures](functions-and-procedures.md) | Calling functions and procedures                                                                                                     |
@@ -106,7 +106,7 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 - [Initialization](configuration.md#initialization) - `fromConfig()` and `fromDataSource()`
 - [DatabaseConfig Reference](configuration.md#databaseconfig-reference) - All configuration options
 - [Properties File Reference](configuration.md#properties-file) - All property keys (including HikariCP)
-- [Flyway Migrations](configuration.md#flyway-migrations) - Automatic migrations and baselining
+- [Flyway Migrations](configuration.md#flyway-migrations) - Optional migration runner integration
 - [Core Type Initialization](configuration.md#core-type-initialization) - `dynamic_dto` setup
 - [DynamicDto Strategy](configuration.md#dynamicdto-serialization-strategy) - Serialization options
 - [Connection Pool](configuration.md#connection-pool) - HikariCP customization

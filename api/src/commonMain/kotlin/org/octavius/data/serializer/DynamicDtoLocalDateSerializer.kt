@@ -13,7 +13,7 @@ import org.octavius.data.type.DISTANT_PAST
 /**
  * Serializer for [LocalDate] that supports PostgreSQL's `infinity` and `-infinity` values.
  *
- * This serializer ensures that [LocalDate.DISTANT_FUTURE] and [LocalDate.DISTANT_PAST] 
+ * This serializer ensures that [LocalDate.Companion.DISTANT_FUTURE] and [LocalDate.Companion.DISTANT_PAST]
  * are correctly converted to `infinity` and `-infinity` strings respectively,
  * which are understood by PostgreSQL.
  */

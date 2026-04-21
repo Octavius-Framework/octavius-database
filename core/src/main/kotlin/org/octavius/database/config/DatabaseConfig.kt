@@ -15,8 +15,6 @@ import java.util.*
  * @property setSearchPath Whether HikariCP should set `search_path` on connection initialization to all schemas.
  * @property packagesToScan List of packages to scan by ClassGraph for type annotations.
  * @property dynamicDtoStrategy Strategy for serializing classes as DynamicDto.
- * @property flywayBaselineVersion If not null, indicates which version Flyway should treat the existing schema as.
- * @property disableFlyway Disable automatic Flyway migrations.
  * @property disableCoreTypeInitialization Disable automatic creation of framework types (e.g., `dynamic_dto`).
  *           Use when the application lacks DDL privileges and schema is managed externally.
  */
@@ -28,8 +26,6 @@ data class DatabaseConfig(
     val setSearchPath: Boolean,
     val packagesToScan: List<String>,
     val dynamicDtoStrategy: DynamicDtoSerializationStrategy = DynamicDtoSerializationStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS,
-    val flywayBaselineVersion: String? = null,
-    val disableFlyway: Boolean = false,
     val disableCoreTypeInitialization: Boolean = false,
     val showBanner: Boolean = true,
     val hikariProperties: Map<String, String> = emptyMap(),
@@ -88,8 +84,6 @@ data class DatabaseConfig(
                 dynamicDtoStrategyString?.let { DynamicDtoSerializationStrategy.valueOf(dynamicDtoStrategyString) }
                     ?: DynamicDtoSerializationStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS
 
-            val flywayBaselineVersion: String? = props.getProperty("db.flywayBaselineVersion")
-            val disableFlyway: Boolean = props.getProperty("db.disableFlyway").toBoolean()
             val disableCoreTypeInitialization: Boolean = props.getProperty("db.disableCoreTypeInitialization").toBoolean()
             val showBanner: Boolean = props.getProperty("db.showBanner", "true").toBoolean()
 
@@ -104,8 +98,6 @@ data class DatabaseConfig(
             logger.debug { "Set search_path on connect: $setSearchPath" }
             logger.debug { "Packages to scan for types: ${packages.joinToString()}" }
             logger.debug { "DynamicDTO strategy: $dynamicDtoStrategy" }
-            logger.debug { "Flyway baseline version: $flywayBaselineVersion" }
-            logger.debug { "Disable flyway migrations: $disableFlyway" }
             logger.debug { "Disable core type initialization: $disableCoreTypeInitialization" }
             if (hikariProperties.isNotEmpty()) {
                 logger.debug { "HikariCP extra properties: ${hikariProperties.keys.joinToString()}" }
@@ -119,8 +111,6 @@ data class DatabaseConfig(
                 setSearchPath = setSearchPath,
                 packagesToScan = packages,
                 dynamicDtoStrategy = dynamicDtoStrategy,
-                flywayBaselineVersion = flywayBaselineVersion,
-                disableFlyway = disableFlyway,
                 disableCoreTypeInitialization = disableCoreTypeInitialization,
                 showBanner = showBanner,
                 hikariProperties = hikariProperties

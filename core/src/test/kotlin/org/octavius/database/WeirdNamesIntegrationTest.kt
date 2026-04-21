@@ -52,7 +52,6 @@ class WeirdNamesIntegrationTest {
             dataSource = dataSource,
             packagesToScan = listOf("org.octavius.domain.test.weird"),
             dbSchemas = listOf("public", "weird schema.with dots"),
-            disableFlyway = true,
             disableCoreTypeInitialization = true
         )
     }

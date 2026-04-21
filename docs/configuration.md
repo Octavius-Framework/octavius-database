@@ -59,8 +59,6 @@ val dataAccess = OctaviusDatabase.fromConfig(
 | `setSearchPath`                 | `Boolean`                         | No       | `true`                       | Set `search_path` on connection init  |
 | `packagesToScan`                | `List<String>`                    | Yes      | -                            | Packages to scan for type annotations |
 | `dynamicDtoStrategy`            | `DynamicDtoSerializationStrategy` | No       | `AUTOMATIC_WHEN_UNAMBIGUOUS` | How to handle @DynamicallyMappable    |
-| `flywayBaselineVersion`         | `String?`                         | No       | `null`                       | Baseline version for existing schemas |
-| `disableFlyway`                 | `Boolean`                         | No       | `false`                      | Disable automatic migrations          |
 | `disableCoreTypeInitialization` | `Boolean`                         | No       | `false`                      | Disable `dynamic_dto` type creation   |
 | `showBanner`                    | `Boolean`                         | No       | `true`                       | Show Octavius banner on startup       |
 | `hikariProperties`              | `Map<String, String>`             | No       | `emptyMap()`                 | HikariCP & Driver properties          |
@@ -82,8 +80,6 @@ db.packagesToScan=com.roma.domain,com.roma.dto
 # Optional
 db.setSearchPath=true
 db.dynamicDtoStrategy=AUTOMATIC_WHEN_UNAMBIGUOUS
-db.flywayBaselineVersion=
-db.disableFlyway=false
 db.disableCoreTypeInitialization=false
 db.showBanner=true
 
@@ -115,13 +111,38 @@ db.packagesToScan=com.roma.domain.types,com.roma.dto
 
 ## Flyway Migrations
 
-Octavius integrates [Flyway](https://flywaydb.org/) for schema migrations.
+Octavius provides an optional integration with [Flyway](https://flywaydb.org/) for schema migrations via the `:flyway-integration` module.
+
+### Dependency
+
+Add the following to your `build.gradle.kts`:
+
+```kotlin
+implementation("org.octavius:database-flyway-integration:VERSION")
+```
+
+### Usage
+
+To run Flyway migrations during startup, pass a `migrationRunner` to the initialization method:
+
+```kotlin
+val config = DatabaseConfig(/* ... */)
+
+val dataAccess = OctaviusDatabase.fromConfig(
+    config = config,
+    migrationRunner = FlywayMigrationRunner.create(
+        schemas = config.dbSchemas,
+        baselineVersion = "1" // Optional: for existing databases
+    )
+)
+```
 
 ### Default Behavior
 
+When using `FlywayMigrationRunner.create()`:
 - Migrations are loaded from `src/main/resources/db/migration/`
 - Applied automatically on startup
-- Schemas listed in `dbSchemas` are created if they don't exist
+- Schemas listed in `schemas` are created if they don't exist
 
 ### Migration File Naming
 
@@ -133,29 +154,14 @@ src/main/resources/db/migration/
 └── V4__create_province_audit_log.sql
 ```
 
-### Disabling Migrations
-
-When you manage schema externally or in production environments:
-
-```kotlin
-DatabaseConfig(
-    // ...
-    disableFlyway = true
-)
-```
-
-```properties
-db.disableFlyway=true
-```
-
 ### Integrating with Existing Database
 
-When connecting to a database that already has a schema (not managed by Flyway):
+When connecting to a database that already has a schema (not managed by Flyway), use `baselineVersion`:
 
 ```kotlin
-DatabaseConfig(
-    // ...
-    flywayBaselineVersion = "3"  // Treat existing schema as version 3
+migrationRunner = FlywayMigrationRunner.create(
+    schemas = listOf("public"),
+    baselineVersion = "3"  // Treat existing schema as version 3
 )
 ```
 
@@ -163,11 +169,6 @@ Flyway will:
 1. Create `flyway_schema_history` table
 2. Mark versions 1-3 as already applied (baseline)
 3. Only run migrations starting from V4
-
-```properties
-# In properties file
-db.flywayBaselineVersion=3
-```
 
 ---
 
@@ -245,7 +246,7 @@ db.disableCoreTypeInitialization=true
 
 1. **HikariCP** - Connection pool initialized
 2. **Core Types** - `dynamic_dto` created (unless disabled)
-3. **Flyway** - User migrations applied (unless disabled)
+3. **Migration Runner** - Optional `migrationRunner` executed (e.g., Flyway)
 4. **Type Registry** - Scans classpath and database for type mappings
 
 ---
@@ -384,9 +385,8 @@ val dataAccess = OctaviusDatabase.fromDataSource(
     packagesToScan = listOf("com.roma.domain"),
     dbSchemas = listOf("public"),
     dynamicDtoStrategy = DynamicDtoSerializationStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS,
-    flywayBaselineVersion = null,
-    disableFlyway = true,
     disableCoreTypeInitialization = false,
+    migrationRunner = null, // Pass migration runner if needed
     transactionProvider = null // Optional custom transaction manager
 )
 ```
@@ -405,7 +405,7 @@ class OctaviusConfig {
             dataSource = dataSource,
             packagesToScan = listOf("com.roma.domain"),
             dbSchemas = listOf("public"),
-            disableFlyway = true,  // Spring manages Flyway
+            // Flyway is typically managed by Spring Boot directly
             transactionProvider = SpringJdbcTransactionProvider(dataSource)
         )
     }
@@ -487,8 +487,7 @@ fun dataAccess(dataSource: DataSource): DataAccess {
     return OctaviusDatabase.fromDataSource(
         dataSource = dataSource,
         packagesToScan = listOf("com.roma.domain"),
-        dbSchemas = listOf("public"),
-        disableFlyway = true
+        dbSchemas = listOf("public")
         // listenerConnectionFactory auto-resolved from HikariDataSource
     )
 }

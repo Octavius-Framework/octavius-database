@@ -331,7 +331,6 @@ db.hikari.minimumIdle=5
 # Optional settings
 db.setSearchPath=true
 db.dynamicDtoStrategy=AUTOMATIC_WHEN_UNAMBIGUOUS
-db.disableFlyway=false
 db.disableCoreTypeInitialization=false
 ```
 
@@ -364,16 +363,26 @@ val dataAccess = OctaviusDatabase.fromDataSource(existingDataSource, ...)
 
 ## Database Migrations
 
-Octavius Database integrates [Flyway](https://flywaydb.org/) for schema migrations. Migration files are loaded from `src/main/resources/db/migration/` and applied automatically on startup.
+Octavius provides an optional integration with [Flyway](https://flywaydb.org/) for schema migrations via the `:flyway-integration` module.
 
-- To disable automatic migrations, set `disableFlyway = true` in `DatabaseConfig`.
-- To integrate with an existing database, set `flywayBaselineVersion` to the current version. Flyway will treat the existing schema as the baseline.
+```kotlin
+val dataAccess = OctaviusDatabase.fromConfig(
+    config = config,
+    migrationRunner = FlywayMigrationRunner.create(
+        schemas = config.dbSchemas,
+        baselineVersion = "1"
+    )
+)
+```
+
+See [Flyway Migrations](docs/configuration.md#flyway-migrations) in the configuration guide for details.
 
 ## Documentation
 
 For detailed guides and examples, see the [full documentation](docs/README.md):
 
 - [Configuration](docs/configuration.md) - Initialization, HikariCP pool, Flyway, core types, DynamicDto strategy
+- [Multiplatform Support](docs/multiplatform.md) - Shared DTOs, Multiplatform BigDecimal, and JS serializers
 - [Lifecycle & Shutdown](docs/lifecycle-and-shutdown.md) - Proper cleanup, .use {} block, common integration patterns
 - [Query Builders](docs/query-builders.md) - SELECT (FOR UPDATE), INSERT (ON CONFLICT), UPDATE, DELETE, fragments
 - [Functions & Procedures](docs/functions-and-procedures.md) - CALL, SELECT, IN/OUT, PgTyped resolution
@@ -388,8 +397,9 @@ For detailed guides and examples, see the [full documentation](docs/README.md):
 
 ## Architecture
 
-| Module               | Platform      | Description                                                      |
-|----------------------|---------------|------------------------------------------------------------------|
-| `api`                | Multiplatform | Public API, interfaces; annotations with no JVM dependencies.    |
-| `core`               | JVM           | **Zero-dependency** core engine. Pure JDBC & HikariCP.           |
-| `spring-integration` | JVM           | Optional integration for Spring Boot (`@Transactional` support). |
+| Module               | Platform      | Description                                                                            |
+|----------------------|---------------|----------------------------------------------------------------------------------------|
+| `api`                | Multiplatform | **Common:** Annotations & DTOs (JVM/JS). **JVM-only:** Query & Transaction interfaces. |
+| `core`               | JVM           | **Zero-dependency** core engine. Pure JDBC & HikariCP.                                 |
+| `spring-integration` | JVM           | Optional integration for Spring Boot (`@Transactional` support).                       |
+| `flyway-integration` | JVM           | Optional migration runner integration.                                                 |

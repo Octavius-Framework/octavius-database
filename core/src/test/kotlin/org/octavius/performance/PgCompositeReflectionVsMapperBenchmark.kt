@@ -67,7 +67,6 @@ class PgCompositeReflectionVsMapperBenchmark {
             listOf("org.octavius.domain.test.reflvsmap"),
             config.dbSchemas,
             DynamicDtoSerializationStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS,
-            disableFlyway = true,
             disableCoreTypeInitialization = true
         )
 

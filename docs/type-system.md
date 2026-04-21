@@ -441,67 +441,14 @@ This serializer is required because of how kotlinx.serialization works. When you
 
 The library cannot intercept or modify this behavior internally — the serializer is already baked into the generated code. The only way to change how the enum is serialized is to explicitly specify a custom serializer using `@Serializable(with = ...)` on the enum class itself.
 
-### Helper Serializers
+### Helper Serializers & Multiplatform Types
 
-Octavius provides specialized serializers in the `org.octavius.data.serializer` package to ensure correct mapping between Kotlin types and PostgreSQL's JSONB (`dynamic_dto`) format.
+For detailed information on sharing DTOs with frontend applications and using multiplatform types like `BigDecimal`, see the **[Multiplatform Support](multiplatform.md)** guide.
 
-#### High-Precision Numbers (BigDecimal)
-
-The `BigDecimalAsNumberSerializer` ensures that `BigDecimal` is serialized as an unquoted JSON number literal, preserving full numeric precision in JSONB without converting it to a String.
-
-```kotlin
-import org.octavius.data.serializer.BigDecimalAsNumberSerializer
-
-@Serializable
-@DynamicallyMappable("tribute_record")
-data class TributeRecord(
-    @Serializable(with = BigDecimalAsNumberSerializer::class)
-    val amount: BigDecimal
-)
-// JSONB Output: {"amount": 42000.00} (number, not string)
-```
-
-#### Date and Time with Infinity Support
-
-Standard `kotlinx-datetime` serializers do not support PostgreSQL's `infinity` and `-infinity` values. When these types are used within a `@DynamicallyMappable` class, you should use the Octavius-provided serializers:
-
-| Kotlin Type      | Serializer                            | Description                                      |
-|------------------|---------------------------------------|--------------------------------------------------|
-| `LocalDate`      | `DynamicDtoLocalDateSerializer`       | Maps `DISTANT_FUTURE`/`PAST` to `infinity`       |
-| `LocalDateTime`  | `DynamicDtoLocalDateTimeSerializer`   | Maps `DISTANT_FUTURE`/`PAST` to `infinity`       |
-| `Instant`        | `DynamicDtoInstantSerializer`         | Maps `DISTANT_FUTURE`/`PAST` to `infinity`       |
-
-**Example:**
-```kotlin
-import org.octavius.data.serializer.DynamicDtoLocalDateSerializer
-
-@Serializable
-@DynamicallyMappable("contract_v1")
-data class Contract(
-    @Serializable(with = DynamicDtoLocalDateSerializer::class)
-    val expiryDate: LocalDate
-)
-```
-
-#### The Octavius Serializers Module
-
-To avoid manually attaching serializers to every property, you can use the pre-configured `OctaviusJson` instance or add the `createOctaviusSerializersModule()` to your own `Json` configuration.
-
-```kotlin
-import kotlinx.serialization.Contextual
-import org.octavius.data.serializer.OctaviusJson
-
-// 1. DTO uses @Contextual
-@Serializable
-@DynamicallyMappable("trade_treaty")
-data class TradeTreaty(
-    @Contextual val validUntil: LocalDate,
-    @Contextual val tributeAmount: BigDecimal
-)
-
-// 2. Use the pre-configured Json instance
-val jsonString = OctaviusJson.encodeToString(treaty)
-```
+It covers:
+- **`BigDecimalAsNumberSerializer`** - Preserving precision in JSONB.
+- **Date/Time Serializers** - Support for PostgreSQL `infinity`.
+- **OctaviusJson** - Pre-configured JSON instance.
 
 ---
 

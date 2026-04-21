@@ -3,7 +3,6 @@ package org.octavius.database
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.flywaydb.core.Flyway
 import org.octavius.data.DataAccess
 import org.octavius.data.exception.InitializationException
 import org.octavius.data.exception.InitializationExceptionMessage
@@ -33,7 +32,7 @@ import kotlin.time.measureTime
  *
  * Primary responsibilities:
  * - **DataSource Configuration:** Setting up HikariCP with PostgreSQL-optimized defaults.
- * - **Schema Management:** Automatically running Flyway migrations.
+ * - **Schema Management:** Coordinating optional database migrations via `migrationRunner`.
  * - **Type Discovery:** Coordinating [TypeRegistryLoader] to scan classpath and database for custom types (ENUMs, COMPOSITEs).
  * - **Infrastructure Initialization:** Ensuring required PostgreSQL functions (e.g., for Dynamic DTOs) are present.
  */
@@ -53,7 +52,7 @@ object OctaviusDatabase {
      * @return A fully initialized, thread-safe [DataAccess] instance.
      * @throws InitializationException if connection fails or migrations cannot be applied.
      */
-    fun fromConfig(config: DatabaseConfig, transactionProvider: JdbcTransactionProvider? = null): DataAccess {
+    fun fromConfig(config: DatabaseConfig, transactionProvider: JdbcTransactionProvider? = null, migrationRunner: ((DataSource) -> Unit)? = null): DataAccess {
         logger.info { "Initializing DataSource..." }
         // 1. Configuration-dependent setting of `connectionInitSql`
         val connectionInitSql = if (config.setSearchPath && config.dbSchemas.isNotEmpty()) {
@@ -101,11 +100,10 @@ object OctaviusDatabase {
             packagesToScan = config.packagesToScan,
             dbSchemas = config.dbSchemas,
             dynamicDtoStrategy = config.dynamicDtoStrategy,
-            flywayBaselineVersion = config.flywayBaselineVersion,
-            disableFlyway = config.disableFlyway,
             disableCoreTypeInitialization = config.disableCoreTypeInitialization,
             showBanner = config.showBanner,
             transactionProvider = transactionProvider,
+            migrationRunner = migrationRunner,
             onClose = {
                 logger.info { "Closing internal HikariDataSource..." }
                 dataSource.close()
@@ -122,16 +120,14 @@ object OctaviusDatabase {
      *
      * The initialization sequence includes:
      * 1. **Core Type Initialization:** Ensures framework-specific types (like `dynamic_dto`) exist.
-     * 2. **Flyway Migrations:** Runs user-defined migrations from `db/migration`.
+     * 2. **Database Migrations:** Runs optional user-defined migrations via [migrationRunner].
      * 3. **Type Registry Loading:** Scans the database and classpath to build a type metadata map.
      * 4. **Converter Setup:** Initializes bidirectional Kotlin-to-PostgreSQL mapping logic.
      *
      * @param dataSource The pre-configured [DataSource] to use for all database operations.
      * @param packagesToScan List of package names to scan for annotated classes (@PgEnum, @PgComposite, etc.).
-     * @param dbSchemas List of database schemas to scan for type definitions and manage via Flyway.
+     * @param dbSchemas List of database schemas to scan for type definitions.
      * @param dynamicDtoStrategy Strategy for handling Dynamic DTO serialization. Defaults to [DynamicDtoSerializationStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS].
-     * @param flywayBaselineVersion Version to use as the baseline for Flyway. If null, baselining is disabled.
-     * @param disableFlyway If true, Flyway migrations will be skipped entirely.
      * @param disableCoreTypeInitialization If true, skip ensuring framework-specific types exist.
      * @param showBanner If true, prints the Octavius banner to standard output upon successful initialization.
      * @param transactionProvider Optional custom transaction manager. Defaults to [DefaultJdbcTransactionProvider].
@@ -145,12 +141,11 @@ object OctaviusDatabase {
         packagesToScan: List<String>,
         dbSchemas: List<String>,
         dynamicDtoStrategy: DynamicDtoSerializationStrategy = DynamicDtoSerializationStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS,
-        flywayBaselineVersion: String? = null,
-        disableFlyway: Boolean = false,
         disableCoreTypeInitialization: Boolean = false,
         showBanner: Boolean = true,
         transactionProvider: JdbcTransactionProvider? = null,
         listenerConnectionFactory: (() -> Connection)? = null,
+        migrationRunner: ((DataSource) -> Unit)? = null,
         onClose: (() -> Unit)? = null
     ): DataAccess {
         logger.info { "Initializing OctaviusDatabase..." }
@@ -159,22 +154,13 @@ object OctaviusDatabase {
 
         // 1. Framework Infrastructure (Idempotent)
         if (!disableCoreTypeInitialization) {
-            if (!disableFlyway && flywayBaselineVersion == null) {
-                logger.warn { 
-                    "Octavius is initializing core types. If Flyway fails with 'Found non-empty schema', " +
-                    "set 'flywayBaselineVersion' to not null value or set 'disableCoreTypeInitialization' to true " +
-                    "and add types to your migrations manually." 
-                }
-            }
             CoreTypeInitializer.ensureRequiredTypes(jdbcTemplate)
         } else {
             logger.info { "Core type initialization disabled - assuming types already exist in database." }
         }
 
-        // 2. User Migrations (Flyway)
-        if (!disableFlyway) {
-            runMigrations(dataSource, dbSchemas, flywayBaselineVersion)
-        }
+        // 2. User Migrations
+        migrationRunner?.invoke(dataSource)
 
         logger.debug { "Loading type registry..." }
         val typeRegistry: TypeRegistry
@@ -213,41 +199,6 @@ object OctaviusDatabase {
             "Pass a custom listenerConnectionFactory to fromDataSource() to avoid this."
         }
         return { dataSource.connection }
-    }
-
-    private fun runMigrations(dataSource: DataSource, schemas: List<String>, flywayBaselineVersion: String?) {
-        logger.info { "Checking database migrations..." }
-
-        // Flyway configuration
-        val flywayConfig = Flyway.configure()
-            .dataSource(dataSource)
-            .schemas(*schemas.toTypedArray())
-            .locations("classpath:db/migration")
-            .createSchemas(true)
-
-        if (flywayBaselineVersion != null) {
-            flywayConfig
-                .baselineOnMigrate(true)
-                .baselineVersion(flywayBaselineVersion)
-        }
-
-        val flyway = flywayConfig.load()
-
-        try {
-            val result = flyway.migrate()
-            if (result.migrationsExecuted > 0) {
-                logger.info { "Successfully applied ${result.migrationsExecuted} migrations." }
-            } else {
-                logger.debug { "Database is up to date." }
-            }
-        } catch (e: Exception) {
-            logger.error(e) { "Migration failed!" }
-            throw InitializationException(
-                InitializationExceptionMessage.MIGRATION_FAILED,
-                details = e.message,
-                cause = e
-            )
-        }
     }
 
     private fun printBanner() {

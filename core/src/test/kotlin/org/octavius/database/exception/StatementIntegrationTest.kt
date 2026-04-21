@@ -19,10 +19,7 @@ class StatementIntegrationTest {
 
     @BeforeAll
     fun setup() {
-        val config = DatabaseConfig.loadFromFile("test-database.properties").copy(
-            disableFlyway = true,
-            disableCoreTypeInitialization = true
-        )
+        val config = DatabaseConfig.loadFromFile("test-database.properties")
         dataAccess = OctaviusDatabase.fromConfig(config)
     }
 

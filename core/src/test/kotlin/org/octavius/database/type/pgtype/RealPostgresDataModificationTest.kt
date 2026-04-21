@@ -77,7 +77,6 @@ class RealPostgresDataModificationTest {
             dataSource = dataSource,
             packagesToScan = listOf("org.octavius.domain.test.pgtype"),
             dbSchemas = databaseConfig.dbSchemas,
-            disableFlyway = true,
             disableCoreTypeInitialization = true
         )
     }

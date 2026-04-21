@@ -66,8 +66,7 @@ class PolymorphicArrayRoundTripTest {
             dataSource,
             listOf("org.octavius.domain.test.dynamic"),
             baseConfig.dbSchemas,
-            DynamicDtoSerializationStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS,
-            disableFlyway = true
+            DynamicDtoSerializationStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS
         )
     }
 

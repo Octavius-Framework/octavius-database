@@ -40,7 +40,6 @@ class DateTimeInfinityTest {
             dataSource = dataSource,
             packagesToScan = emptyList(),
             dbSchemas = listOf("public"),
-            disableFlyway = true,
             disableCoreTypeInitialization = true
         )
         

@@ -55,7 +55,6 @@ class TransactionPlanExecutorTest {
             dataSource = dataSource,
             packagesToScan = listOf(),
             dbSchemas = dbConfig.dbSchemas,
-            disableFlyway = true,
             disableCoreTypeInitialization = true
         )
     }

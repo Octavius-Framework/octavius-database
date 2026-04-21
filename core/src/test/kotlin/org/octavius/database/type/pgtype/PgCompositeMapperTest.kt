@@ -73,8 +73,7 @@ class PgCompositeMapperTest {
             dataSource,
             listOf("org.octavius.database.type.pgtype"),
             config.dbSchemas,
-            DynamicDtoSerializationStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS,
-            disableFlyway = true
+            DynamicDtoSerializationStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS
         )
     }
 

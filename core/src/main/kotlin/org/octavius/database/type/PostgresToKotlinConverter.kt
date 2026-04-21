@@ -1,11 +1,11 @@
 package org.octavius.database.type
 
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.serialization.json.Json
 import org.octavius.data.exception.ConversionException
 import org.octavius.data.exception.ConversionExceptionMessage
 import org.octavius.data.exception.TypeRegistryException
 import org.octavius.data.exception.TypeRegistryExceptionMessage
+import org.octavius.data.serializer.OctaviusJson
 import org.octavius.data.toDataObject
 import org.octavius.database.type.registry.*
 
@@ -237,7 +237,7 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
         val serializer = typeRegistry.getDynamicSerializer(typeName)
 
         return try {
-            Json.decodeFromString(serializer, jsonDataString)
+            OctaviusJson.decodeFromString(serializer, jsonDataString)
         } catch (e: Exception) {
             throw ConversionException(
                 ConversionExceptionMessage.JSON_DESERIALIZATION_FAILED,

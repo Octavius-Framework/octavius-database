@@ -2,10 +2,19 @@ package org.octavius.data.type
 
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.toKotlinLocalDate
-import kotlinx.datetime.toKotlinLocalDateTime
-import java.time.LocalDate as JLocalDate
-import java.time.LocalDateTime as JLocalDateTime
+import kotlinx.datetime.LocalTime
+
+// max and min Year from class LocalDate
+internal const val YEAR_MIN = -999_999_999
+internal const val YEAR_MAX = 999_999_999
+
+// max and min time from class LocalTime
+internal const val NANOS_PER_ONE = 1_000_000_000
+internal val MIN_TIME: LocalTime = LocalTime(0, 0, 0, 0)
+internal val MAX_TIME: LocalTime = LocalTime(23, 59, 59, NANOS_PER_ONE - 1)
+// max and min time from class LocalDateTime
+internal val MIN_DATETIME: LocalDateTime = LocalDateTime(LocalDate.DISTANT_PAST, MIN_TIME)
+internal val MAX_DATETIME: LocalDateTime = LocalDateTime(LocalDate.DISTANT_FUTURE, MAX_TIME)
 
 /**
  * Extension properties for kotlinx.datetime types to support PostgreSQL infinity values.
@@ -37,32 +46,24 @@ import java.time.LocalDateTime as JLocalDateTime
 
 /**
  * The minimum LocalDate value, maps to PostgreSQL '-infinity' for DATE type.
- *
- * @see java.time.LocalDate.MIN
  */
 actual val LocalDate.Companion.DISTANT_PAST: LocalDate
-    get() = JLocalDate.MIN.toKotlinLocalDate()
+    get() = LocalDate(YEAR_MIN, 1,1)
 
 /**
  * The maximum LocalDate value, maps to PostgreSQL 'infinity' for DATE type.
- *
- * @see java.time.LocalDate.MAX
  */
 actual val LocalDate.Companion.DISTANT_FUTURE: LocalDate
-    get() = JLocalDate.MAX.toKotlinLocalDate()
+    get() = LocalDate(YEAR_MAX, 12,31)
 
 /**
  * The minimum LocalDateTime value, maps to PostgreSQL '-infinity' for TIMESTAMP type.
- *
- * @see java.time.LocalDateTime.MIN
  */
 actual val LocalDateTime.Companion.DISTANT_PAST: LocalDateTime
-    get() = JLocalDateTime.MIN.toKotlinLocalDateTime()
+    get() = MIN_DATETIME
 
 /**
  * The maximum LocalDateTime value, maps to PostgreSQL 'infinity' for TIMESTAMP type.
- *
- * @see java.time.LocalDateTime.MAX
  */
 actual val LocalDateTime.Companion.DISTANT_FUTURE: LocalDateTime
-    get() = JLocalDateTime.MAX.toKotlinLocalDateTime()
+    get() = MAX_DATETIME

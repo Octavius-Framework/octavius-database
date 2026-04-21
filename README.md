@@ -382,6 +382,7 @@ See [Flyway Migrations](docs/configuration.md#flyway-migrations) in the configur
 For detailed guides and examples, see the [full documentation](docs/README.md):
 
 - [Configuration](docs/configuration.md) - Initialization, HikariCP pool, Flyway, core types, DynamicDto strategy
+- [Multiplatform Support](docs/multiplatform.md) - Shared DTOs, Multiplatform BigDecimal, and JS serializers
 - [Lifecycle & Shutdown](docs/lifecycle-and-shutdown.md) - Proper cleanup, .use {} block, common integration patterns
 - [Query Builders](docs/query-builders.md) - SELECT (FOR UPDATE), INSERT (ON CONFLICT), UPDATE, DELETE, fragments
 - [Functions & Procedures](docs/functions-and-procedures.md) - CALL, SELECT, IN/OUT, PgTyped resolution
@@ -396,9 +397,9 @@ For detailed guides and examples, see the [full documentation](docs/README.md):
 
 ## Architecture
 
-| Module               | Platform      | Description                                                                        |
-|----------------------|---------------|------------------------------------------------------------------------------------|
+| Module               | Platform      | Description                                                                            |
+|----------------------|---------------|----------------------------------------------------------------------------------------|
 | `api`                | Multiplatform | **Common:** Annotations & DTOs (JVM/JS). **JVM-only:** Query & Transaction interfaces. |
-| `core`               | JVM           | **Zero-dependency** core engine. Pure JDBC & HikariCP.                             |
-| `spring-integration` | JVM           | Optional integration for Spring Boot (`@Transactional` support).                   |
-| `flyway-integration` | JVM           | Optional migration runner integration.                                             |
+| `core`               | JVM           | **Zero-dependency** core engine. Pure JDBC & HikariCP.                                 |
+| `spring-integration` | JVM           | Optional integration for Spring Boot (`@Transactional` support).                       |
+| `flyway-integration` | JVM           | Optional migration runner integration.                                                 |

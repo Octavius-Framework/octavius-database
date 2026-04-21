@@ -8,7 +8,8 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 
 | Document                                              | Description                                                                                                                          |
 |-------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
-| [Configuration](configuration.md)                     | Initialization, DatabaseConfig, Flyway (optional), core types, DynamicDto strategy                                                              |
+| [Configuration](configuration.md)                     | Initialization, DatabaseConfig, Flyway (optional), core types, DynamicDto strategy                                                   |
+| [Multiplatform Support](multiplatform.md)             | Sharing DTOs between JVM backend and JS frontend, Multiplatform BigDecimal, Serializers                                              |
 | [Lifecycle & Shutdown](lifecycle-and-shutdown.md)     | Proper cleanup, .use {} block, common integration patterns                                                                           |
 | [Query Builders](query-builders.md)                   | SELECT, INSERT, UPDATE, DELETE, raw queries, CTEs, subqueries, ON CONFLICT                                                           |
 | [Functions & Procedures](functions-and-procedures.md) | Calling functions and procedures                                                                                                     |
@@ -92,6 +93,12 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 - [ConversionException](error-handling.md#conversionexception) - Type mapping and serialization errors
 - [Logging and Debugging](error-handling.md#logging-and-debugging) - Diagnostics with full `QueryContext`
 
+### Multiplatform & Shared Models
+- [Architecture Matrix](multiplatform.md#availability-matrix) - Common vs Platform-specific parts
+- [Sharing DTOs](multiplatform.md#shared-data-models) - Using same models on Backend and Frontend
+- [Multiplatform BigDecimal](multiplatform.md#multiplatform-bigdecimal) - High-precision decimals in common code
+- [JS/Frontend Serializers](multiplatform.md#serializers-for-jsfrontend) - Formatting data for JavaScript consumption
+
 ### Type System
 - [Standard Type Mapping](type-system.md#standard-type-mapping) - PostgreSQL ↔ Kotlin conversions
 - [Infinity Values](type-system.md#infinity-values-for-datetime) - Support for `infinity` in dates and durations
@@ -100,7 +107,7 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 - [Manual Composite Mapping](type-system.md#manual-composite-mapping-pgcompositemapper) - Manual mapping of composite types
 - [@DynamicallyMappable](type-system.md#dynamicallymappable) - Polymorphic storage with `dynamic_dto`
 - [Inserting Dynamic Data](type-system.md#inserting-dynamic-data) - How to persist dynamic_dto and polymorphic lists
-- [Helper Serializers](type-system.md#helper-serializers) - `BigDecimalAsNumberSerializer`, etc.
+- [Helper Serializers & KMP Types](type-system.md#helper-serializers--multiplatform-types) - Links to multiplatform-specific type details
 
 ### Configuration
 - [Initialization](configuration.md#initialization) - `fromConfig()` and `fromDataSource()`

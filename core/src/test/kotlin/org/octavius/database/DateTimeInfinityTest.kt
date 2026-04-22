@@ -1,64 +1,27 @@
 package org.octavius.database
 
-import com.zaxxer.hikari.HikariConfig
-import com.zaxxer.hikari.HikariDataSource
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlin.time.Instant
-import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import org.octavius.data.DataAccess
 import org.octavius.data.builder.*
 import org.octavius.data.getOrThrow
 import org.octavius.data.type.DISTANT_FUTURE
 import org.octavius.data.type.DISTANT_PAST
-import org.octavius.database.config.DatabaseConfig
-import org.octavius.database.jdbc.DefaultJdbcTransactionProvider
-import org.octavius.database.jdbc.JdbcTemplate
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class DateTimeInfinityTest {
+class DateTimeInfinityTest: AbstractIntegrationTest() {
 
-    private lateinit var dataAccess: DataAccess
-    private lateinit var dataSource: HikariDataSource
-
-    @BeforeAll
-    fun setup() {
-        val databaseConfig = DatabaseConfig.loadFromFile("test-database.properties")
-
-        val hikariConfig = HikariConfig().apply {
-            jdbcUrl = databaseConfig.dbUrl
-            username = databaseConfig.dbUsername
-            password = databaseConfig.dbPassword
-        }
-        dataSource = HikariDataSource(hikariConfig)
-
-        dataAccess = OctaviusDatabase.fromDataSource(
-            dataSource = dataSource,
-            packagesToScan = emptyList(),
-            dbSchemas = listOf("public"),
-            disableCoreTypeInitialization = true
-        )
-        
-        val jdbcTemplate = JdbcTemplate(DefaultJdbcTransactionProvider(dataSource))
-        jdbcTemplate.execute("DROP TABLE IF EXISTS infinity_test CASCADE;")
-        jdbcTemplate.execute("""
-            CREATE TABLE infinity_test (
+    override val sqlToExecuteOnSetup: String = """
+        CREATE TABLE infinity_test (
                 id SERIAL PRIMARY KEY,
                 d DATE,
                 ts TIMESTAMP,
                 tstz TIMESTAMPTZ
-            );
-        """.trimIndent())
-    }
-
-    @AfterAll
-    fun tearDown() {
-        dataAccess.close()
-    }
+        );
+    """.trimIndent()
 
     @Test
     fun `should map infinity values correctly for LocalDate`() {

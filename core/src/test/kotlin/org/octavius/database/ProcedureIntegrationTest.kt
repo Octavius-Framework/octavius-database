@@ -13,33 +13,16 @@ import org.octavius.database.config.DatabaseConfig
 import org.octavius.data.type.withPgType
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class ProcedureIntegrationTest {
+class ProcedureIntegrationTest: AbstractIntegrationTest() {
 
-    private lateinit var dataAccess: DataAccess
-
-    @BeforeAll
-    fun setup() {
-        val config = DatabaseConfig.loadFromFile("test-database.properties").copy(
-            disableCoreTypeInitialization = true
-        )
-        dataAccess = OctaviusDatabase.fromConfig(config)
-
-        // Tworzymy procedurę do testów
-        dataAccess.rawQuery("""
-            CREATE OR REPLACE PROCEDURE test_out_proc(IN val_in INT, OUT val_out TEXT)
+    override val sqlToExecuteOnSetup: String = """
+        CREATE OR REPLACE PROCEDURE test_out_proc(IN val_in INT, OUT val_out TEXT)
             LANGUAGE plpgsql AS $$
             BEGIN
                 val_out := 'Result: ' || val_in;
             END;
-            $$;
-        """.trimIndent()).execute().getOrThrow()
-    }
-
-    @AfterAll
-    fun tearDown() {
-        dataAccess.rawQuery("DROP PROCEDURE IF EXISTS test_out_proc(INT, TEXT)").execute()
-        dataAccess.close()
-    }
+        $$;
+    """.trimIndent()
 
     @Test
     fun `should call procedure with OUT parameter using NULL cast`() {
@@ -52,7 +35,6 @@ class ProcedureIntegrationTest {
 
     @Test
     fun `should call procedure with OUT parameter using PgTyped placeholder`() {
-        // TO JEST TEST NASZEJ HIPOTEZY
         val result = dataAccess.rawQuery("CALL test_out_proc(@val_in, @val_out)")
             .toSingleStrict(
                 "val_in" to 10,

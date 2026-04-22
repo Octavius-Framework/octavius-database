@@ -17,46 +17,18 @@ import java.nio.file.Files
 import java.nio.file.Paths
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class JsonOperatorIntegrationTest {
+class JsonOperatorIntegrationTest: AbstractIntegrationTest() {
 
-    private lateinit var dataAccess: DataAccess
-    private lateinit var dataSource: HikariDataSource
+    override val sqlToExecuteOnSetup: String = """
+        CREATE TABLE IF NOT EXISTS json_test (
+            id SERIAL PRIMARY KEY,
+            data JSONB
+        );
 
-    @BeforeAll
-    fun setup() {
-        val databaseConfig = DatabaseConfig.loadFromFile("test-database.properties")
-
-        val hikariConfig = HikariConfig().apply {
-            jdbcUrl = databaseConfig.dbUrl
-            username = databaseConfig.dbUsername
-            password = databaseConfig.dbPassword
-        }
-        dataSource = HikariDataSource(hikariConfig)
-        val jdbcTemplate = JdbcTemplate(DefaultJdbcTransactionProvider(dataSource))
-
-        // Drop table if exists
-        jdbcTemplate.execute("DROP TABLE IF EXISTS json_test CASCADE;")
-
-        fun loadSql(name: String) = String(
-            Files.readAllBytes(
-                Paths.get(this::class.java.classLoader.getResource(name)!!.toURI())
-            )
-        )
-
-        // Initialize DB
-        jdbcTemplate.execute(loadSql("init-json-operators-test-db.sql"))
-
-        dataAccess = OctaviusDatabase.fromDataSource(
-            dataSource = dataSource,
-            packagesToScan = emptyList(),
-            dbSchemas = listOf("public")
-        )
-    }
-
-    @AfterAll
-    fun tearDown() {
-        dataSource.close()
-    }
+        INSERT INTO json_test (data) VALUES ('{"a": 1, "b": 2}');
+        INSERT INTO json_test (data) VALUES ('{"b": 2, "c": 3}');
+        INSERT INTO json_test (data) VALUES ('{"d": 4}');
+    """.trimIndent()
 
     @Test
     fun `should handle jsonb exist operator '?'`() {

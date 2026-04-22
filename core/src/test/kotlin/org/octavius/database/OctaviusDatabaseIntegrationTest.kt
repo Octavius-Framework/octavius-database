@@ -11,7 +11,6 @@ class OctaviusDatabaseIntegrationTest {
     @Test
     fun `should apply hikari properties and close pool correctly`() {
         val config = DatabaseConfig.loadFromFile("test-database.properties").copy(
-            disableCoreTypeInitialization = false,
             hikariProperties = mapOf(
                 "maximumPoolSize" to "12",
                 "poolName" to "IntegrationTestPool"
@@ -19,12 +18,12 @@ class OctaviusDatabaseIntegrationTest {
         )
 
         val da = OctaviusDatabase.fromConfig(config)
-        
+
         try {
             // Access internal datasource using reflection or by casting if we know it is DatabaseAccess
             // DatabaseAccess is internal, so we can cast it here since we are in the same module
             val databaseAccess = da as DatabaseAccess
-            
+
             // Get datasource from JdbcTemplate
             val dataSource = databaseAccess.javaClass.getDeclaredField("jdbcTemplate").let { field ->
                 field.isAccessible = true
@@ -38,10 +37,10 @@ class OctaviusDatabaseIntegrationTest {
 
             // Close DataAccess
             da.close()
-            
+
             // Verify Hikari pool is closed
             assertTrue(dataSource.isClosed)
-            
+
         } finally {
             // Ensure cleanup even if assertions fail
             da.close()

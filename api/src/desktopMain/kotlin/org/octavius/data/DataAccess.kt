@@ -99,7 +99,7 @@ interface DataAccess : QueryOperations, AutoCloseable {
      * - **Exception:** If the `block` throws any exception, the transaction is rolled back, and the exception is translated to [DataResult.Failure].
      *
      * **Warning:**
-     * Since the underlying implementation (on JVM) uses Spring JDBC and its `TransactionTemplate`,
+     * Since in the underlying implementation
      * the transaction state is bound to the current thread via `ThreadLocal`.
      * The `tx` object provided to the block is typically the same instance as the main [DataAccess]
      * object. While you should prefer using `tx` for clarity, calling methods directly on

@@ -22,7 +22,7 @@ object CaseConverter {
      * @return The converted string.
      */
     fun convert(value: String, from: CaseConvention, to: CaseConvention): String {
-        if (from == to) {
+        if (from == to || value.isEmpty()) {
             return value
         }
 
@@ -33,13 +33,45 @@ object CaseConverter {
     private fun splitToWords(value: String, convention: CaseConvention): List<String> {
         return when (convention) {
             CaseConvention.SNAKE_CASE_LOWER,
-            CaseConvention.SNAKE_CASE_UPPER -> value.split('_')
+            CaseConvention.SNAKE_CASE_UPPER ->
+                value.split('_').filter { it.isNotEmpty() }
 
             CaseConvention.PASCAL_CASE,
             CaseConvention.CAMEL_CASE -> {
-                // Splits CamelCase/PascalCase (e.g., "myValue" -> "my", "Value")
-                // Regex catches uppercase letter preceded by lowercase letter or digit
-                value.split(Regex("(?<=[a-z0-9])(?=[A-Z])"))
+                val words = mutableListOf<String>()
+                var currentWord = StringBuilder()
+
+                for (i in value.indices) {
+                    val c = value[i]
+                    val prev = if (i > 0) value[i - 1] else null
+                    val next = if (i < value.length - 1) value[i + 1] else null
+
+                    val isNewWord = if (prev != null) {
+                        when {
+                            // lowercase/digit followed by uppercase: user|Id, user1|Id
+                            (prev.isLowerCase() || prev.isDigit()) && c.isUpperCase() -> true
+
+                            // uppercase followed by uppercase+lowercase: UR|Le (acronym boundary like XML|Parser)
+                            prev.isUpperCase() && c.isUpperCase() && next?.isLowerCase() == true -> true
+
+                            // digit followed by letter: 1|user
+                            prev.isDigit() && c.isLetter() -> true
+
+                            else -> false
+                        }
+                    } else false
+
+                    if (isNewWord) {
+                        words.add(currentWord.toString())
+                        currentWord = StringBuilder()
+                    }
+                    currentWord.append(c)
+                }
+
+                if (currentWord.isNotEmpty()) {
+                    words.add(currentWord.toString())
+                }
+                words
             }
         }
     }
@@ -53,12 +85,18 @@ object CaseConverter {
                 words.joinToString("_") { it.lowercase() }
 
             CaseConvention.PASCAL_CASE ->
-                words.joinToString("") { it.lowercase().replaceFirstChar { char -> char.titlecase() } }
+                words.joinToString("") { word ->
+                    word.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+                }
 
             CaseConvention.CAMEL_CASE ->
                 words.mapIndexed { index, word ->
                     val lower = word.lowercase()
-                    if (index == 0) lower else lower.replaceFirstChar { char -> char.titlecase() }
+                    if (index == 0) {
+                        lower
+                    } else {
+                        lower.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+                    }
                 }.joinToString("")
         }
     }

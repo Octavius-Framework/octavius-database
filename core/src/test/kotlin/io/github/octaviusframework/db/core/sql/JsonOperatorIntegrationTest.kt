@@ -1,11 +1,11 @@
 package io.github.octaviusframework.db.core.sql
 
-import org.assertj.core.api.Assertions
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
 import io.github.octaviusframework.db.api.builder.toFieldStrict
 import io.github.octaviusframework.db.api.getOrThrow
 import io.github.octaviusframework.db.core.AbstractIntegrationTest
+import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JsonOperatorIntegrationTest: AbstractIntegrationTest() {

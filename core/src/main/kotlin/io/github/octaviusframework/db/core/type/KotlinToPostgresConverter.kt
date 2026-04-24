@@ -1,12 +1,12 @@
 package io.github.octaviusframework.db.core.type
 
-import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.octaviusframework.db.api.exception.*
 import io.github.octaviusframework.db.api.type.DynamicDto
 import io.github.octaviusframework.db.api.type.PgTyped
 import io.github.octaviusframework.db.api.type.QualifiedName
 import io.github.octaviusframework.db.core.config.DynamicDtoSerializationStrategy
 import io.github.octaviusframework.db.core.type.registry.TypeRegistry
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.postgresql.util.PGobject
 import kotlin.reflect.KClass
 

@@ -1,5 +1,12 @@
 package io.github.octaviusframework.db.core.mapping.dynamic
 
+import io.github.octaviusframework.db.api.builder.toSingleStrict
+import io.github.octaviusframework.db.api.getOrThrow
+import io.github.octaviusframework.db.api.serializer.OctaviusJson
+import io.github.octaviusframework.db.api.type.PgStandardType
+import io.github.octaviusframework.db.api.type.withPgType
+import io.github.octaviusframework.db.core.AbstractIntegrationTest
+import io.github.octaviusframework.db.domain.test.json.Product
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.serialization.json.JsonElement
@@ -8,13 +15,6 @@ import kotlinx.serialization.json.encodeToJsonElement
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import io.github.octaviusframework.db.api.builder.toSingleStrict
-import io.github.octaviusframework.db.api.getOrThrow
-import io.github.octaviusframework.db.api.serializer.OctaviusJson
-import io.github.octaviusframework.db.api.type.PgStandardType
-import io.github.octaviusframework.db.api.type.withPgType
-import io.github.octaviusframework.db.core.AbstractIntegrationTest
-import io.github.octaviusframework.db.domain.test.json.Product
 import java.math.BigDecimal
 import kotlin.time.Instant
 

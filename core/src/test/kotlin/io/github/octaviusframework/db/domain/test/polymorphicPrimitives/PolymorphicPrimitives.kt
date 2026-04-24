@@ -1,7 +1,7 @@
 package io.github.octaviusframework.db.domain.test.polymorphicPrimitives
 
-import kotlinx.serialization.Serializable
 import io.github.octaviusframework.db.api.annotation.DynamicallyMappable
+import kotlinx.serialization.Serializable
 
 /**
  * Zestaw klas testowych do weryfikacji, czy framework potrafi

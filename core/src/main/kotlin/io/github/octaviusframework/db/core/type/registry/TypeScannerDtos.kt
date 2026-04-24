@@ -1,8 +1,8 @@
 package io.github.octaviusframework.db.core.type.registry
 
-import kotlinx.serialization.KSerializer
 import io.github.octaviusframework.db.api.annotation.PgCompositeMapper
 import io.github.octaviusframework.db.api.util.CaseConvention
+import kotlinx.serialization.KSerializer
 import kotlin.reflect.KClass
 
 /**

@@ -1,11 +1,5 @@
 package io.github.octaviusframework.db.core.builder
 
-import io.mockk.every
-import io.mockk.mockk
-import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Nested
-import org.junit.jupiter.api.Test
 import io.github.octaviusframework.db.api.DataResult
 import io.github.octaviusframework.db.api.builder.toColumn
 import io.github.octaviusframework.db.api.builder.toField
@@ -18,6 +12,12 @@ import io.github.octaviusframework.db.core.jdbc.RowMapper
 import io.github.octaviusframework.db.core.jdbc.RowMappers
 import io.github.octaviusframework.db.core.type.KotlinToPostgresConverter
 import io.github.octaviusframework.db.core.type.PositionalQuery
+import io.mockk.every
+import io.mockk.mockk
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Nested
+import org.junit.jupiter.api.Test
 
 /**
  * Tests for null-handling behavior in terminal methods.

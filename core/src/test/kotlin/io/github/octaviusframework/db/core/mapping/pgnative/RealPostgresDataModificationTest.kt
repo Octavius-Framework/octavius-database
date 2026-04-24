@@ -1,22 +1,16 @@
 package io.github.octaviusframework.db.core.mapping.pgnative
 
-import kotlinx.datetime.LocalDateTime
-import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
 import io.github.octaviusframework.db.api.builder.execute
 import io.github.octaviusframework.db.api.builder.toField
 import io.github.octaviusframework.db.api.builder.toSingleStrict
 import io.github.octaviusframework.db.api.getOrThrow
 import io.github.octaviusframework.db.core.AbstractIntegrationTest
-import io.github.octaviusframework.db.domain.test.pgtype.TestCategory
-import io.github.octaviusframework.db.domain.test.pgtype.TestMetadata
-import io.github.octaviusframework.db.domain.test.pgtype.TestPerson
-import io.github.octaviusframework.db.domain.test.pgtype.TestPriority
-import io.github.octaviusframework.db.domain.test.pgtype.TestProject
-import io.github.octaviusframework.db.domain.test.pgtype.TestStatus
-import io.github.octaviusframework.db.domain.test.pgtype.TestTask
+import io.github.octaviusframework.db.domain.test.pgtype.*
+import kotlinx.datetime.LocalDateTime
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 import java.math.BigDecimal
 
 /**

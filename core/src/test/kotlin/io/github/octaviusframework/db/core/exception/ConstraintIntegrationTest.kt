@@ -1,12 +1,12 @@
 package io.github.octaviusframework.db.core.exception
 
-import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
 import io.github.octaviusframework.db.api.DataResult
 import io.github.octaviusframework.db.api.exception.ConstraintViolationException
 import io.github.octaviusframework.db.api.exception.ConstraintViolationExceptionMessage
 import io.github.octaviusframework.db.core.AbstractIntegrationTest
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ConstraintIntegrationTest: AbstractIntegrationTest() {

@@ -1,11 +1,10 @@
 package io.github.octaviusframework.db.core.jdbc
 
-import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.octaviusframework.db.core.type.PositionalQuery
+import io.github.oshai.kotlinlogging.KotlinLogging
 import java.sql.Connection
 import java.sql.PreparedStatement
 import java.sql.ResultSet
-import java.sql.SQLException
 import java.sql.Statement
 import javax.sql.DataSource
 

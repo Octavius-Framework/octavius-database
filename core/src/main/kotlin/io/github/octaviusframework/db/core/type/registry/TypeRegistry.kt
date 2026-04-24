@@ -1,9 +1,9 @@
 package io.github.octaviusframework.db.core.type.registry
 
-import kotlinx.serialization.KSerializer
 import io.github.octaviusframework.db.api.exception.TypeRegistryException
 import io.github.octaviusframework.db.api.exception.TypeRegistryExceptionMessage
 import io.github.octaviusframework.db.api.type.QualifiedName
+import kotlinx.serialization.KSerializer
 import kotlin.reflect.KClass
 
 /**

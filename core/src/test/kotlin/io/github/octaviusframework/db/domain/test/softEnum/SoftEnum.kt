@@ -1,8 +1,8 @@
 package io.github.octaviusframework.db.domain.test.softEnum
 
+import io.github.octaviusframework.db.api.annotation.DynamicallyMappable
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import io.github.octaviusframework.db.api.annotation.DynamicallyMappable
 
 // Definicja Soft Enuma w kodzie testowym
 @DynamicallyMappable(typeName = "feature_flag")

@@ -1,5 +1,10 @@
 package io.github.octaviusframework.db.core.notification
 
+import io.github.octaviusframework.db.api.DataResult
+import io.github.octaviusframework.db.api.exception.QueryContext
+import io.github.octaviusframework.db.api.notification.PgChannelListener
+import io.github.octaviusframework.db.api.notification.PgNotification
+import io.github.octaviusframework.db.core.exception.ExceptionTranslator
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -7,11 +12,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.isActive
-import io.github.octaviusframework.db.api.DataResult
-import io.github.octaviusframework.db.api.exception.QueryContext
-import io.github.octaviusframework.db.api.notification.PgChannelListener
-import io.github.octaviusframework.db.api.notification.PgNotification
-import io.github.octaviusframework.db.core.exception.ExceptionTranslator
 import org.postgresql.PGConnection
 import java.sql.Connection
 

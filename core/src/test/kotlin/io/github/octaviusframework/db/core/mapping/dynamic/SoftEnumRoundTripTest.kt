@@ -1,13 +1,13 @@
 package io.github.octaviusframework.db.core.mapping.dynamic
 
-import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
 import io.github.octaviusframework.db.api.DataResult
 import io.github.octaviusframework.db.api.builder.toField
 import io.github.octaviusframework.db.api.getOrThrow
 import io.github.octaviusframework.db.core.AbstractIntegrationTest
 import io.github.octaviusframework.db.domain.test.softEnum.FeatureFlag
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 
 /**
  * Test weryfikujący pełny cykl zapisu i odczytu ("Round-Trip") dla listy Soft Enumów.

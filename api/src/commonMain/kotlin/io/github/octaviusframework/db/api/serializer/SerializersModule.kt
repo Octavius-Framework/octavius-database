@@ -1,10 +1,10 @@
 package io.github.octaviusframework.db.api.serializer
 
+import io.github.octaviusframework.db.api.model.BigDecimal
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
-import io.github.octaviusframework.db.api.model.BigDecimal
 import kotlin.time.Instant
 
 /**

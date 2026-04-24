@@ -1,5 +1,7 @@
 package io.github.octaviusframework.db.api.serializer
 
+import io.github.octaviusframework.db.api.type.DISTANT_FUTURE
+import io.github.octaviusframework.db.api.type.DISTANT_PAST
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -7,8 +9,6 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import io.github.octaviusframework.db.api.type.DISTANT_FUTURE
-import io.github.octaviusframework.db.api.type.DISTANT_PAST
 
 /**
  * Serializer for [LocalDate] that supports PostgreSQL's `infinity` and `-infinity` values.

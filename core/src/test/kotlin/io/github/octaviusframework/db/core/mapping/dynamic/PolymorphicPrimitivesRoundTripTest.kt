@@ -1,7 +1,5 @@
 package io.github.octaviusframework.db.core.mapping.dynamic
 
-import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.*
 import io.github.octaviusframework.db.api.DataResult
 import io.github.octaviusframework.db.api.builder.toField
 import io.github.octaviusframework.db.api.getOrThrow
@@ -10,6 +8,9 @@ import io.github.octaviusframework.db.domain.test.polymorphicPrimitives.BooleanW
 import io.github.octaviusframework.db.domain.test.polymorphicPrimitives.IntWrapper
 import io.github.octaviusframework.db.domain.test.polymorphicPrimitives.StringWrapper
 import io.github.octaviusframework.db.domain.test.polymorphicPrimitives.UserAction
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 
 /**
  * Test weryfikujący pełny cykl zapisu i odczytu dla polimorficznej listy `List<Any>`,

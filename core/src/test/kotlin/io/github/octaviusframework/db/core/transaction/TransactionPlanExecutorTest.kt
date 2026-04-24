@@ -1,10 +1,5 @@
 package io.github.octaviusframework.db.core.transaction
 
-import org.assertj.core.api.Assertions.assertThat
-import org.assertj.core.api.Assertions.assertThatThrownBy
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
 import io.github.octaviusframework.db.api.DataResult
 import io.github.octaviusframework.db.api.builder.execute
 import io.github.octaviusframework.db.api.builder.toColumn
@@ -15,6 +10,11 @@ import io.github.octaviusframework.db.api.exception.StepDependencyException
 import io.github.octaviusframework.db.api.getOrThrow
 import io.github.octaviusframework.db.api.transaction.TransactionPlan
 import io.github.octaviusframework.db.core.AbstractIntegrationTest
+import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class TransactionPlanExecutorTest: AbstractIntegrationTest() {

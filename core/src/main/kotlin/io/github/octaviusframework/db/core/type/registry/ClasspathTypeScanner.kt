@@ -4,10 +4,6 @@ import io.github.classgraph.AnnotationClassRef
 import io.github.classgraph.AnnotationEnumValue
 import io.github.classgraph.ClassGraph
 import io.github.classgraph.ScanResult
-import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.serialization.InternalSerializationApi
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.serializer
 import io.github.octaviusframework.db.api.annotation.DynamicallyMappable
 import io.github.octaviusframework.db.api.annotation.PgComposite
 import io.github.octaviusframework.db.api.annotation.PgCompositeMapper
@@ -16,6 +12,10 @@ import io.github.octaviusframework.db.api.exception.InitializationException
 import io.github.octaviusframework.db.api.exception.InitializationExceptionMessage
 import io.github.octaviusframework.db.api.util.CaseConvention
 import io.github.octaviusframework.db.api.util.toSnakeCase
+import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.serialization.InternalSerializationApi
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.serializer
 import kotlin.reflect.KClass
 
 /**

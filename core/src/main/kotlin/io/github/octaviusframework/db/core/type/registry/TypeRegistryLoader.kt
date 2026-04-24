@@ -1,9 +1,5 @@
 package io.github.octaviusframework.db.core.type.registry
 
-import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.runBlocking
 import io.github.octaviusframework.db.api.annotation.PgCompositeMapper
 import io.github.octaviusframework.db.api.exception.InitializationException
 import io.github.octaviusframework.db.api.exception.InitializationExceptionMessage
@@ -11,6 +7,10 @@ import io.github.octaviusframework.db.api.type.PgStandardType
 import io.github.octaviusframework.db.api.type.QualifiedName
 import io.github.octaviusframework.db.api.util.CaseConverter
 import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
+import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.runBlocking
 import kotlin.reflect.KClass
 
 /**

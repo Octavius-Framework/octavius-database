@@ -1,7 +1,7 @@
 package io.github.octaviusframework.db.domain.test.dynamic
 
-import kotlinx.serialization.Serializable
 import io.github.octaviusframework.db.api.annotation.DynamicallyMappable
+import kotlinx.serialization.Serializable
 
 // Główny obiekt, który będzie "konsumował" dynamiczne DTO
 data class UserWithDynamicProfile(

@@ -1,9 +1,9 @@
 package io.github.octaviusframework.db.core.core
 
+import io.github.octaviusframework.db.core.config.DatabaseConfig
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
-import io.github.octaviusframework.db.core.config.DatabaseConfig
-import java.util.Properties
+import java.util.*
 
 class DatabaseConfigTest {
 

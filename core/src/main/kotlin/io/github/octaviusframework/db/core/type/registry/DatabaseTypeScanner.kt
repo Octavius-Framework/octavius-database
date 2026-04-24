@@ -1,11 +1,11 @@
 package io.github.octaviusframework.db.core.type.registry
 
-import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.octaviusframework.db.api.exception.InitializationException
 import io.github.octaviusframework.db.api.exception.InitializationExceptionMessage
 import io.github.octaviusframework.db.api.exception.QueryContext
 import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
 import io.github.octaviusframework.db.core.type.PositionalQuery
+import io.github.oshai.kotlinlogging.KotlinLogging
 
 /**
  * Scans PostgreSQL database for type definitions.

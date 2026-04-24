@@ -1,6 +1,5 @@
 package io.github.octaviusframework.db.core.type
 
-import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.octaviusframework.db.api.exception.ConversionException
 import io.github.octaviusframework.db.api.exception.ConversionExceptionMessage
 import io.github.octaviusframework.db.api.exception.TypeRegistryException
@@ -11,6 +10,7 @@ import io.github.octaviusframework.db.api.type.PgTyped
 import io.github.octaviusframework.db.api.type.QualifiedName
 import io.github.octaviusframework.db.core.config.DynamicDtoSerializationStrategy
 import io.github.octaviusframework.db.core.type.registry.TypeRegistry
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlin.reflect.KClass
 
 /**

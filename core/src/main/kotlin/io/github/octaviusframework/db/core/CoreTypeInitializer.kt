@@ -1,10 +1,10 @@
 package io.github.octaviusframework.db.core
 
-import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.octaviusframework.db.api.exception.InitializationException
 import io.github.octaviusframework.db.api.exception.InitializationExceptionMessage
 import io.github.octaviusframework.db.api.exception.QueryContext
 import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
+import io.github.oshai.kotlinlogging.KotlinLogging
 
 /**
  * Manages the initialization of core PostgreSQL types and functions required by the Octavius framework.

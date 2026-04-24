@@ -1,12 +1,12 @@
 package io.github.octaviusframework.db.core.builder
 
-import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.octaviusframework.db.api.DataResult
 import io.github.octaviusframework.db.api.builder.StreamingTerminalMethods
 import io.github.octaviusframework.db.api.exception.QueryContext
 import io.github.octaviusframework.db.core.exception.ExceptionTranslator
 import io.github.octaviusframework.db.core.jdbc.RowMapper
 import io.github.octaviusframework.db.core.type.PositionalQuery
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlin.reflect.KClass
 
 internal class StreamingQueryBuilder(

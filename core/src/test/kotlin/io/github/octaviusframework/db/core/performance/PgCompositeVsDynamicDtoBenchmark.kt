@@ -1,20 +1,20 @@
 package io.github.octaviusframework.db.core.performance
 
 import com.zaxxer.hikari.HikariDataSource
-import org.junit.jupiter.api.*
-import org.junit.jupiter.params.ParameterizedTest
-import org.junit.jupiter.params.provider.MethodSource
 import io.github.octaviusframework.db.api.DataAccess
 import io.github.octaviusframework.db.api.builder.toColumn
 import io.github.octaviusframework.db.core.OctaviusDatabase
 import io.github.octaviusframework.db.core.config.DatabaseConfig
 import io.github.octaviusframework.db.core.config.DynamicDtoSerializationStrategy
-import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
 import io.github.octaviusframework.db.core.jdbc.DefaultJdbcTransactionProvider
+import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
 import io.github.octaviusframework.db.domain.test.compositevsdynamic.DynamicCharacter
 import io.github.octaviusframework.db.domain.test.compositevsdynamic.DynamicStats
 import io.github.octaviusframework.db.domain.test.compositevsdynamic.PgCharacter
 import io.github.octaviusframework.db.domain.test.compositevsdynamic.PgStats
+import org.junit.jupiter.api.*
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.MethodSource
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.concurrent.ConcurrentHashMap

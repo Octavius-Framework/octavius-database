@@ -1,8 +1,8 @@
 package io.github.octaviusframework.db.core.builder
 
-import kotlinx.coroutines.*
 import io.github.octaviusframework.db.api.DataResult
 import io.github.octaviusframework.db.api.builder.AsyncTerminalMethods
+import kotlinx.coroutines.*
 import kotlin.reflect.KType
 
 /**

@@ -1,12 +1,12 @@
 package io.github.octaviusframework.db.core.core
 
 import com.zaxxer.hikari.HikariDataSource
-import org.junit.jupiter.api.Assertions
-import org.junit.jupiter.api.Test
 import io.github.octaviusframework.db.core.DatabaseAccess
 import io.github.octaviusframework.db.core.OctaviusDatabase
 import io.github.octaviusframework.db.core.config.DatabaseConfig
 import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
+import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Test
 
 class OctaviusDatabaseIntegrationTest {
 

@@ -1,9 +1,9 @@
 package io.github.octaviusframework.db.flyway
 
-import io.github.oshai.kotlinlogging.KotlinLogging
-import org.flywaydb.core.Flyway
 import io.github.octaviusframework.db.api.exception.InitializationException
 import io.github.octaviusframework.db.api.exception.InitializationExceptionMessage
+import io.github.oshai.kotlinlogging.KotlinLogging
+import org.flywaydb.core.Flyway
 import javax.sql.DataSource
 
 object FlywayMigrationRunner {

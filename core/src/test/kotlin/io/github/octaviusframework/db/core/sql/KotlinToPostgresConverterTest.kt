@@ -1,5 +1,8 @@
 package io.github.octaviusframework.db.core.sql
 
+import io.github.octaviusframework.db.core.mapping.utils.createFakeTypeRegistry
+import io.github.octaviusframework.db.core.type.KotlinToPostgresConverter
+import io.github.octaviusframework.db.domain.test.pgtype.*
 import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -7,15 +10,6 @@ import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import io.github.octaviusframework.db.core.type.KotlinToPostgresConverter
-import io.github.octaviusframework.db.core.mapping.utils.createFakeTypeRegistry
-import io.github.octaviusframework.db.domain.test.pgtype.TestCategory
-import io.github.octaviusframework.db.domain.test.pgtype.TestMetadata
-import io.github.octaviusframework.db.domain.test.pgtype.TestPerson
-import io.github.octaviusframework.db.domain.test.pgtype.TestPriority
-import io.github.octaviusframework.db.domain.test.pgtype.TestProject
-import io.github.octaviusframework.db.domain.test.pgtype.TestStatus
-import io.github.octaviusframework.db.domain.test.pgtype.TestTask
 import org.postgresql.util.PGobject
 import java.math.BigDecimal
 

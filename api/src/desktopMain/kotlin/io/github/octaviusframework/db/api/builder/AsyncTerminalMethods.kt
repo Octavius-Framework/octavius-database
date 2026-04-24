@@ -1,7 +1,7 @@
 package io.github.octaviusframework.db.api.builder
 
-import kotlinx.coroutines.Job
 import io.github.octaviusframework.db.api.DataResult
+import kotlinx.coroutines.Job
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 

@@ -1,10 +1,10 @@
 package io.github.octaviusframework.db.core.sql
 
+import io.github.octaviusframework.db.core.type.ParsedParameter
+import io.github.octaviusframework.db.core.type.PostgresSqlPreprocessor
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import io.github.octaviusframework.db.core.type.ParsedParameter
-import io.github.octaviusframework.db.core.type.PostgresSqlPreprocessor
 
 internal class PostgresSqlPreprocessorTest {
 

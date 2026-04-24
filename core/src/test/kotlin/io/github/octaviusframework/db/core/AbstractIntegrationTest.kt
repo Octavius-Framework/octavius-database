@@ -2,13 +2,13 @@ package io.github.octaviusframework.db.core
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.TestInstance
 import io.github.octaviusframework.db.api.DataAccess
 import io.github.octaviusframework.db.core.config.DatabaseConfig
 import io.github.octaviusframework.db.core.jdbc.DefaultJdbcTransactionProvider
 import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.TestInstance
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 abstract class AbstractIntegrationTest {

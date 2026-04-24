@@ -1,16 +1,16 @@
 package io.github.octaviusframework.db.core.exception
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.runBlocking
-import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.*
 import io.github.octaviusframework.db.api.DataResult
 import io.github.octaviusframework.db.api.exception.ConcurrencyErrorType
 import io.github.octaviusframework.db.api.exception.ConcurrencyException
 import io.github.octaviusframework.db.api.exception.InitializationException
 import io.github.octaviusframework.db.core.OctaviusDatabase
 import io.github.octaviusframework.db.core.config.DatabaseConfig
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.runBlocking
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.*
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ExceptionIntegrationTest {

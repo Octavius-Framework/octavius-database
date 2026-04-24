@@ -1,6 +1,5 @@
 package io.github.octaviusframework.db.core.type
 
-import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.octaviusframework.db.api.exception.ConversionException
 import io.github.octaviusframework.db.api.exception.ConversionExceptionMessage
 import io.github.octaviusframework.db.api.exception.TypeRegistryException
@@ -8,6 +7,7 @@ import io.github.octaviusframework.db.api.exception.TypeRegistryExceptionMessage
 import io.github.octaviusframework.db.api.serializer.OctaviusJson
 import io.github.octaviusframework.db.api.toDataObject
 import io.github.octaviusframework.db.core.type.registry.*
+import io.github.oshai.kotlinlogging.KotlinLogging
 
 /**
  * Converts values from PostgreSQL (as `String`) to appropriate Kotlin types.

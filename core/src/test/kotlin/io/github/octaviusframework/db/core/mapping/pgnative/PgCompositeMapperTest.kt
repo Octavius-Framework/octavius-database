@@ -1,13 +1,13 @@
 package io.github.octaviusframework.db.core.mapping.pgnative
 
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
 import io.github.octaviusframework.db.api.builder.toColumn
 import io.github.octaviusframework.db.api.getOrThrow
 import io.github.octaviusframework.db.core.AbstractIntegrationTest
 import io.github.octaviusframework.db.domain.test.mapper.ClassMappedAddress
 import io.github.octaviusframework.db.domain.test.mapper.MappedAddress
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)

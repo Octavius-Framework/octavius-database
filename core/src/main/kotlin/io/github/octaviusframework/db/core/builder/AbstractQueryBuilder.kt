@@ -1,8 +1,5 @@
 package io.github.octaviusframework.db.core.builder
 
-import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.CoroutineScope
 import io.github.octaviusframework.db.api.DataResult
 import io.github.octaviusframework.db.api.builder.AsyncTerminalMethods
 import io.github.octaviusframework.db.api.builder.QueryBuilder
@@ -18,6 +15,9 @@ import io.github.octaviusframework.db.core.jdbc.RowMapper
 import io.github.octaviusframework.db.core.jdbc.RowMappers
 import io.github.octaviusframework.db.core.type.KotlinToPostgresConverter
 import io.github.octaviusframework.db.core.type.PositionalQuery
+import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 

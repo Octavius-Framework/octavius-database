@@ -1,12 +1,13 @@
 package io.github.octaviusframework.db.core.mapping.dynamic
 
-import org.assertj.core.api.Assertions
-import org.junit.jupiter.api.*
 import io.github.octaviusframework.db.api.DataResult
 import io.github.octaviusframework.db.api.builder.toField
 import io.github.octaviusframework.db.core.AbstractIntegrationTest
 import io.github.octaviusframework.db.domain.test.dynamic.DynamicProfile
 import io.github.octaviusframework.db.domain.test.dynamic.UserStats
+import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 
 /**
  * Ostateczny test frameworka - "Grand Unification Round-Trip Test".

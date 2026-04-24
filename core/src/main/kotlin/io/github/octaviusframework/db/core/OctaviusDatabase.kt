@@ -2,7 +2,6 @@ package io.github.octaviusframework.db.core
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
-import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.octaviusframework.db.api.DataAccess
 import io.github.octaviusframework.db.api.exception.InitializationException
 import io.github.octaviusframework.db.api.exception.InitializationExceptionMessage
@@ -18,6 +17,7 @@ import io.github.octaviusframework.db.core.jdbc.JdbcTransactionProvider
 import io.github.octaviusframework.db.core.type.KotlinToPostgresConverter
 import io.github.octaviusframework.db.core.type.registry.TypeRegistry
 import io.github.octaviusframework.db.core.type.registry.TypeRegistryLoader
+import io.github.oshai.kotlinlogging.KotlinLogging
 import java.sql.Connection
 import java.sql.DriverManager
 import java.util.*

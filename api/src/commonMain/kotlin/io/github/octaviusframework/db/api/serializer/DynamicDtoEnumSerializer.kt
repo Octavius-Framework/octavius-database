@@ -1,5 +1,7 @@
 package io.github.octaviusframework.db.api.serializer
 
+import io.github.octaviusframework.db.api.util.CaseConvention
+import io.github.octaviusframework.db.api.util.CaseConverter
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -7,8 +9,6 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import io.github.octaviusframework.db.api.util.CaseConvention
-import io.github.octaviusframework.db.api.util.CaseConverter
 import kotlin.enums.EnumEntries
 
 /**

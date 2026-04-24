@@ -2,11 +2,6 @@ package io.github.octaviusframework.db.core.sql
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
-import org.assertj.core.api.Assertions
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
 import io.github.octaviusframework.db.api.DataAccess
 import io.github.octaviusframework.db.api.builder.execute
 import io.github.octaviusframework.db.api.getOrThrow
@@ -16,6 +11,11 @@ import io.github.octaviusframework.db.core.jdbc.DefaultJdbcTransactionProvider
 import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
 import io.github.octaviusframework.db.domain.test.weird.WeirdComposite
 import io.github.octaviusframework.db.domain.test.weird.WeirdEnum
+import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 import java.nio.file.Files
 import java.nio.file.Paths
 

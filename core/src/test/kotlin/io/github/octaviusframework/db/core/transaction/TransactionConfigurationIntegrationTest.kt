@@ -1,11 +1,5 @@
 package io.github.octaviusframework.db.core.transaction
 
-import com.zaxxer.hikari.HikariConfig
-import com.zaxxer.hikari.HikariDataSource
-import org.assertj.core.api.Assertions.assertThat
-import org.assertj.core.api.Assertions.assertThatThrownBy
-import org.junit.jupiter.api.*
-import io.github.octaviusframework.db.api.DataAccess
 import io.github.octaviusframework.db.api.DataResult
 import io.github.octaviusframework.db.api.builder.execute
 import io.github.octaviusframework.db.api.builder.toField
@@ -17,14 +11,12 @@ import io.github.octaviusframework.db.api.exception.StatementExceptionMessage
 import io.github.octaviusframework.db.api.getOrThrow
 import io.github.octaviusframework.db.api.transaction.IsolationLevel
 import io.github.octaviusframework.db.core.AbstractIntegrationTest
-import io.github.octaviusframework.db.core.OctaviusDatabase
-import io.github.octaviusframework.db.core.config.DatabaseConfig
-import io.github.octaviusframework.db.core.jdbc.DefaultJdbcTransactionProvider
-import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
-import java.nio.file.Files
-import java.nio.file.Paths
+import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 import java.util.concurrent.CyclicBarrier
-import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.concurrent.thread

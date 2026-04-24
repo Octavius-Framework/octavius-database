@@ -1,5 +1,7 @@
 package io.github.octaviusframework.db.core.advanced
 
+import io.github.octaviusframework.db.api.DataResult
+import io.github.octaviusframework.db.core.AbstractIntegrationTest
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.take
@@ -9,8 +11,6 @@ import kotlinx.coroutines.withTimeout
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import io.github.octaviusframework.db.api.DataResult
-import io.github.octaviusframework.db.core.AbstractIntegrationTest
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 

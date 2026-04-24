@@ -1,9 +1,9 @@
 package io.github.octaviusframework.db.domain.test.pgtype
 
-import kotlinx.datetime.LocalDateTime
 import io.github.octaviusframework.db.api.annotation.PgComposite
 import io.github.octaviusframework.db.api.annotation.PgEnum
 import io.github.octaviusframework.db.api.util.CaseConvention
+import kotlinx.datetime.LocalDateTime
 import java.math.BigDecimal
 
 @PgEnum(pgConvention = CaseConvention.SNAKE_CASE_LOWER)

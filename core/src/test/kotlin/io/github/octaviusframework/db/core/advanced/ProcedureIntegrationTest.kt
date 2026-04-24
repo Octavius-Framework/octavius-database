@@ -1,12 +1,12 @@
 package io.github.octaviusframework.db.core.advanced
 
-import org.junit.jupiter.api.Assertions
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
 import io.github.octaviusframework.db.api.builder.toSingleStrict
 import io.github.octaviusframework.db.api.getOrThrow
 import io.github.octaviusframework.db.api.type.withPgType
 import io.github.octaviusframework.db.core.AbstractIntegrationTest
+import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ProcedureIntegrationTest: AbstractIntegrationTest() {

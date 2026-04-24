@@ -1,7 +1,7 @@
 package io.github.octaviusframework.db.api.notification
 
-import kotlinx.coroutines.flow.Flow
 import io.github.octaviusframework.db.api.DataResult
+import kotlinx.coroutines.flow.Flow
 
 /**
  * Manages PostgreSQL LISTEN/UNLISTEN subscriptions on a dedicated database connection.

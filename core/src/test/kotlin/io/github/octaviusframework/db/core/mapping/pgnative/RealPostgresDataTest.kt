@@ -1,14 +1,14 @@
 package io.github.octaviusframework.db.core.mapping.pgnative
 
-import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
 import io.github.octaviusframework.db.api.getOrThrow
 import io.github.octaviusframework.db.core.AbstractIntegrationTest
 import io.github.octaviusframework.db.domain.test.pgtype.TestPerson
 import io.github.octaviusframework.db.domain.test.pgtype.TestPriority
 import io.github.octaviusframework.db.domain.test.pgtype.TestProject
 import io.github.octaviusframework.db.domain.test.pgtype.TestStatus
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class RealPostgresDataTest: AbstractIntegrationTest() {

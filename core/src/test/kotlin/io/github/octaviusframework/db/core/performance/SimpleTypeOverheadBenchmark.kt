@@ -2,7 +2,6 @@
 package io.github.octaviusframework.db.core.performance
 
 import com.zaxxer.hikari.HikariDataSource
-import org.junit.jupiter.api.*
 import io.github.octaviusframework.db.core.config.DatabaseConfig
 import io.github.octaviusframework.db.core.jdbc.DefaultJdbcTransactionProvider
 import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
@@ -12,6 +11,7 @@ import io.github.octaviusframework.db.core.type.PositionalQuery
 import io.github.octaviusframework.db.core.type.PostgresToKotlinConverter
 import io.github.octaviusframework.db.core.type.registry.TypeRegistry
 import io.github.octaviusframework.db.core.type.registry.TypeRegistryLoader
+import org.junit.jupiter.api.*
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.sql.ResultSet

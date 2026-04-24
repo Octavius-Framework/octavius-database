@@ -1,8 +1,5 @@
 package io.github.octaviusframework.db.core.mapping.dynamic
 
-import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
 import io.github.octaviusframework.db.api.builder.toSingle
 import io.github.octaviusframework.db.api.getOrThrow
 import io.github.octaviusframework.db.api.toDataObject
@@ -10,6 +7,9 @@ import io.github.octaviusframework.db.core.AbstractIntegrationTest
 import io.github.octaviusframework.db.domain.test.dynamic.DynamicProfile
 import io.github.octaviusframework.db.domain.test.dynamic.UserStats
 import io.github.octaviusframework.db.domain.test.dynamic.UserWithDynamicProfile
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class DynamicDtoMappingTest: AbstractIntegrationTest() {

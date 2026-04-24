@@ -6,13 +6,7 @@ import io.github.octaviusframework.db.api.type.QualifiedName
 import io.github.octaviusframework.db.api.util.CaseConvention
 import io.github.octaviusframework.db.api.util.CaseConverter
 import io.github.octaviusframework.db.core.type.registry.*
-import io.github.octaviusframework.db.domain.test.pgtype.TestCategory
-import io.github.octaviusframework.db.domain.test.pgtype.TestMetadata
-import io.github.octaviusframework.db.domain.test.pgtype.TestPerson
-import io.github.octaviusframework.db.domain.test.pgtype.TestPriority
-import io.github.octaviusframework.db.domain.test.pgtype.TestProject
-import io.github.octaviusframework.db.domain.test.pgtype.TestStatus
-import io.github.octaviusframework.db.domain.test.pgtype.TestTask
+import io.github.octaviusframework.db.domain.test.pgtype.*
 import kotlin.reflect.KClass
 
 /**

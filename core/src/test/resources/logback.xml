@@ -22,7 +22,7 @@
     </appender>
 
     <!-- Ustawienia logowania dla KONKRETNYCH PAKIETÓW -->
-    <logger name="org.octavius" level="WARN"/>
+    <logger name="io.github.octaviusframework" level="WARN"/>
 
     <!-- Ucisz gadatliwe biblioteki, żeby nie zaśmiecały logów -->
     <logger name="com.zaxxer.hikari" level="WARN"/>

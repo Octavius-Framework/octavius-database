@@ -44,7 +44,7 @@ data class Citizen(
 
 ## Multiplatform BigDecimal
 
-Standard `java.math.BigDecimal` is not available in Multiplatform `commonMain`. Octavius provides its own `org.octavius.data.model.BigDecimal` wrapper to ensure consistency:
+Standard `java.math.BigDecimal` is not available in Multiplatform `commonMain`. Octavius provides its own `io.github.octaviusframework.db.api.model.BigDecimal` wrapper to ensure consistency:
 
 - **JVM:** A `typealias` to `java.math.BigDecimal`. Full performance and integration with the standard library.
 - **JS:** A wrapper around `String`. Since JavaScript's `Number` is a 64-bit float (which loses precision for large decimals), Octavius stores the value as a string to preserve the full precision of PostgreSQL's `numeric` type.
@@ -55,7 +55,7 @@ This allows you to safely pass high-precision values (like currency or scientifi
 
 ## Serializers for PostgreSQL & Multiplatform
 
-Octavius provides specialized serializers in `org.octavius.data.serializer`. Their primary purpose is to ensure that Kotlin types are correctly represented inside PostgreSQL's JSONB format when using **`dynamic_dto`**. 
+Octavius provides specialized serializers in `io.github.octaviusframework.db.api.serializer`. Their primary purpose is to ensure that Kotlin types are correctly represented inside PostgreSQL's JSONB format when using **`dynamic_dto`**. 
 
 Because these serializers are part of the Multiplatform `:api` module, they automatically provide the same consistent behavior when sharing your DTOs with a frontend.
 

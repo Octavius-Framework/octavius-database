@@ -118,7 +118,7 @@ Octavius provides an optional integration with [Flyway](https://flywaydb.org/) f
 Add the following to your `build.gradle.kts`:
 
 ```kotlin
-implementation("org.octavius:database-flyway-integration:VERSION")
+implementation("io.github.octavius-framework:database-flyway-integration:VERSION")
 ```
 
 ### Usage

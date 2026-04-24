@@ -65,7 +65,7 @@ val generateVersionKotlin = tasks.register("generateVersionKotlin") {
 
         val outputFile = fileDir.resolve("AppInfo.kt")
         outputFile.writeText("""
-            package org.octavius.database.config
+            package io.github.octaviusframework.db.core.config
 
             object AppInfo {
                 const val VERSION = "${project.version}"

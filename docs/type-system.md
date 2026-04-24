@@ -79,7 +79,7 @@ Arrays of all standard types are supported and naturally map to `List<T>`:
 **Usage Example:**
 
 ```kotlin
-import org.octavius.data.type.DISTANT_FUTURE
+import io.github.octaviusframework.db.api.type.DISTANT_FUTURE
 
 dataAccess.insertInto("mandates")
     .values(listOf("start_date", "end_date"))
@@ -413,7 +413,7 @@ For maximum performance in high-volume scenarios (using **Parallel Lists**), see
 When using enums inside `@DynamicallyMappable` classes, `kotlinx.serialization` defaults to outputting the exact Kotlin enum name. To match PostgreSQL conventions inside the JSON payload, you **must** use `DynamicDtoEnumSerializer`.
 
 ```kotlin
-import org.octavius.data.serializer.DynamicDtoEnumSerializer
+import io.github.octaviusframework.db.api.serializer.DynamicDtoEnumSerializer
 
 // 1. Create a serializer
 object MagistratureSerializer : DynamicDtoEnumSerializer<Magistrature>(

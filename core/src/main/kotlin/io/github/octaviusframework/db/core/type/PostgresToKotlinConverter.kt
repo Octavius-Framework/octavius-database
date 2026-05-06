@@ -94,7 +94,7 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
 
         // 2. Use the 'fromString' function from the handler for conversion
         return try {
-            handler.fromString(value)
+            handler.fromPgString(value)
         } catch (e: Exception) {
             throw ConversionException(
                 messageEnum = ConversionExceptionMessage.VALUE_CONVERSION_FAILED,

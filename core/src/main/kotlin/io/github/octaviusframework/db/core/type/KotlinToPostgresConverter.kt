@@ -4,6 +4,7 @@ import io.github.octaviusframework.db.api.exception.*
 import io.github.octaviusframework.db.api.type.DynamicDto
 import io.github.octaviusframework.db.api.type.PgTyped
 import io.github.octaviusframework.db.api.type.QualifiedName
+import io.github.octaviusframework.db.api.type.TypeHandler
 import io.github.octaviusframework.db.core.config.DynamicDtoSerializationStrategy
 import io.github.octaviusframework.db.core.type.registry.TypeRegistry
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -91,11 +92,16 @@ internal class KotlinToPostgresConverter(
         }
 
         // 2. Delegate standard types to registry
-        StandardTypeMappingRegistry.getHandlerByClass(unwrappedValue::class)?.let { handler ->
-            val finalType = pgType ?: QualifiedName("", handler.pgTypeName)
+        typeRegistry.getHandlerByClass(unwrappedValue::class)?.let { handler ->
+            val finalType = pgType ?: QualifiedName(handler.pgSchema, handler.pgTypeName)
             val castSuffix = if (appendTypeCast) "::${finalType.quote()}" else ""
             @Suppress("UNCHECKED_CAST")
-            return ParameterConversion("?$castSuffix", (handler as StandardTypeHandler<Any>).toJdbc(unwrappedValue))
+            val typedHandler = handler as TypeHandler<Any>
+
+            val jdbcValue = typedHandler.toJdbc?.invoke(unwrappedValue)
+                ?: pgObject("text", typedHandler.toPgString(unwrappedValue))
+
+            return ParameterConversion("?$castSuffix", jdbcValue)
         }
 
         // 3. Handle specialized types
@@ -186,7 +192,7 @@ internal class KotlinToPostgresConverter(
                     shouldUseDynamicDto(kClass) -> typeRegistry.getPgTypeNameForClass(DynamicDto::class)
                     typeRegistry.isPgType(kClass) -> typeRegistry.getPgTypeNameForClass(kClass)
                     else -> {
-                        val standardName = StandardTypeMappingRegistry.getHandlerByClass(kClass)?.pgTypeName ?: "text"
+                        val standardName = typeRegistry.getHandlerByClass(kClass)?.pgTypeName ?: "text"
                         QualifiedName("", standardName)
                     }
                 }

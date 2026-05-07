@@ -130,7 +130,7 @@ internal object StandardTypeMappingRegistry {
                     parser = String::toBigDecimal
                 )
 
-                // Text types (with automatic cleaning)
+                // Text types
                 PgStandardType.TEXT, PgStandardType.VARCHAR, PgStandardType.BPCHAR -> fromStringOnly(
                     pgType.typeName,
                     String::class) { it }
@@ -356,6 +356,9 @@ internal object StandardTypeMappingRegistry {
         }
         return null
     }
+
+    fun getAllHandlersByOid(): Map<Int, TypeHandler<*>> = oidToHandler
+    fun getAllHandlersByClass(): Map<KClass<*>, TypeHandler<*>> = kotlinClassToHandler
 
     private inline fun <reified T : Any> primitive(
         pgTypeName: String, kClass: KClass<T>, crossinline getter: ResultSet.(Int) -> T,

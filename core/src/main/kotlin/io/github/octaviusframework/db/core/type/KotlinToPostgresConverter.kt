@@ -23,8 +23,7 @@ private data class ParameterConversion(val placeholder: String, val value: Any?)
 
 /**
  * Orchestrates conversion of Kotlin objects to PostgreSQL JDBC parameters.
- * Delegates standard type handling to [StandardTypeMappingRegistry]
- * and complex serialization to [PgTextSerializer].
+ * Delegates complex serialization to [PgTextSerializer].
  */
 internal class KotlinToPostgresConverter(
     private val typeRegistry: TypeRegistry,

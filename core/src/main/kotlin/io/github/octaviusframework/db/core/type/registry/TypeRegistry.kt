@@ -3,8 +3,11 @@ package io.github.octaviusframework.db.core.type.registry
 import io.github.octaviusframework.db.api.exception.TypeRegistryException
 import io.github.octaviusframework.db.api.exception.TypeRegistryExceptionMessage
 import io.github.octaviusframework.db.api.type.QualifiedName
+import io.github.octaviusframework.db.api.type.TypeHandler
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.json.JsonElement
 import kotlin.reflect.KClass
+import kotlin.reflect.full.isSubclassOf
 
 /**
  * Central repository of PostgreSQL type metadata for bidirectional conversion.
@@ -23,6 +26,9 @@ internal class TypeRegistry(
     private val enumsByOid: Map<Int, PgEnumDefinition>,
     private val compositesByOid: Map<Int, PgCompositeDefinition>,
     private val arraysByOid: Map<Int, PgArrayDefinition>,
+    // Specialized handlers (mostly for standard types)
+    private val handlersByOid: Map<Int, TypeHandler<*>>,
+    private val handlersByClass: Map<KClass<*>, TypeHandler<*>>,
     // Mappings for writing (Kotlin Class -> PgType)
     private val classToPgNameMap: Map<KClass<*>, QualifiedName>,
     // Dynamic mappings (Dynamic Key -> Kotlin Class)
@@ -31,27 +37,39 @@ internal class TypeRegistry(
     // Reverse maps for name-based lookup
     private val pgNameToOidMap: Map<QualifiedName, Int>,
     // Human-readable names for OIDs (for error reporting)
-    private val oidToNameMap: Map<Int, String>
+    private val oidToNameMap: Map<Int, QualifiedName>
 ) {
     // --- READING (DB -> Kotlin) ---
 
-    fun getCategory(oid: Int): TypeCategory = 
+    fun getCategory(oid: Int): TypeCategory =
         oidCategoryMap[oid] ?: throwNotFound(oid)
 
-    fun getEnumDefinition(oid: Int): PgEnumDefinition = 
+    fun getEnumDefinition(oid: Int): PgEnumDefinition =
         enumsByOid[oid] ?: throwNotFound(oid, "ENUM")
 
-    fun getCompositeDefinition(oid: Int): PgCompositeDefinition = 
+    fun getCompositeDefinition(oid: Int): PgCompositeDefinition =
         compositesByOid[oid] ?: throwNotFound(oid, "COMPOSITE")
 
-    fun getArrayDefinition(oid: Int): PgArrayDefinition = 
+    fun getArrayDefinition(oid: Int): PgArrayDefinition =
         arraysByOid[oid] ?: throwNotFound(oid, "ARRAY")
 
     fun getDynamicSerializer(dynamicTypeName: String): KSerializer<Any> =
         dynamicSerializers[dynamicTypeName] ?: throw TypeRegistryException(
             TypeRegistryExceptionMessage.DYNAMIC_TYPE_NOT_FOUND,
-            typeName = dynamicTypeName
+            typeName = dynamicTypeName,
+            expectedCategory = "DYNAMIC"
         )
+
+    fun getHandlerByOid(oid: Int): TypeHandler<*>? = handlersByOid[oid]
+
+    fun getHandlerByClass(kClass: KClass<*>): TypeHandler<*>? {
+        handlersByClass[kClass]?.let { return it }
+        // Json Element - it is superclass
+        if (kClass.isSubclassOf(JsonElement::class)) {
+            return handlersByClass[JsonElement::class]
+        }
+        return null
+    }
 
     // --- WRITING (Kotlin -> DB) ---
 
@@ -76,13 +94,12 @@ internal class TypeRegistry(
     // --- HELPERS ---
 
     private fun throwNotFound(oid: Int, expected: String? = null): Nothing {
-        val typeName = oidToNameMap[oid]
-        val details = when {
-            typeName != null && expected != null -> "Type '$typeName' (OID: $oid, expected $expected)"
-            typeName != null -> "Type '$typeName' (OID: $oid)"
-            expected != null -> "OID: $oid (expected $expected)"
-            else -> "OID: $oid"
-        }
-        throw TypeRegistryException(TypeRegistryExceptionMessage.PG_TYPE_NOT_FOUND, typeName = details)
+        val typeName = oidToNameMap[oid]?.toString() ?: "unknown"
+        throw TypeRegistryException(
+            messageEnum = TypeRegistryExceptionMessage.PG_TYPE_NOT_FOUND,
+            typeName = typeName,
+            oid = oid,
+            expectedCategory = expected
+        )
     }
 }

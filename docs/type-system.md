@@ -26,7 +26,8 @@ Octavius Database provides automatic bidirectional mapping between PostgreSQL an
     - [Inserting Dynamic Data](#inserting-dynamic-data)
     - [Enum Serialization in dynamic_dto](#enum-serialization-in-dynamic_dto)
     - [Helper Serializers](#helper-serializers)
-5. [Object Conversion Utilities](#object-conversion-utilities)
+5. [Custom Type Handlers](#custom-type-handlers)
+6. [Object Conversion Utilities](#object-conversion-utilities)
 
 ---
 
@@ -449,6 +450,77 @@ It covers:
 - **`BigDecimalAsNumberSerializer`** - Preserving precision in JSONB.
 - **Date/Time Serializers** - Support for PostgreSQL `infinity`.
 - **OctaviusJson** - Pre-configured JSON instance.
+
+---
+
+## Custom Type Handlers
+
+For types not supported out-of-the-box, or when you need full control over the serialization and deserialization process, you can implement a `TypeHandler<T>`.
+
+### The TypeHandler Interface
+
+```kotlin
+interface TypeHandler<T : Any> {
+    /** The PostgreSQL type name (e.g., "circle", "point", "geometry") */
+    val pgTypeName: String
+    
+    /** The PostgreSQL schema (defaults to "") */
+    val pgSchema: String get() = ""
+    
+    /** The Kotlin class this handler manages */
+    val kotlinClass: KClass<T>
+    
+    /** 
+     * Optional: Efficiently read value from JDBC ResultSet.
+     * If null, Octavius will fallback to [fromPgString].
+     */
+    val fromResultSet: ((ResultSet, Int) -> T?)? get() = null
+    
+    /** Parse value from PostgreSQL text representation (e.g., "<(1,2),3>") */
+    val fromPgString: (String) -> T
+    
+    /**
+     * Optional: Convert value to a JDBC-compatible object.
+     * If null, Octavius will fallback to [toPgString].
+     */
+    val toJdbc: ((T) -> Any)? get() = null
+    
+    /** Convert value to PostgreSQL text representation for literals and composite fields */
+    val toPgString: (T) -> String
+}
+```
+
+### Automatic Registration
+
+Octavius automatically discovers and registers `TypeHandler` implementations during startup. To be discovered, your handler must:
+1. Be located within one of the `packagesToScan` defined in your `DatabaseConfig`.
+2. Be a public `object` or a `class` with a public no-arg constructor.
+
+### Example: PostgreSQL Circle Type
+
+```kotlin
+data class PgCircle(val x: Double, val y: Double, val radius: Double)
+
+object PgCircleHandler : TypeHandler<PgCircle> {
+    override val pgTypeName = "circle"
+    override val kotlinClass = PgCircle::class
+
+    override val fromPgString = { s: String ->
+        // Input format: <(x,y),r>
+        val parts = s.trim('<', '>', '(', ')').split(',', ')')
+        PgCircle(parts[0].toDouble(), parts[1].trim('(', ',').toDouble(), parts[parts.size - 1].toDouble())
+    }
+
+    override val toPgString = { c: PgCircle -> 
+        "<( ${c.x} , ${c.y} ),${c.radius}>" 
+    }
+}
+```
+
+Once registered, `PgCircle` can be used as:
+- A simple query parameter or result column.
+- A field within a `@PgComposite` data class.
+- An element in a PostgreSQL array (`List<PgCircle>`).
 
 ---
 

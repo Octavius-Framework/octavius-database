@@ -11,6 +11,7 @@ This guide covers all configuration options for Octavius Database, including ini
 - [Properties File](#properties-file)
 - [Flyway Migrations](#flyway-migrations)
 - [Core Type Initialization](#core-type-initialization)
+- [Type Registry Scanning](#type-registry-scanning)
 - [DynamicDto Serialization Strategy](#dynamicdto-serialization-strategy)
 - [Schema Configuration](#schema-configuration)
 - [Using Existing DataSource](#using-existing-datasource)
@@ -248,6 +249,30 @@ db.disableCoreTypeInitialization=true
 2. **Core Types** - `dynamic_dto` created (unless disabled)
 3. **Migration Runner** - Optional `migrationRunner` executed (e.g., Flyway)
 4. **Type Registry** - Scans classpath and database for type mappings
+
+---
+
+## Type Registry Scanning
+
+During the fourth phase of startup, Octavius initializes the `TypeRegistry`. This process involves two main activities:
+
+### 1. Classpath Scanning
+
+Octavius scans the packages listed in `packagesToScan` for:
+- **`@PgEnum`** and **`@PgComposite`** annotated classes.
+- **`@DynamicallyMappable`** annotated classes.
+- **`TypeHandler<T>`** implementations (objects or classes with no-arg constructors).
+
+Any discovered type handlers are automatically registered and used for the corresponding Kotlin types.
+
+### 2. Database Metadata Discovery
+
+Octavius queries PostgreSQL's system catalogs (`pg_type`, `pg_enum`, `pg_attribute`, etc.) to:
+- Resolve **OIDs** for all annotated types and standard types.
+- Validate that all Kotlin class definitions have equivalents in schemas.
+- Map PostgreSQL array types to their base element types.
+
+This metadata is cached in memory for high-performance lookup during query execution.
 
 ---
 

@@ -8,7 +8,7 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 
 | Document                                              | Description                                                                                                                          |
 |-------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
-| [Configuration](configuration.md)                     | Initialization, DatabaseConfig, Flyway (optional), core types, DynamicDto strategy                                                   |
+| [Configuration](configuration.md)                     | Initialization, DatabaseConfig, Flyway (optional), core types, Type Registry scanning, DynamicDto strategy                           |
 | [Multiplatform Support](multiplatform.md)             | Sharing DTOs between JVM backend and JS frontend, Multiplatform BigDecimal, Serializers                                              |
 | [Lifecycle & Shutdown](lifecycle-and-shutdown.md)     | Proper cleanup, .use {} block, common integration patterns                                                                           |
 | [Query Builders](query-builders.md)                   | SELECT, INSERT, UPDATE, DELETE, raw queries, CTEs, subqueries, ON CONFLICT                                                           |
@@ -20,7 +20,7 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 | [Transactions](transactions.md)                       | Transaction blocks, TransactionPlan, StepHandle, passing data between steps , propagation, isolation, read-only, timeouts and errors |
 | [Notifications](notifications.md)                     | PostgreSQL LISTEN/NOTIFY, PgChannelListener, Flow-based receiving                                                                    |
 | [Error Handling](error-handling.md)                   | Fatal errors vs. DataResult, Exception hierarchy, Statement/Constraint errors                                                        |
-| [Type System](type-system.md)                         | @PgEnum, @PgComposite, @DynamicallyMappable, dynamic data insertion, standard type mappings                                          |
+| [Type System](type-system.md)                         | @PgEnum, @PgComposite, @DynamicallyMappable, dynamic data insertion, Custom Type Handlers, standard type mappings                    |
 
 ## Quick Links
 
@@ -107,6 +107,7 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 - [Manual Composite Mapping](type-system.md#manual-composite-mapping-pgcompositemapper) - Manual mapping of composite types
 - [@DynamicallyMappable](type-system.md#dynamicallymappable) - Polymorphic storage with `dynamic_dto`
 - [Inserting Dynamic Data](type-system.md#inserting-dynamic-data) - How to persist dynamic_dto and polymorphic lists
+- [Custom Type Handlers](type-system.md#custom-type-handlers) - Implement custom serialization for any PostgreSQL type
 - [Helper Serializers & KMP Types](type-system.md#helper-serializers--multiplatform-types) - Links to multiplatform-specific type details
 
 ### Configuration
@@ -115,6 +116,7 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 - [Properties File Reference](configuration.md#properties-file) - All property keys (including HikariCP)
 - [Flyway Migrations](configuration.md#flyway-migrations) - Optional migration runner integration
 - [Core Type Initialization](configuration.md#core-type-initialization) - `dynamic_dto` setup
+- [Type Registry Scanning](configuration.md#type-registry-scanning) - Classpath and database scanning process
 - [DynamicDto Strategy](configuration.md#dynamicdto-serialization-strategy) - Serialization options
 - [Connection Pool](configuration.md#connection-pool) - HikariCP customization
 

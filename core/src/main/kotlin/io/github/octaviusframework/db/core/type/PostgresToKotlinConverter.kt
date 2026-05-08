@@ -76,7 +76,7 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
     /**
      * Converts standard PostgreSQL types to appropriate Kotlin types.
      *
-     * Delegates to `StandardTypeMappingRegistry`, which is the single source of truth.
+     * Delegates to `TypeRegistry`, which is now the single source of truth.
      *
      * @param value Value from database as String.
      * @param oid OID of standard PostgreSQL type.
@@ -84,17 +84,17 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
      * @throws ConversionException if conversion fails.
      */
     private fun convertStandardType(value: String, oid: Int): Any { // null handled in convert method
-        // 1. Find the appropriate handler in the central registry
-        val handler = StandardTypeMappingRegistry.getHandlerByOid(oid)
+        // 1. Find the appropriate handler in the registry
+        val handler = typeRegistry.getHandlerByOid(oid)
 
         if (handler == null) {
-            logger.warn { "No standard type handler found for PostgreSQL OID '$oid'. Returning raw string value." }
+            logger.warn { "No type handler found for PostgreSQL OID '$oid'. Returning raw string value." }
             return value // Default behavior: return string if type is unknown
         }
 
         // 2. Use the 'fromString' function from the handler for conversion
         return try {
-            handler.fromString(value)
+            handler.fromPgString(value)
         } catch (e: Exception) {
             throw ConversionException(
                 messageEnum = ConversionExceptionMessage.VALUE_CONVERSION_FAILED,
@@ -122,7 +122,7 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
             ?: throw ConversionException(
                 messageEnum = ConversionExceptionMessage.ENUM_CONVERSION_FAILED,
                 value = value,
-                targetType = typeInfo.kClass.simpleName
+                targetType = typeInfo.typeName
             )
     }
 
@@ -139,7 +139,7 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
      */
     private fun convertArray(value: String, typeInfo: PgArrayDefinition): List<Any?> {
 
-        logger.trace { "Parsing PostgreSQL array with element OID: ${typeInfo.oid}" }
+        logger.trace { "Parsing PostgreSQL array ${typeInfo.typeName} with element OID: ${typeInfo.elementOid}" }
 
         val results = mutableListOf<Any?>()
 
@@ -165,13 +165,6 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
         var index = 0
 
         parseNestedStructure(value) { elementValue, _ ->
-            if (index >= dbAttributes.size) {
-                throw TypeRegistryException(
-                    TypeRegistryExceptionMessage.WRONG_FIELD_NUMBER_IN_COMPOSITE,
-                    typeName = typeInfo.typeName
-                )
-            }
-
             val (dbAttributeName, dbAttributeOid) = dbAttributes[index]
             constructorArgsMap[dbAttributeName] = convert(elementValue, dbAttributeOid)
             index++
@@ -180,7 +173,9 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
         if (index != dbAttributes.size) {
             throw TypeRegistryException(
                 TypeRegistryExceptionMessage.WRONG_FIELD_NUMBER_IN_COMPOSITE,
-                typeName = typeInfo.typeName
+                typeName = typeInfo.typeName,
+                oid = typeInfo.oid,
+                expectedCategory = "COMPOSITE"
             )
         }
 
@@ -225,7 +220,8 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
 
         if (count != 2) throw TypeRegistryException(
             TypeRegistryExceptionMessage.WRONG_FIELD_NUMBER_IN_COMPOSITE,
-            typeName = "public.dynamic_dto"
+            typeName = "public.dynamic_dto",
+            expectedCategory = "DYNAMIC"
         )
         if (typeName == null || jsonDataString == null) throw ConversionException(
             ConversionExceptionMessage.INVALID_DYNAMIC_DTO_FORMAT,

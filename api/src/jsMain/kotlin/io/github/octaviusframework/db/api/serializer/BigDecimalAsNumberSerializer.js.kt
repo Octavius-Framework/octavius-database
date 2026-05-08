@@ -4,11 +4,7 @@ import io.github.octaviusframework.db.api.model.BigDecimal
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.json.JsonDecoder
-import kotlinx.serialization.json.JsonEncoder
-import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonUnquotedLiteral
-import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.*
 
 internal actual fun encodeBigDecimalNative(
     encoder: Encoder,

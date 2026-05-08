@@ -175,12 +175,22 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
         "data" to oid("jsonb")
     ))
 
+    val standardHandlers = StandardTypeHandlers.createAll()
+
+    val handlersByOid = standardHandlers.mapNotNull { handler ->
+        val oid = PgStandardType.entries.find { !it.isArray && it.typeName == handler.pgTypeName }?.oid
+        if (oid != null) oid to handler else null
+    }.toMap()
+    val handlersByClass = standardHandlers.associateBy { it.kotlinClass }
+
     // Zwracamy gotowy obiekt
     return TypeRegistry(
         oidCategoryMap = oidCategoryMap,
         enumsByOid = enumsByOid,
         compositesByOid = compositesByOid,
         arraysByOid = arraysByOid,
+        handlersByOid = handlersByOid,
+        handlersByClass = handlersByClass,
         classToPgNameMap = classToPgNameMap,
         dynamicSerializers = emptyMap(),
         classToDynamicNameMap = emptyMap(),

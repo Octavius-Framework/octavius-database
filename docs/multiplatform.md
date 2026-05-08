@@ -9,7 +9,7 @@ While the core execution engine of Octavius is JVM-based (utilizing JDBC and Hik
 
 The `:api` module is divided into a common part and platform-specific implementations.
 
-| Component                         | KMP (Common) | JVM (Desktop) | JS Target |
+| Component                         | KMP (Common) | JVM Target    | JS Target |
 |-----------------------------------|--------------|---------------|-----------|
 | **Annotations** (`@PgEnum`, etc.) | ✅            | ✅             | ✅         |
 | **Shared DTOs** (Data Classes)    | ✅            | ✅             | ✅         |

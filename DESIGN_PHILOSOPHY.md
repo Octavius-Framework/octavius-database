@@ -10,13 +10,13 @@ If you've come from Hibernate, Exposed, or JOOQ and found the API unexpectedly d
 
 ---
 
-> **A note on context: desktop-first, not server-first**
+> **A note on heritage: Born on the Desktop**
 >
 > Many of Octavius's design choices may seem unusual when viewed through the lens of a typical backend web service. That's because they weren't made in that context. Octavius was born from the needs of a stateful, fat-client desktop application built with Compose for Desktop.
 >
-> In that world, a blocking API is the norm (run it on a background thread), `DataResult` is essential for driving UI state, and direct database access without a web layer in between is common. The choices that might look like omissions in a Spring Boot service — no session abstraction, no transparent lazy loading, explicit thread management — are features in a desktop context, not gaps.
+> In that world, a blocking API is the norm (run it on a background thread), `DataResult` is essential for driving UI state, and direct database access without a web layer in between is common. The choices that might look like omissions in a Spring Boot service — no session abstraction, no transparent lazy loading, explicit thread management — are features in a fat-client context, not gaps.
 >
-> Octavius works perfectly well on the server. But understanding its desktop-first heritage explains why it consistently chooses explicit control over framework magic.
+> Octavius works perfectly well on the server. But understanding its heritage explains why it consistently chooses explicit control over framework magic.
 
 ## Table of Contents
 

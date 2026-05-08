@@ -18,7 +18,7 @@ afterEvaluate {
 
 kotlin {
 
-    jvm("desktop")
+    jvm()
     js(IR) {
         browser()
     }
@@ -36,7 +36,7 @@ kotlin {
                 implementation(kotlin("test"))
             }
         }
-        val desktopMain by getting {
+        val jvmMain by getting {
             dependencies {
                 implementation(libs.kotlin.reflect)
             }

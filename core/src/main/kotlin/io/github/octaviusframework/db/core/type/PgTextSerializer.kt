@@ -30,6 +30,7 @@ internal class PgTextSerializer(
      * Serializes a list into a PostgreSQL array literal (e.g., `{val1,val2}`).
      */
     fun serializeList(list: List<*>, skipDynamicDto: Boolean): String {
+        logger.trace { "Serializing list with ${list.size} elements" }
         if (list.isEmpty()) return "{}"
         return list.joinToString(prefix = "{", postfix = "}", separator = ",") { item ->
             if (item == null) "NULL" else {
@@ -45,6 +46,7 @@ internal class PgTextSerializer(
     fun serializeComposite(obj: Any, skipDynamicDto: Boolean): String {
         val typeName = typeRegistry.getPgTypeNameForClass(obj::class)
         val oid = typeRegistry.getOidForName(typeName)
+        logger.trace { "Serializing composite type $typeName (OID: $oid) from class: ${obj::class.qualifiedName}" }
         val typeInfo = typeRegistry.getCompositeDefinition(oid)
 
         val valueMap = if (typeInfo.mapper != null) {
@@ -81,8 +83,11 @@ internal class PgTextSerializer(
             current = current.value ?: return if (useNullLiteral) "NULL" else ""
         }
 
+        logger.trace { "Serializing value of type ${current::class.qualifiedName ?: current::class.simpleName}" }
+
         // 1. Try standard handlers first
         typeRegistry.getHandlerByClass(current::class)?.let {
+            logger.trace { "Using standard handler for type ${it.pgTypeName}" }
             @Suppress("UNCHECKED_CAST")
             return (it as TypeHandler<Any>).toPgString(current)
         }
@@ -92,6 +97,7 @@ internal class PgTextSerializer(
             val kClass = current::class
             if (shouldUseDynamicDto(kClass)) {
                 typeRegistry.getDynamicTypeNameForClass(kClass)?.let { typeName ->
+                    logger.trace { "Converting class ${kClass.simpleName} to Dynamic DTO [$typeName]" }
                     current = DynamicDto.from(current, typeName, typeRegistry.getDynamicSerializer(typeName))
                 }
             }
@@ -102,6 +108,7 @@ internal class PgTextSerializer(
             is Enum<*> -> {
                 val typeName = typeRegistry.getPgTypeNameForClass(current::class)
                 val oid = typeRegistry.getOidForName(typeName)
+                logger.trace { "Serializing enum value '$current' as type $typeName (OID: $oid)" }
                 typeRegistry.getEnumDefinition(oid).enumToValueMap[current] ?: current.name
             }
             is List<*> -> {
@@ -112,7 +119,10 @@ internal class PgTextSerializer(
                 when {
                     kClass.isData -> serializeComposite(current, skipDynamicDto || wasPgTyped)
                     kClass.isValue -> throw TypeRegistryException(TypeRegistryExceptionMessage.KOTLIN_CLASS_NOT_MAPPED, kClass.qualifiedName ?: kClass.simpleName ?: "unknown", expectedCategory = "DYNAMIC")
-                    else -> current.toString()
+                    else -> {
+                        logger.trace { "Falling back to toString() for value: $current" }
+                        current.toString()
+                    }
                 }
             }
         }

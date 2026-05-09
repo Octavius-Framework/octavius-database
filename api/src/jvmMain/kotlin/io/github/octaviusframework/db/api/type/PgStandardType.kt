@@ -28,7 +28,6 @@ enum class PgStandardType(val typeName: String, val isArray: Boolean = false, va
     TIMESTAMP("timestamp", oid = 1114),
     TIMESTAMPTZ("timestamptz", oid = 1184),
     TIME("time", oid = 1083),
-    TIMETZ("timetz", oid = 1266),
     INTERVAL("interval", oid = 1186),
 
     // Json
@@ -54,7 +53,6 @@ enum class PgStandardType(val typeName: String, val isArray: Boolean = false, va
     TIMESTAMP_ARRAY("timestamp", true, oid = 1115),
     TIMESTAMPTZ_ARRAY("timestamptz", true, oid = 1185),
     TIME_ARRAY("time", true, oid = 1183),
-    TIMETZ_ARRAY("timetz", true, oid = 1270),
     INTERVAL_ARRAY("interval", true, oid = 1187),
     JSON_ARRAY("json", true, oid = 199),
     JSONB_ARRAY("jsonb", true, oid = 3807),

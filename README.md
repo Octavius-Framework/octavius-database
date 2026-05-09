@@ -106,7 +106,6 @@ Automatic conversion between PostgreSQL and Kotlin types.
 | `void`                    | `Unit`          | Return type of void functions (e.g. `pg_notify`) |
 | `date`                    | `LocalDate`     | `kotlinx.datetime` <sup>*</sup>                  |
 | `time`                    | `LocalTime`     | `kotlinx.datetime`                               |
-| `timetz`                  | `OffsetTime`    | `java.time`                                      |
 | `timestamp`               | `LocalDateTime` | `kotlinx.datetime` <sup>*</sup>                  |
 | `timestamptz`             | `Instant`       | `kotlin.time` <sup>*</sup>                       |
 | `interval`                | `Duration`      | `kotlin.time` <sup>*</sup>                       |

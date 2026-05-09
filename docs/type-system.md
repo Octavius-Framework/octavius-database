@@ -51,7 +51,6 @@ Automatic conversion works out-of-the-box for the following types. Note that if 
 | `void`                      | `Unit`          | Return type of void functions (e.g. `pg_notify`) |
 | `date`                      | `LocalDate`     | `kotlinx.datetime` <sup>1</sup>                  |
 | `time`                      | `LocalTime`     | `kotlinx.datetime`                               |
-| `timetz`                    | `OffsetTime`    | `java.time`                                      |
 | `timestamp`                 | `LocalDateTime` | `kotlinx.datetime` <sup>1</sup>                  |
 | `timestamptz`               | `Instant`       | `kotlin.time` <sup>1</sup>                       |
 | `interval`                  | `Duration`      | `kotlin.time` <sup>2</sup>                       |

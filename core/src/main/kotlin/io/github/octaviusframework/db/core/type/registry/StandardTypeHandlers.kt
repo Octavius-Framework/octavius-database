@@ -11,11 +11,7 @@ import org.postgresql.util.PGInterval
 import org.postgresql.util.PGobject
 import java.math.BigDecimal
 import java.sql.ResultSet
-import java.time.OffsetTime
 import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
-import java.time.format.DateTimeFormatterBuilder
-import java.time.temporal.ChronoField
 import java.util.*
 import kotlin.reflect.KClass
 import kotlin.time.*
@@ -45,20 +41,6 @@ internal object StandardTypeHandlers {
     private const val PG_INFINITY = "infinity"
     private const val PG_PLUS_INFINITY = "+infinity"
     private const val PG_MINUS_INFINITY = "-infinity"
-
-    private val POSTGRES_TIMETZ_FORMATTER: DateTimeFormatter = DateTimeFormatterBuilder()
-        .appendValue(ChronoField.HOUR_OF_DAY, 2)
-        .appendLiteral(':')
-        .appendValue(ChronoField.MINUTE_OF_HOUR, 2)
-        .optionalStart()
-        .appendLiteral(':')
-        .appendValue(ChronoField.SECOND_OF_MINUTE, 2)
-        .optionalStart()
-        .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
-        .optionalEnd()
-        .optionalEnd()
-        .appendPattern("[XXX][XX][X]")
-        .toFormatter()
 
     fun createAll(): List<StandardTypeHandler<*>> {
         val handlers = mutableListOf<StandardTypeHandler<*>>()
@@ -214,13 +196,6 @@ internal object StandardTypeHandlers {
                     { LocalTime.parse(it) },
                     toJdbc = { it.toJavaLocalTime() },
                     toPgString = { it.toString() }
-                )
-
-                PgStandardType.TIMETZ -> standard(
-                    pgType.typeName,
-                    OffsetTime::class,
-                    { getObject(it, OffsetTime::class.java) },
-                    parser = { s -> OffsetTime.parse(s, POSTGRES_TIMETZ_FORMATTER) }
                 )
 
                 PgStandardType.INTERVAL -> fromStringOnly(

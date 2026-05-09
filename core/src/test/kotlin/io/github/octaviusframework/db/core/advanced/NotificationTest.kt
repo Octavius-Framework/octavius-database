@@ -1,6 +1,7 @@
 package io.github.octaviusframework.db.core.advanced
 
 import io.github.octaviusframework.db.api.DataResult
+import io.github.octaviusframework.db.api.transaction.TransactionPlan
 import io.github.octaviusframework.db.core.AbstractIntegrationTest
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.first
@@ -103,6 +104,23 @@ class NotificationTest: AbstractIntegrationTest() {
             val notification = withTimeout(5.seconds) { listener.notifications().first() }
             assertThat(notification.channel).isEqualTo("tx_channel")
             assertThat(notification.payload).isEqualTo("from_tx")
+        }
+    }
+
+    @Test
+    fun `notifyStep should deliver notification when executed as part of TransactionPlan`() = runBlocking<Unit> {
+        dataAccess.createChannelListener().use { listener ->
+            listener.listen("plan_channel")
+
+            val plan = TransactionPlan()
+            plan.add(dataAccess.notifyStep("plan_channel", "from_plan"))
+
+            val result = dataAccess.executeTransactionPlan(plan)
+            assertThat(result).isInstanceOf(DataResult.Success::class.java)
+
+            val notification = withTimeout(5.seconds) { listener.notifications().first() }
+            assertThat(notification.channel).isEqualTo("plan_channel")
+            assertThat(notification.payload).isEqualTo("from_plan")
         }
     }
 }

@@ -11,6 +11,7 @@ import io.github.octaviusframework.db.api.transaction.IsolationLevel
 import io.github.octaviusframework.db.api.transaction.TransactionPlan
 import io.github.octaviusframework.db.api.transaction.TransactionPlanResult
 import io.github.octaviusframework.db.api.transaction.TransactionPropagation
+import io.github.octaviusframework.db.api.transaction.TransactionStep
 import io.github.octaviusframework.db.core.builder.*
 import io.github.octaviusframework.db.core.exception.ExceptionTranslator
 import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
@@ -111,6 +112,10 @@ internal class DatabaseAccess(
 
     override fun notify(channel: String, payload: String?): DataResult<Unit> {
         return rawQuery("SELECT pg_notify(@channel, @payload)").toField<Unit>("channel" to channel, "payload" to payload)
+    }
+
+    override fun notifyStep(channel: String, payload: String?): TransactionStep<Unit> {
+        return rawQuery("SELECT pg_notify(@channel, @payload)").asStep().toField<Unit>("channel" to channel, "payload" to payload)
     }
 
     override fun createChannelListener(): PgChannelListener {

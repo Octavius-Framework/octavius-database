@@ -6,6 +6,7 @@ import io.github.octaviusframework.db.api.transaction.IsolationLevel
 import io.github.octaviusframework.db.api.transaction.TransactionPlan
 import io.github.octaviusframework.db.api.transaction.TransactionPlanResult
 import io.github.octaviusframework.db.api.transaction.TransactionPropagation
+import io.github.octaviusframework.db.api.transaction.TransactionStep
 
 /**
  * Defines the contract for basic database operations (CRUD and raw queries).
@@ -54,6 +55,18 @@ interface QueryOperations {
      * @return New builder instance for a raw query.
      */
     fun rawQuery(sql: String): RawQueryBuilder
+
+    /**
+     * Sends a notification to the given PostgreSQL channel via `pg_notify`.
+     *
+     * Can be used both inside and outside of a transaction. If used inside a transaction,
+     * the notification is only delivered to listeners after the transaction commits.
+     *
+     * @param channel Name of the channel to send the notification to.
+     * @param payload Optional payload string (max 8000 bytes). `null` sends no payload.
+     * @return [DataResult.Success] on success, or [DataResult.Failure] on error.
+     */
+    fun notify(channel: String, payload: String? = null): DataResult<Unit>
 }
 
 /**
@@ -122,16 +135,16 @@ interface DataAccess : QueryOperations, AutoCloseable {
     ): DataResult<T>
 
     /**
-     * Sends a notification to the given PostgreSQL channel via `pg_notify`.
+     * Generates a deferred notification step for use within a [TransactionPlan].
      *
-     * Can be used both inside and outside of a transaction. If used inside a transaction,
-     * the notification is only delivered to listeners after the transaction commits.
+     * Similar to [notify], but does not execute immediately. Instead, it returns a [TransactionStep]
+     * that can be added to a [TransactionPlan] for atomic execution.
      *
      * @param channel Name of the channel to send the notification to.
-     * @param payload Optional payload string (max 8000 bytes). `null` sends no payload.
-     * @return [DataResult.Success] on success, or [DataResult.Failure] on error.
+     * @param payload Optional payload string. `null` sends no payload.
+     * @return A [TransactionStep] representing the notify operation.
      */
-    fun notify(channel: String, payload: String? = null): DataResult<Unit>
+    fun notifyStep(channel: String, payload: String? = null): TransactionStep<Unit>
 
     /**
      * Creates a new [PgChannelListener] backed by a dedicated database connection.

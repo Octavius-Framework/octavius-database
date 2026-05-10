@@ -27,9 +27,9 @@ object ExceptionTranslator {
      *
      * @param ex The original exception caught during database operation.
      * @param queryContext Metadata about the failed query.
-     * @return A specialized [DatabaseException] subclass.
+     * @return Translated or original [Exception] for non database Exceptions.
      */
-    fun translate(ex: Throwable, queryContext: QueryContext): DatabaseException {
+    fun translate(ex: Throwable, queryContext: QueryContext): Exception {
         // Already a domain exception, just pass through (possibly enrich with context)
         when (ex) {
             is StepDependencyException -> return ex // Context added inside TransactionPlanExecutor
@@ -63,7 +63,7 @@ object ExceptionTranslator {
     /**
      * Main translation logic based on PostgreSQL SQLSTATE codes.
      */
-    private fun translateSqlException(sqlEx: SQLException, queryContext: QueryContext): DatabaseException {
+    private fun translateSqlException(sqlEx: SQLException, queryContext: QueryContext): OctaviusException {
         val state = sqlEx.sqlState ?: ""
         val pgMetadata = extractPostgresMetadata(sqlEx)
 

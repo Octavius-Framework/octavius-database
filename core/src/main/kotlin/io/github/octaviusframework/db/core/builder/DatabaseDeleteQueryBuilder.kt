@@ -1,7 +1,7 @@
 package io.github.octaviusframework.db.core.builder
 
 import io.github.octaviusframework.db.api.builder.DeleteQueryBuilder
-import io.github.octaviusframework.db.api.exception.checkBuilder
+import io.github.octaviusframework.db.api.exception.checkStatement
 import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
 import io.github.octaviusframework.db.core.jdbc.RowMappers
 import io.github.octaviusframework.db.core.type.KotlinToPostgresConverter
@@ -12,7 +12,8 @@ internal class DatabaseDeleteQueryBuilder(
     kotlinToPostgresConverter: KotlinToPostgresConverter,
     rowMappers: RowMappers,
     table: String
-) : AbstractQueryBuilder<DeleteQueryBuilder>(jdbcTemplate, kotlinToPostgresConverter, rowMappers, table), DeleteQueryBuilder {
+) : AbstractQueryBuilder<DeleteQueryBuilder>(jdbcTemplate, kotlinToPostgresConverter, rowMappers, table),
+    DeleteQueryBuilder {
     override val canReturnResultsByDefault = false
     private var whereClause: String? = null
     private var usingClause: String? = null
@@ -26,7 +27,7 @@ internal class DatabaseDeleteQueryBuilder(
     }
 
     override fun buildSql(): String {
-        checkBuilder(!whereClause.isNullOrBlank()) { "Cannot build a DELETE statement without a WHERE clause for safety." }
+        checkStatement(!whereClause.isNullOrBlank()) { "Cannot build a DELETE statement without a WHERE clause for safety." }
 
         val sql = StringBuilder(buildWithClause())
         sql.append("DELETE FROM $table")

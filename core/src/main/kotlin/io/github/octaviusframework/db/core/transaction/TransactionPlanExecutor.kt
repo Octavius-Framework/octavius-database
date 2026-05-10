@@ -91,9 +91,9 @@ internal class TransactionPlanExecutor(
             // Step 1: Validate SQL generation (triggers BuilderException early)
             val sql = try {
                 builder.toSql()
-            } catch (e: BuilderException) {
+            } catch (e: BadStatementException) {
                 // If it's a BuilderException, we wrap it to provide the step index
-                throw BuilderException("Error in transaction step $currentIndex: ${e.message}", e)
+                throw e
             }
 
             // Step 2: Validate parameter dependencies
@@ -194,7 +194,7 @@ internal class TransactionPlanExecutor(
     }
 
     private fun handleTransactionError(error: Throwable): DataResult.Failure {
-        if (error is BuilderException) {
+        if (error is BadStatementException) {
             throw error
         }
 
@@ -202,7 +202,7 @@ internal class TransactionPlanExecutor(
             is StepDependencyException -> {
                 // StepDependencyException wasn't logged anywhere
                 logger.error(error) { "Transaction failed and was rolled back." }
-                DataResult.Failure(error)
+                throw error
             }
 
             is DatabaseException -> {

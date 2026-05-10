@@ -1,14 +1,23 @@
 package io.github.octaviusframework.db.api.exception
 
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.contract
+
 enum class BadStatementExceptionMessage {
     MISSING_CLAUSE,
     MISSING_PARAMETERS,
     DUPLICATE_PARAMETERS,
     SYNTAX_ERROR,
     OBJECT_NOT_FOUND,
-    INVALID_TRANSACTION_STATE
+    INVALID_TRANSACTION_STATE,
+    INVALID_STATEMENT_STATE
 }
 
+/**
+ * Exception thrown when a query cannot be built correctly due to invalid state
+ * or missing mandatory clauses (e.g., DELETE without WHERE).
+ *
+ */
 class BadStatementException(
     val messageEnum: BadStatementExceptionMessage,
     queryContext: QueryContext? = null, cause: Throwable?
@@ -41,5 +50,34 @@ private fun generateDeveloperMessage(
         BadStatementExceptionMessage.MISSING_PARAMETERS -> "Missing parameters in query"
 
         BadStatementExceptionMessage.DUPLICATE_PARAMETERS -> "Duplicate parameters in query"
+        BadStatementExceptionMessage.INVALID_STATEMENT_STATE -> "Statement is in invalid state"
+    }
+}
+
+@OptIn(ExperimentalContracts::class)
+fun checkStatement(
+    value: Boolean,
+    messageEnum: BadStatementExceptionMessage = BadStatementExceptionMessage.MISSING_CLAUSE,
+    details: () -> String
+) {
+    contract {
+        returns() implies value
+    }
+    if (!value) {
+        throw BadStatementException(messageEnum, cause = IllegalStateException(details()))
+    }
+}
+
+@OptIn(ExperimentalContracts::class)
+inline fun requireStatement(
+    value: Boolean,
+    messageEnum: BadStatementExceptionMessage = BadStatementExceptionMessage.MISSING_CLAUSE,
+    details: () -> String
+) {
+    contract {
+        returns() implies value
+    }
+    if (!value) {
+        throw BadStatementException(messageEnum, cause = IllegalArgumentException(details()))
     }
 }

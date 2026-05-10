@@ -2,9 +2,9 @@ package io.github.octaviusframework.db.core.builder
 
 import io.github.octaviusframework.db.api.builder.InsertQueryBuilder
 import io.github.octaviusframework.db.api.builder.OnConflictClauseBuilder
-import io.github.octaviusframework.db.api.exception.BuilderException
-import io.github.octaviusframework.db.api.exception.checkBuilder
-import io.github.octaviusframework.db.api.exception.requireBuilder
+import io.github.octaviusframework.db.api.exception.BadStatementExceptionMessage
+import io.github.octaviusframework.db.api.exception.checkStatement
+import io.github.octaviusframework.db.api.exception.requireStatement
 import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
 import io.github.octaviusframework.db.core.jdbc.RowMappers
 import io.github.octaviusframework.db.core.type.KotlinToPostgresConverter
@@ -15,7 +15,8 @@ internal class DatabaseInsertQueryBuilder(
     kotlinToPostgresConverter: KotlinToPostgresConverter,
     rowMappers: RowMappers,
     table: String
-) : AbstractQueryBuilder<InsertQueryBuilder>(jdbcTemplate, kotlinToPostgresConverter, rowMappers, table), InsertQueryBuilder {
+) : AbstractQueryBuilder<InsertQueryBuilder>(jdbcTemplate, kotlinToPostgresConverter, rowMappers, table),
+    InsertQueryBuilder {
     override val canReturnResultsByDefault = false
     private var explicitColumns: List<String>? = null
     private val valuePlaceholders = mutableMapOf<String, String>()
@@ -27,39 +28,57 @@ internal class DatabaseInsertQueryBuilder(
     }
 
     override fun valuesExpressions(expressions: Map<String, String>): InsertQueryBuilder = apply {
-        checkBuilder(selectSource == null) { "Cannot use valuesExpressions() when fromSelect() has already been called." }
+        checkStatement(
+            selectSource == null,
+            BadStatementExceptionMessage.INVALID_STATEMENT_STATE
+        ) { "Cannot use valuesExpressions() when fromSelect() has already been called." }
         expressions.forEach { (key, value) ->
             valuePlaceholders[key] = value
         }
     }
 
     override fun valueExpression(column: String, expression: String): InsertQueryBuilder = apply {
-        checkBuilder(selectSource == null) { "Cannot use valueExpression() when fromSelect() has already been called." }
+        checkStatement(
+            selectSource == null,
+            BadStatementExceptionMessage.INVALID_STATEMENT_STATE
+        ) { "Cannot use valueExpression() when fromSelect() has already been called." }
         valuePlaceholders[column] = expression
     }
 
     override fun values(data: Map<String, Any?>): InsertQueryBuilder {
-        checkBuilder(selectSource == null) { "Cannot use values() when fromSelect() has already been called." }
+        checkStatement(
+            selectSource == null,
+            BadStatementExceptionMessage.INVALID_STATEMENT_STATE
+        ) { "Cannot use values() when fromSelect() has already been called." }
         val placeholders = data.keys.associateWith { key -> "@$key" }
         // Delegate to low-level method
         return this.valuesExpressions(placeholders)
     }
 
     override fun values(values: List<String>): InsertQueryBuilder {
-        checkBuilder(selectSource == null) { "Cannot use values() when fromSelect() has already been called." }
+        checkStatement(
+            selectSource == null,
+            BadStatementExceptionMessage.INVALID_STATEMENT_STATE
+        ) { "Cannot use values() when fromSelect() has already been called." }
         val placeholders = values.associateWith { key -> "@$key" }
         // Delegate to low-level method
         return this.valuesExpressions(placeholders)
     }
 
     override fun value(column: String): InsertQueryBuilder {
-        checkBuilder(selectSource == null) { "Cannot use value() when fromSelect() has already been called." }
+        checkStatement(
+            selectSource == null,
+            BadStatementExceptionMessage.INVALID_STATEMENT_STATE
+        ) { "Cannot use value() when fromSelect() has already been called." }
         // Delegate to low-level method
         return this.valueExpression(column, "@$column")
     }
 
     override fun fromSelect(query: String): InsertQueryBuilder = apply {
-        checkBuilder(valuePlaceholders.isEmpty()) { "Cannot use fromSelect() when values() has already been called." }
+        checkStatement(
+            valuePlaceholders.isEmpty(),
+            BadStatementExceptionMessage.INVALID_STATEMENT_STATE
+        ) { "Cannot use fromSelect() when values() has already been called." }
 
         this.selectSource = query
     }
@@ -92,7 +111,7 @@ internal class DatabaseInsertQueryBuilder(
         val hasValues = valuePlaceholders.isNotEmpty()
         val hasSelect = selectSource != null
 
-        checkBuilder(hasValues || hasSelect) { "Cannot build an INSERT statement without values or a SELECT source." }
+        checkStatement(hasValues || hasSelect) { "Cannot build an INSERT statement without values or a SELECT source." }
 
         val sql = StringBuilder(buildWithClause())
 
@@ -109,11 +128,14 @@ internal class DatabaseInsertQueryBuilder(
         }
 
         if (hasValues) {
-            val columnsForValues = targetColumns
-                ?: throw BuilderException("Cannot build VALUES clause without columns")
-            val placeholders = columnsForValues.joinToString(", ") { key ->
-                valuePlaceholders[key]
-                    ?: throw BuilderException("No value or expression provided for column '$key'")
+            checkStatement(targetColumns != null) { "Cannot build VALUES clause without columns" }
+            val placeholders = targetColumns.joinToString(", ") { key ->
+                val placeholder = valuePlaceholders[key]
+                checkStatement(
+                    placeholder != null,
+                    BadStatementExceptionMessage.INVALID_STATEMENT_STATE
+                ) { "No value or expression provided for column '$key'" }
+                placeholder
             }
             sql.append("\nVALUES ($placeholders)")
         } else {
@@ -121,8 +143,8 @@ internal class DatabaseInsertQueryBuilder(
         }
 
         onConflictBuilder?.let { builder ->
-            checkBuilder(builder.target != null) { "ON CONFLICT target (columns or constraint) must be specified." }
-            checkBuilder(builder.action != null) { "ON CONFLICT action (doNothing or doUpdate) must be specified." }
+            checkStatement(builder.target != null) { "ON CONFLICT target (columns or constraint) must be specified." }
+            checkStatement(builder.action != null) { "ON CONFLICT action (doNothing or doUpdate) must be specified." }
 
             val target = builder.target!!
             val action = builder.action!!
@@ -172,6 +194,7 @@ internal class DatabaseInsertQueryBuilder(
 internal class DatabaseOnConflictClauseBuilder : OnConflictClauseBuilder {
     /** Defines the conflict target as a list of columns. */
     internal var target: String? = null
+
     /** Defines the conflict target as an existing constraint name. */
     internal var action: String? = null
 
@@ -199,7 +222,7 @@ internal class DatabaseOnConflictClauseBuilder : OnConflictClauseBuilder {
      * ```
      */
     override fun doUpdate(setExpression: String, whereCondition: String?) {
-        requireBuilder(setExpression.isNotBlank()) { "doUpdate cannot be blank." }
+        requireStatement(setExpression.isNotBlank()) { "doUpdate cannot be blank." }
         val updateAction = StringBuilder("DO UPDATE SET $setExpression")
         whereCondition?.let {
             updateAction.append(" WHERE $it")

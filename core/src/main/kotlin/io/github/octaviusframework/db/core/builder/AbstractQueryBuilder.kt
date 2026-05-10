@@ -5,10 +5,7 @@ import io.github.octaviusframework.db.api.builder.AsyncTerminalMethods
 import io.github.octaviusframework.db.api.builder.QueryBuilder
 import io.github.octaviusframework.db.api.builder.StepBuilderMethods
 import io.github.octaviusframework.db.api.builder.StreamingTerminalMethods
-import io.github.octaviusframework.db.api.exception.ConversionException
-import io.github.octaviusframework.db.api.exception.ConversionExceptionMessage
-import io.github.octaviusframework.db.api.exception.QueryContext
-import io.github.octaviusframework.db.api.exception.checkBuilder
+import io.github.octaviusframework.db.api.exception.*
 import io.github.octaviusframework.db.core.exception.ExceptionTranslator
 import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
 import io.github.octaviusframework.db.core.jdbc.RowMapper
@@ -34,10 +31,11 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
     val kotlinToPostgresConverter: KotlinToPostgresConverter,
     val rowMappers: RowMappers,
     protected val table: String? = null,
-): QueryBuilder<R> {
+) : QueryBuilder<R> {
     companion object {
         private val logger = KotlinLogging.logger {}
     }
+
     // We really don't want SELECT to die when executing queries
     protected abstract val canReturnResultsByDefault: Boolean
     //------------------------------------------------------------------------------------------------------------------
@@ -175,7 +173,8 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
             assertSingleRow(it, targetType.toString())
             val result = it.firstOrNull()
             if (result == null && !targetType.isMarkedNullable) {
-                val error = if (it.isEmpty()) ConversionExceptionMessage.EMPTY_RESULT else ConversionExceptionMessage.UNEXPECTED_NULL_VALUE
+                val error =
+                    if (it.isEmpty()) ConversionExceptionMessage.EMPTY_RESULT else ConversionExceptionMessage.UNEXPECTED_NULL_VALUE
                 throw ConversionException(error, targetType = targetType.toString())
             }
             @Suppress("UNCHECKED_CAST")
@@ -192,7 +191,10 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
             assertSingleRow(it, targetType.toString())
             val result = it.first()
             if (result == null && !targetType.isMarkedNullable) {
-                throw ConversionException(ConversionExceptionMessage.UNEXPECTED_NULL_VALUE, targetType = targetType.toString())
+                throw ConversionException(
+                    ConversionExceptionMessage.UNEXPECTED_NULL_VALUE,
+                    targetType = targetType.toString()
+                )
             }
             @Suppress("UNCHECKED_CAST")
             DataResult.Success(result as T)
@@ -222,7 +224,10 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
      * `toList()`, `toSingle()`, etc. methods instead.
      */
     fun execute(params: Map<String, Any?>): DataResult<Int> {
-        checkBuilder(returningClause == null) { "Use toList(), toSingle(), etc. methods when RETURNING clause is defined." }
+        checkStatement(
+            returningClause == null,
+            BadStatementExceptionMessage.INVALID_STATEMENT_STATE
+        ) { "Cannot call execute(), etc. methods when RETURNING clause is defined." }
         val sql = buildSql()
         return execute(sql, params) { positionalQuery ->
             val affectedRows = jdbcTemplate.update(positionalQuery)
@@ -259,7 +264,7 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
         rowMapper: RowMapper<M>,
         transform: (List<M>) -> DataResult<R>
     ): DataResult<R> {
-        checkBuilder(canReturnResultsByDefault || returningClause != null) { "Cannot call toList(), toSingle(), etc. on a modifying query without RETURNING clause. Use .returning()." }
+        checkStatement(canReturnResultsByDefault || returningClause != null) { "Cannot call toList(), toSingle(), etc. on a modifying query without RETURNING clause. Use .returning()." }
         val sql = buildSql()
         return execute(sql, params) { positionalQuery ->
             val results: List<M> = jdbcTemplate.query(positionalQuery, rowMapper)
@@ -300,7 +305,7 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
                 dbSql = positionalQuery?.sql,
                 dbParameters = positionalQuery?.params
             )
-            
+
             val translatedException = ExceptionTranslator.translate(e, queryContext)
 
             logger.error(translatedException) { "Database error occurred" }

@@ -1,7 +1,7 @@
 package io.github.octaviusframework.db.core.builder
 
 import io.github.octaviusframework.db.api.builder.UpdateQueryBuilder
-import io.github.octaviusframework.db.api.exception.checkBuilder
+import io.github.octaviusframework.db.api.exception.checkStatement
 import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
 import io.github.octaviusframework.db.core.jdbc.RowMappers
 import io.github.octaviusframework.db.core.type.KotlinToPostgresConverter
@@ -54,8 +54,8 @@ internal class DatabaseUpdateQueryBuilder(
     }
 
     override fun buildSql(): String {
-        checkBuilder(setClauses.isNotEmpty()) { "Cannot build an UPDATE statement without a SET clause." }
-        checkBuilder(!whereClause.isNullOrBlank()) { "Cannot build an UPDATE statement without a WHERE clause for safety." }
+        checkStatement(setClauses.isNotEmpty()) { "Cannot build an UPDATE statement without a SET clause." }
+        checkStatement(!whereClause.isNullOrBlank()) { "Cannot build an UPDATE statement without a WHERE clause for safety." }
 
         val sql = StringBuilder(buildWithClause())
         sql.append("UPDATE $table")

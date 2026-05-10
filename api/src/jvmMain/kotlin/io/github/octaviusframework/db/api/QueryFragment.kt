@@ -1,6 +1,7 @@
 package io.github.octaviusframework.db.api
 
-import io.github.octaviusframework.db.api.exception.requireBuilder
+import io.github.octaviusframework.db.api.exception.BadStatementExceptionMessage
+import io.github.octaviusframework.db.api.exception.requireStatement
 
 /**
  * Simple container for an SQL query fragment and its parameters.
@@ -42,18 +43,27 @@ infix fun String.withParam(param: Pair<String, Any?>) = QueryFragment(this, mapO
  *
  * @return New, joined [QueryFragment].
  */
-fun List<QueryFragment>.join(separator: String, prefix: String = "", postfix: String = "", addParenthesis: Boolean = true): QueryFragment {
+fun List<QueryFragment>.join(
+    separator: String,
+    prefix: String = "",
+    postfix: String = "",
+    addParenthesis: Boolean = true
+): QueryFragment {
     val significantFragments = this.filter { it.sql.isNotBlank() }
     // If there are no significant fragments, we return an empty object.
     if (significantFragments.isEmpty()) {
         return QueryFragment("")
     }
-    val finalSql = significantFragments.joinToString(separator, prefix, postfix) { if (addParenthesis) "(${it.sql})" else it.sql }
+    val finalSql =
+        significantFragments.joinToString(separator, prefix, postfix) { if (addParenthesis) "(${it.sql})" else it.sql }
 
     val finalParams = mutableMapOf<String, Any?>()
     significantFragments.forEach { fragment ->
         fragment.params.forEach { (key, value) ->
-            requireBuilder(!finalParams.containsKey(key) || finalParams[key] == value) {
+            requireStatement(
+                !finalParams.containsKey(key) || finalParams[key] == value,
+                BadStatementExceptionMessage.DUPLICATE_PARAMETERS
+            ) {
                 "Duplicate parameter key '$key' with different values found while joining QueryFragments. " +
                         "Parameter names must be unique across all joined fragments."
             }

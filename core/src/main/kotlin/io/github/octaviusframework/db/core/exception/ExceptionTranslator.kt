@@ -72,9 +72,8 @@ object ExceptionTranslator {
             state.startsWith("08") -> ConnectionException(sqlEx.message ?: "Connection error", queryContext, sqlEx)
 
             // Class 22 — Data Exception (Invalid data provided by the user)
-            state.startsWith("22") -> StatementException(
-                messageEnum = StatementExceptionMessage.DATA_EXCEPTION,
-                detail = sqlEx.message,
+            state.startsWith("22") -> DataOperationException(
+                messageEnum =  DataOperationExceptionMessage.INVALID_DATA_FORMAT,
                 queryContext = queryContext,
                 cause = sqlEx
             )
@@ -99,41 +98,61 @@ object ExceptionTranslator {
             }
 
             // Class 25 — Invalid Transaction State (includes read-only violations)
-            state.startsWith("25") -> StatementException(StatementExceptionMessage.INVALID_TRANSACTION_STATE, sqlEx.message, queryContext, sqlEx)
+            state.startsWith("25") -> BadStatementException(
+                BadStatementExceptionMessage.INVALID_TRANSACTION_STATE,
+                queryContext,
+                sqlEx
+            )
 
             // Class 40 — Transaction Rollback
             state.startsWith("40") -> {
                 val errorType = when (state) {
-                    "40P01" -> ConcurrencyErrorType.DEADLOCK
-                    "40001" -> ConcurrencyErrorType.SERIALIZATION_FAILURE
-                    else -> ConcurrencyErrorType.TIMEOUT
+                    "40P01" -> TransactionExceptionMessage.DEADLOCK
+                    "40001" -> TransactionExceptionMessage.SERIALIZATION_FAILURE
+                    else -> TransactionExceptionMessage.TIMEOUT
                 }
                 TransactionException(errorType, queryContext, sqlEx)
             }
 
             // Class 42 — Syntax Error or Access Rule Violation
             state.startsWith("42") -> {
-                val messageEnum = when (state) {
-                    "42501" -> StatementExceptionMessage.PERMISSION_DENIED
-                    "42601" -> StatementExceptionMessage.SYNTAX_ERROR
-                    "42P01", "42703", "42883", "42704" -> StatementExceptionMessage.OBJECT_NOT_FOUND
-                    else -> StatementExceptionMessage.SYNTAX_ERROR
+                if (state == "42501") {
+                    DataOperationException(
+                        messageEnum = DataOperationExceptionMessage.PERMISSION_DENIED,
+                        queryContext = queryContext,
+                        cause = sqlEx
+                    )
                 }
-                StatementException(messageEnum, sqlEx.message, queryContext, sqlEx)
+
+                val messageEnum = when (state) {
+                    "42601" -> BadStatementExceptionMessage.SYNTAX_ERROR
+                    "42P01", "42703", "42883", "42704" -> BadStatementExceptionMessage.OBJECT_NOT_FOUND
+                    else -> BadStatementExceptionMessage.SYNTAX_ERROR
+                }
+                BadStatementException(messageEnum, queryContext, sqlEx)
             }
 
-            // Class 28 — Invalid Authorization Specification
-            state.startsWith("28") -> StatementException(StatementExceptionMessage.INVALID_AUTHORIZATION, sqlEx.message, queryContext, sqlEx)
-
             // Class 57 — Operator Intervention
-            state == "57014" -> TransactionException(ConcurrencyErrorType.TIMEOUT, queryContext, sqlEx)
-            state.startsWith("57") -> ConnectionException("Database operator intervention: ${sqlEx.message}", queryContext, sqlEx)
+            state == "57014" -> TransactionException(TransactionExceptionMessage.TIMEOUT, queryContext, sqlEx)
+            state.startsWith("57") -> ConnectionException(
+                "Database operator intervention: ${sqlEx.message}",
+                queryContext,
+                sqlEx
+            )
 
             // Class 53/54 - Insufficient Resources / Program Limit Exceeded
-            state.startsWith("53") || state.startsWith("54") -> ConnectionException("Database resources exceeded: ${sqlEx.message}", queryContext, sqlEx)
+            state.startsWith("53") || state.startsWith("54") -> ConnectionException(
+                "Database resources exceeded: ${sqlEx.message}",
+                queryContext,
+                sqlEx
+            )
 
             // Class 55 — Object Not In Prerequisite State
-            state.startsWith("55") -> ConnectionException("Database object state error: ${sqlEx.message}", queryContext, sqlEx)
+            state.startsWith("55") -> ConnectionException(
+                "Database object state error: ${sqlEx.message}",
+                queryContext,
+                sqlEx
+            )
 
             // Class 58 — System Error
             state.startsWith("58") -> ConnectionException("System error: ${sqlEx.message}", queryContext, sqlEx)
@@ -142,9 +161,17 @@ object ExceptionTranslator {
             state.startsWith("P0") -> UnknownDatabaseException("PL/pgSQL Error: ${sqlEx.message}", queryContext, sqlEx)
 
             // Class XX — Internal Error
-            state.startsWith("XX") -> ConnectionException("Internal database error: ${sqlEx.message}", queryContext, sqlEx)
+            state.startsWith("XX") -> ConnectionException(
+                "Internal database error: ${sqlEx.message}",
+                queryContext,
+                sqlEx
+            )
 
-            else -> UnknownDatabaseException(sqlEx.message ?: "Unknown SQL Error (State: $state)", queryContext, sqlEx).withContext(queryContext)
+            else -> UnknownDatabaseException(
+                sqlEx.message ?: "Unknown SQL Error (State: $state)",
+                queryContext,
+                sqlEx
+            ).withContext(queryContext)
         }
     }
 

@@ -3,6 +3,8 @@ package io.github.octaviusframework.db.core.type.registry
 import io.github.octaviusframework.db.api.annotation.PgCompositeMapper
 import io.github.octaviusframework.db.api.exception.InitializationException
 import io.github.octaviusframework.db.api.exception.InitializationExceptionMessage
+import io.github.octaviusframework.db.api.exception.TypeRegistryException
+import io.github.octaviusframework.db.api.exception.TypeRegistryExceptionMessage
 import io.github.octaviusframework.db.api.type.PgStandardType
 import io.github.octaviusframework.db.api.type.QualifiedName
 import io.github.octaviusframework.db.api.type.TypeHandler
@@ -118,16 +120,18 @@ internal class TypeRegistryLoader(
         nameToSchemaOid: Map<String, Map<String, Int>>
     ): Pair<Int, QualifiedName> {
         val schemasForName = nameToSchemaOid[typeName]
-            ?: throw InitializationException(
-                InitializationExceptionMessage.TYPE_DEFINITION_MISSING_IN_DB,
+            ?: throw TypeRegistryException(
+                messageEnum = TypeRegistryExceptionMessage.TYPE_DEFINITION_MISSING_IN_DB,
+                typeName = typeName,
                 details = "Type '$typeName' not found in any scanned schemas"
             )
 
         // 1. If schema is explicitly requested
         if (requestedSchema.isNotBlank()) {
             val oid = schemasForName[requestedSchema]
-                ?: throw InitializationException(
-                    InitializationExceptionMessage.TYPE_DEFINITION_MISSING_IN_DB,
+                ?: throw TypeRegistryException(
+                    messageEnum = TypeRegistryExceptionMessage.TYPE_DEFINITION_MISSING_IN_DB,
+                    typeName = typeName,
                     details = "Type '$typeName' not found in requested schema '$requestedSchema'"
                 )
             return oid to QualifiedName(requestedSchema, typeName)
@@ -145,8 +149,9 @@ internal class TypeRegistryLoader(
                 oid to QualifiedName(schema, typeName)
             }
 
-            else -> throw InitializationException(
-                InitializationExceptionMessage.TYPE_DEFINITION_MISSING_IN_DB,
+            else -> throw TypeRegistryException(
+                messageEnum = TypeRegistryExceptionMessage.TYPE_DEFINITION_MISSING_IN_DB,
+                typeName = typeName,
                 details = "Type '$typeName' is ambiguous. Found in schemas: ${schemasForName.keys.joinToString()}. Please specify schema in annotation."
             )
         }
@@ -171,8 +176,10 @@ internal class TypeRegistryLoader(
 
             // Validate that DB actually sees this as an enum
             if (oid !in dbEnums) {
-                throw InitializationException(
-                    InitializationExceptionMessage.TYPE_DEFINITION_MISSING_IN_DB,
+                throw TypeRegistryException(
+                    messageEnum = TypeRegistryExceptionMessage.TYPE_DEFINITION_MISSING_IN_DB,
+                    typeName = qualifiedName.toString(),
+                    oid = oid,
                     details = "Resolved type $qualifiedName is not an enum in the database."
                 )
             }
@@ -216,8 +223,10 @@ internal class TypeRegistryLoader(
         ktComposites.forEach { kt ->
             val (oid, qualifiedName) = resolveOid(kt.pgName, kt.schema, searchPath, nameToSchemaOid)
 
-            val attributes = dbComposites[oid] ?: throw InitializationException(
-                InitializationExceptionMessage.TYPE_DEFINITION_MISSING_IN_DB,
+            val attributes = dbComposites[oid] ?: throw TypeRegistryException(
+                messageEnum = TypeRegistryExceptionMessage.TYPE_DEFINITION_MISSING_IN_DB,
+                typeName = qualifiedName.toString(),
+                oid = oid,
                 details = "Resolved type $qualifiedName is not a composite type in the database."
             )
 

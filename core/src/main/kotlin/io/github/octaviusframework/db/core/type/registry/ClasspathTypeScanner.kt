@@ -10,6 +10,8 @@ import io.github.octaviusframework.db.api.annotation.PgCompositeMapper
 import io.github.octaviusframework.db.api.annotation.PgEnum
 import io.github.octaviusframework.db.api.exception.InitializationException
 import io.github.octaviusframework.db.api.exception.InitializationExceptionMessage
+import io.github.octaviusframework.db.api.exception.TypeRegistryException
+import io.github.octaviusframework.db.api.exception.TypeRegistryExceptionMessage
 import io.github.octaviusframework.db.api.type.TypeHandler
 import io.github.octaviusframework.db.api.util.CaseConvention
 import io.github.octaviusframework.db.api.util.toSnakeCase
@@ -83,10 +85,10 @@ internal class ClasspathTypeScanner(
             val schema = (annotation.parameterValues.getValue("schema") as String)
 
             if (!seenNames.add(schema to name)) {
-                throw InitializationException(
-                    messageEnum = InitializationExceptionMessage.DUPLICATE_PG_TYPE_DEFINITION,
-                    details = if (schema.isBlank()) name else "$schema.$name",
-                    cause = IllegalStateException("Duplicate PostgreSQL type name detected: '$name' in schema '$schema'. Found on ${classInfo.name}")
+                throw TypeRegistryException(
+                    messageEnum = TypeRegistryExceptionMessage.DUPLICATE_PG_TYPE_DEFINITION,
+                    typeName = if (schema.isBlank()) name else "$schema.$name",
+                    details = "Duplicate PostgreSQL type name detected: '$name' in schema '$schema'. Found on ${classInfo.name}"
                 )
             }
 
@@ -120,10 +122,10 @@ internal class ClasspathTypeScanner(
             val schema = (annotation.parameterValues.getValue("schema") as String)
 
             if (!seenNames.add(schema to name)) {
-                throw InitializationException(
-                    messageEnum = InitializationExceptionMessage.DUPLICATE_PG_TYPE_DEFINITION,
-                    details = if (schema.isBlank()) name else "$schema.$name",
-                    cause = IllegalStateException("Duplicate PostgreSQL type name detected: '$name' in schema '$schema'. Found on ${classInfo.name}")
+                throw TypeRegistryException(
+                    messageEnum = TypeRegistryExceptionMessage.DUPLICATE_PG_TYPE_DEFINITION,
+                    typeName = if (schema.isBlank()) name else "$schema.$name",
+                    details = "Duplicate PostgreSQL type name detected: '$name' in schema '$schema'. Found on ${classInfo.name}"
                 )
             }
 
@@ -157,10 +159,10 @@ internal class ClasspathTypeScanner(
             val typeName = annotation.parameterValues.getValue("typeName") as String
 
             if (targetSerializers.containsKey(typeName)) {
-                throw InitializationException(
-                    messageEnum = InitializationExceptionMessage.DUPLICATE_DYNAMIC_TYPE_DEFINITION,
-                    details = typeName,
-                    cause = IllegalStateException("Duplicate @DynamicallyMappable key: '$typeName'. Found on ${classInfo.name}")
+                throw TypeRegistryException(
+                    messageEnum = TypeRegistryExceptionMessage.DUPLICATE_DYNAMIC_TYPE_DEFINITION,
+                    typeName = typeName,
+                    details = "Duplicate @DynamicallyMappable key: '$typeName'. Found on ${classInfo.name}"
                 )
             }
 

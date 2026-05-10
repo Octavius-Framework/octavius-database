@@ -29,7 +29,6 @@ class StatementException(
     message = messageEnum.name,
     cause = cause,
     queryContext = queryContext,
-    includeCauseInToString = true
 ) {
     override fun getDetailedMessage(): String {
         return buildString {

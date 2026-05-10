@@ -16,6 +16,7 @@ class TypeRegistryException(
     val typeName: String,
     val oid: Int? = null,
     val expectedCategory: String? = null,
+    val details: String? = null,
     cause: Throwable? = null,
     queryContext: QueryContext? = null
 ) : DatabaseException(
@@ -28,6 +29,7 @@ class TypeRegistryException(
         appendLine("Related Type: $typeName")
         if (oid != null) appendLine("OID: $oid")
         if (expectedCategory != null) appendLine("Expected Category: $expectedCategory")
+        if (details != null) appendLine("Details: $details")
     }
 }
 

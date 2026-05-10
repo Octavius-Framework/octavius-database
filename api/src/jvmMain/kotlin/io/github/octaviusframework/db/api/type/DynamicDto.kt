@@ -2,8 +2,8 @@ package io.github.octaviusframework.db.api.type
 
 import io.github.octaviusframework.db.api.annotation.DynamicallyMappable
 import io.github.octaviusframework.db.api.annotation.PgComposite
-import io.github.octaviusframework.db.api.exception.ConversionException
-import io.github.octaviusframework.db.api.exception.ConversionExceptionMessage
+import io.github.octaviusframework.db.api.exception.TypeMappingException
+import io.github.octaviusframework.db.api.exception.TypeMappingExceptionMessage
 import io.github.octaviusframework.db.api.serializer.OctaviusJson
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.JsonElement
@@ -53,15 +53,15 @@ data class DynamicDto private constructor(
          * @param value The object to wrap. Must be annotated with [DynamicallyMappable] 
          *              and `@Serializable`.
          * @return A constructed [DynamicDto] ready for database operations.
-         * @throws ConversionException if annotations are missing or serialization fails.
+         * @throws TypeMappingException if annotations are missing or serialization fails.
          */
         inline fun <reified T: Any> from(value: T): DynamicDto {
             @Suppress("UNCHECKED_CAST")
             val kClass = value::class as KClass<Any>
             // 1. Find type name (reflection)
             val annotation = kClass.findAnnotation<DynamicallyMappable>()
-                ?: throw ConversionException(
-                    messageEnum = ConversionExceptionMessage.JSON_SERIALIZATION_FAILED,
+                ?: throw TypeMappingException(
+                    messageEnum = TypeMappingExceptionMessage.JSON_SERIALIZATION_FAILED,
                     value = kClass.simpleName,
                     targetType = DynamicallyMappable::class.simpleName
                 )
@@ -71,8 +71,8 @@ data class DynamicDto private constructor(
                 // This is safer than other methods (read won't allow full information anyway)
                 serializer<T>()
             } catch (e: Exception) {
-                throw ConversionException(
-                    messageEnum = ConversionExceptionMessage.JSON_SERIALIZATION_FAILED,
+                throw TypeMappingException(
+                    messageEnum = TypeMappingExceptionMessage.JSON_SERIALIZATION_FAILED,
                     targetType = annotation.typeName,
                     cause = e
                 )
@@ -95,8 +95,8 @@ data class DynamicDto private constructor(
 
                 return DynamicDto(typeName, jsonPayload)
             } catch (e: Exception) {
-                throw ConversionException(
-                    messageEnum = ConversionExceptionMessage.JSON_SERIALIZATION_FAILED,
+                throw TypeMappingException(
+                    messageEnum = TypeMappingExceptionMessage.JSON_SERIALIZATION_FAILED,
                     targetType = typeName,
                     cause = e
                 )

@@ -1,7 +1,7 @@
 package io.github.octaviusframework.db.core.type
 
-import io.github.octaviusframework.db.api.exception.ConversionException
-import io.github.octaviusframework.db.api.exception.ConversionExceptionMessage
+import io.github.octaviusframework.db.api.exception.TypeMappingException
+import io.github.octaviusframework.db.api.exception.TypeMappingExceptionMessage
 import io.github.octaviusframework.db.api.exception.TypeRegistryException
 import io.github.octaviusframework.db.api.exception.TypeRegistryExceptionMessage
 import io.github.octaviusframework.db.api.serializer.OctaviusJson
@@ -96,8 +96,8 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
         return try {
             handler.fromPgString(value)
         } catch (e: Exception) {
-            throw ConversionException(
-                messageEnum = ConversionExceptionMessage.VALUE_CONVERSION_FAILED,
+            throw TypeMappingException(
+                messageEnum = TypeMappingExceptionMessage.VALUE_CONVERSION_FAILED,
                 value = value,
                 targetType = handler.kotlinClass.simpleName ?: oid.toString(),
                 cause = e
@@ -119,8 +119,8 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
 
         return typeInfo.valueToEnumMap[value]
             //Should this be RegistryException?
-            ?: throw ConversionException(
-                messageEnum = ConversionExceptionMessage.ENUM_CONVERSION_FAILED,
+            ?: throw TypeMappingException(
+                messageEnum = TypeMappingExceptionMessage.ENUM_CONVERSION_FAILED,
                 value = value,
                 targetType = typeInfo.typeName
             )
@@ -185,8 +185,8 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
             try {
                 typeInfo.mapper.toDataObject(constructorArgsMap)
             } catch (e: Exception) {
-                throw ConversionException(
-                    ConversionExceptionMessage.COMPOSITE_MAPPER_FAILED,
+                throw TypeMappingException(
+                    TypeMappingExceptionMessage.COMPOSITE_MAPPER_FAILED,
                     targetType = typeInfo.typeName,
                     rowData = constructorArgsMap,
                     cause = e
@@ -223,8 +223,8 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
             typeName = "public.dynamic_dto",
             expectedCategory = "DYNAMIC"
         )
-        if (typeName == null || jsonDataString == null) throw ConversionException(
-            ConversionExceptionMessage.INVALID_DYNAMIC_DTO_FORMAT,
+        if (typeName == null || jsonDataString == null) throw TypeMappingException(
+            TypeMappingExceptionMessage.INVALID_DYNAMIC_DTO_FORMAT,
             value = value
         )
 
@@ -235,8 +235,8 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
         return try {
             OctaviusJson.decodeFromString(serializer, jsonDataString)
         } catch (e: Exception) {
-            throw ConversionException(
-                ConversionExceptionMessage.JSON_DESERIALIZATION_FAILED,
+            throw TypeMappingException(
+                TypeMappingExceptionMessage.JSON_DESERIALIZATION_FAILED,
                 targetType = typeName,
                 rowData = mapOf("json" to jsonDataString),
                 cause = e

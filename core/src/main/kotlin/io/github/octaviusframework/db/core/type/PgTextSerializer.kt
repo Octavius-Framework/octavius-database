@@ -1,7 +1,7 @@
 package io.github.octaviusframework.db.core.type
 
-import io.github.octaviusframework.db.api.exception.ConversionException
-import io.github.octaviusframework.db.api.exception.ConversionExceptionMessage
+import io.github.octaviusframework.db.api.exception.TypeMappingException
+import io.github.octaviusframework.db.api.exception.TypeMappingExceptionMessage
 import io.github.octaviusframework.db.api.exception.TypeRegistryException
 import io.github.octaviusframework.db.api.exception.TypeRegistryExceptionMessage
 import io.github.octaviusframework.db.api.toDataMap
@@ -54,8 +54,8 @@ internal class PgTextSerializer(
             try {
                 typeInfo.mapper.toDataMap(obj)
             } catch (e: Exception) {
-                throw ConversionException(
-                    ConversionExceptionMessage.COMPOSITE_MAPPER_FAILED,
+                throw TypeMappingException(
+                    TypeMappingExceptionMessage.COMPOSITE_MAPPER_FAILED,
                     targetType = typeName.toString(),
                     cause = e
                 )

@@ -134,7 +134,7 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
     fun toSingleStrict(params: Map<String, Any?>): DataResult<Map<String, Any?>> {
         return executeReturningQuery(params, rowMappers.ColumnNameMapper()) {
             if (it.isEmpty()) {
-                throw ConversionException(ConversionExceptionMessage.EMPTY_RESULT, targetType = "Map<String, Any?>")
+                throw DataOperationException(DataOperationExceptionMessage.EMPTY_RESULT)
             }
             assertSingleRow(it, "Map<String, Any?>")
             DataResult.Success(it.first())
@@ -158,7 +158,7 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
         return executeReturningQuery(params, rowMappers.DataObjectMapper(kClass)) {
             assertSingleRow(it, kType.toString())
             if (it.isEmpty() && !kType.isMarkedNullable) {
-                throw ConversionException(ConversionExceptionMessage.EMPTY_RESULT, targetType = kType.toString())
+                throw DataOperationException(DataOperationExceptionMessage.EMPTY_RESULT)
             }
             @Suppress("UNCHECKED_CAST")
             DataResult.Success(it.firstOrNull() as T)
@@ -173,9 +173,14 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
             assertSingleRow(it, targetType.toString())
             val result = it.firstOrNull()
             if (result == null && !targetType.isMarkedNullable) {
-                val error =
-                    if (it.isEmpty()) ConversionExceptionMessage.EMPTY_RESULT else ConversionExceptionMessage.UNEXPECTED_NULL_VALUE
-                throw ConversionException(error, targetType = targetType.toString())
+                if (it.isEmpty()) {
+                    throw DataOperationException(DataOperationExceptionMessage.EMPTY_RESULT)
+                } else {
+                    throw TypeMappingException(
+                        TypeMappingExceptionMessage.UNEXPECTED_NULL_VALUE,
+                        targetType = targetType.toString()
+                    )
+                }
             }
             @Suppress("UNCHECKED_CAST")
             DataResult.Success(result as T)
@@ -186,13 +191,13 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
     fun <T> toFieldStrict(targetType: KType, params: Map<String, Any?>): DataResult<T> {
         return executeReturningQuery(params, rowMappers.SingleValueMapper(targetType)) {
             if (it.isEmpty()) {
-                throw ConversionException(ConversionExceptionMessage.EMPTY_RESULT, targetType = targetType.toString())
+                throw DataOperationException(DataOperationExceptionMessage.EMPTY_RESULT)
             }
             assertSingleRow(it, targetType.toString())
             val result = it.first()
             if (result == null && !targetType.isMarkedNullable) {
-                throw ConversionException(
-                    ConversionExceptionMessage.UNEXPECTED_NULL_VALUE,
+                throw TypeMappingException(
+                    TypeMappingExceptionMessage.UNEXPECTED_NULL_VALUE,
                     targetType = targetType.toString()
                 )
             }
@@ -245,8 +250,8 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
      */
     private fun assertSingleRow(results: List<*>, targetType: String) {
         if (results.size > 1) {
-            throw ConversionException(
-                ConversionExceptionMessage.TOO_MANY_ROWS,
+            throw TypeMappingException(
+                TypeMappingExceptionMessage.TOO_MANY_ROWS,
                 value = results.size,
                 targetType = targetType
             )

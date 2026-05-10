@@ -192,8 +192,8 @@ internal class KotlinToPostgresConverter(
     private fun handleArray(array: Array<*>): ParameterConversion {
         val componentType = array::class.java.componentType!!.kotlin
         if (componentType.isData || componentType == Map::class || componentType == List::class) {
-            throw ConversionException(
-                ConversionExceptionMessage.UNSUPPORTED_COMPONENT_TYPE_IN_ARRAY,
+            throw TypeMappingException(
+                TypeMappingExceptionMessage.UNSUPPORTED_COMPONENT_TYPE_IN_ARRAY,
                 array,
                 componentType.qualifiedName ?: componentType.simpleName ?: "unknown"
             )

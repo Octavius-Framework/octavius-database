@@ -8,6 +8,6 @@ enum class DataOperationExceptionMessage {
 
 
 class DataOperationException(
-    val messageEnum: DataOperationExceptionMessage, queryContext: QueryContext?,
-    cause: Throwable?
+    val messageEnum: DataOperationExceptionMessage, queryContext: QueryContext? = null,
+    cause: Throwable? = null
 ) : DatabaseException(messageEnum.name, cause, queryContext)

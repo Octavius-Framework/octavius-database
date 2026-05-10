@@ -5,7 +5,7 @@ import io.github.octaviusframework.db.api.builder.execute
 import io.github.octaviusframework.db.api.builder.toField
 import io.github.octaviusframework.db.api.builder.toFieldStrict
 import io.github.octaviusframework.db.api.exception.ConcurrencyErrorType
-import io.github.octaviusframework.db.api.exception.ConcurrencyException
+import io.github.octaviusframework.db.api.exception.TransactionException
 import io.github.octaviusframework.db.api.exception.StatementException
 import io.github.octaviusframework.db.api.exception.StatementExceptionMessage
 import io.github.octaviusframework.db.api.getOrThrow
@@ -35,8 +35,8 @@ class TransactionConfigurationIntegrationTest: AbstractIntegrationTest() {
             dataAccess.transaction(timeoutSeconds = 1) { tx ->
                 tx.rawQuery("SELECT pg_sleep(2)").execute()
             }.getOrThrow()
-        }.isInstanceOf(ConcurrencyException::class.java)
-            .matches { (it as ConcurrencyException).errorType == ConcurrencyErrorType.TIMEOUT }
+        }.isInstanceOf(TransactionException::class.java)
+            .matches { (it as TransactionException).errorType == ConcurrencyErrorType.TIMEOUT }
     }
 
     @Test
@@ -110,8 +110,8 @@ class TransactionConfigurationIntegrationTest: AbstractIntegrationTest() {
         val error1 = t1Error.get()
         val error2 = t2Error.get()
         
-        val anySerializationError = (error1 is ConcurrencyException && error1.errorType == ConcurrencyErrorType.SERIALIZATION_FAILURE) ||
-                                    (error2 is ConcurrencyException && error2.errorType == ConcurrencyErrorType.SERIALIZATION_FAILURE)
+        val anySerializationError = (error1 is TransactionException && error1.errorType == ConcurrencyErrorType.SERIALIZATION_FAILURE) ||
+                                    (error2 is TransactionException && error2.errorType == ConcurrencyErrorType.SERIALIZATION_FAILURE)
 
         assertThat(anySerializationError)
             .withFailMessage("Expected at least one thread to fail with SERIALIZATION_FAILURE, but errors were: T1=$error1, T2=$error2")

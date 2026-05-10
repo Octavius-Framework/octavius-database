@@ -32,11 +32,10 @@ class StepDependencyException(
     val messageEnum: StepDependencyExceptionMessage,
     val referencedStepIndex: Int,
     vararg val args: Any,
-    cause: Throwable? = null,
-    queryContext: QueryContext? = null
-) : DatabaseException(
-    queryContext = queryContext,
+    cause: Throwable? = null
+) : FatalDatabaseException(
     message = messageEnum.name,
+    queryContext = null,
     cause = cause
 ) {
     constructor(messageEnum: StepDependencyExceptionMessage, stepIndex: Int)

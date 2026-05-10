@@ -31,8 +31,7 @@ class ConstraintViolationException(
 ) : DatabaseException(
     message = messageEnum.name,
     cause = cause,
-    queryContext = queryContext,
-    includeCauseInToString = true
+    queryContext = queryContext
 ) {
     override fun getDetailedMessage(): String {
         return buildString {

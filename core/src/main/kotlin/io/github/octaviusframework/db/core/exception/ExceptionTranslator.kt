@@ -108,7 +108,7 @@ object ExceptionTranslator {
                     "40001" -> ConcurrencyErrorType.SERIALIZATION_FAILURE
                     else -> ConcurrencyErrorType.TIMEOUT
                 }
-                ConcurrencyException(errorType, queryContext, sqlEx)
+                TransactionException(errorType, queryContext, sqlEx)
             }
 
             // Class 42 — Syntax Error or Access Rule Violation
@@ -126,7 +126,7 @@ object ExceptionTranslator {
             state.startsWith("28") -> StatementException(StatementExceptionMessage.INVALID_AUTHORIZATION, sqlEx.message, queryContext, sqlEx)
 
             // Class 57 — Operator Intervention
-            state == "57014" -> ConcurrencyException(ConcurrencyErrorType.TIMEOUT, queryContext, sqlEx)
+            state == "57014" -> TransactionException(ConcurrencyErrorType.TIMEOUT, queryContext, sqlEx)
             state.startsWith("57") -> ConnectionException("Database operator intervention: ${sqlEx.message}", queryContext, sqlEx)
 
             // Class 53/54 - Insufficient Resources / Program Limit Exceeded

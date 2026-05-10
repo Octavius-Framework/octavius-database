@@ -2,7 +2,7 @@ package io.github.octaviusframework.db.core.exception
 
 import io.github.octaviusframework.db.api.DataResult
 import io.github.octaviusframework.db.api.exception.ConcurrencyErrorType
-import io.github.octaviusframework.db.api.exception.ConcurrencyException
+import io.github.octaviusframework.db.api.exception.TransactionException
 import io.github.octaviusframework.db.api.exception.InitializationException
 import io.github.octaviusframework.db.core.OctaviusDatabase
 import io.github.octaviusframework.db.core.config.DatabaseConfig
@@ -46,8 +46,8 @@ class ExceptionIntegrationTest {
             // THEN
             assertThat(result).isInstanceOf(DataResult.Failure::class.java)
             val failure = result as DataResult.Failure
-            assertThat(failure.error).isInstanceOf(ConcurrencyException::class.java)
-            val concError = failure.error as ConcurrencyException
+            assertThat(failure.error).isInstanceOf(TransactionException::class.java)
+            val concError = failure.error as TransactionException
             assertThat(concError.errorType).isEqualTo(ConcurrencyErrorType.TIMEOUT)
 
             // Cleanup
@@ -86,8 +86,8 @@ class ExceptionIntegrationTest {
             val res2 = deferred2.await()
 
             // One of them must fail with deadlock
-            val anyDeadlock = (res1 is DataResult.Failure && (res1.error as? ConcurrencyException)?.errorType == ConcurrencyErrorType.DEADLOCK) ||
-                    (res2 is DataResult.Failure && (res2.error as? ConcurrencyException)?.errorType == ConcurrencyErrorType.DEADLOCK)
+            val anyDeadlock = (res1 is DataResult.Failure && (res1.error as? TransactionException)?.errorType == ConcurrencyErrorType.DEADLOCK) ||
+                    (res2 is DataResult.Failure && (res2.error as? TransactionException)?.errorType == ConcurrencyErrorType.DEADLOCK)
 
             assertThat(anyDeadlock).isTrue()
         } finally {

@@ -5,6 +5,8 @@ import io.github.octaviusframework.db.api.DataResult
 import io.github.octaviusframework.db.api.QueryOperations
 import io.github.octaviusframework.db.api.builder.*
 import io.github.octaviusframework.db.api.exception.DatabaseException
+import io.github.octaviusframework.db.api.exception.FatalDatabaseException
+import io.github.octaviusframework.db.api.exception.OctaviusException
 import io.github.octaviusframework.db.api.exception.QueryContext
 import io.github.octaviusframework.db.api.notification.PgChannelListener
 import io.github.octaviusframework.db.api.transaction.IsolationLevel
@@ -93,18 +95,23 @@ internal class DatabaseAccess(
                 }
                 result // Return original result (Success or Failure)
             }
-        } catch (e: DatabaseException) {
+        } catch (e: OctaviusException) {
             // There is no additional context here so there is nothing to do with this exception
-            // It should be logged - technically someone is throwing it instead of returning or it is from toDataMap/toDataObject
-            // Because it is unreasonable to throw from queries we are assuming that this error has not been logged
-            logger.error(e) { "A DatabaseException was thrown inside the transaction block. Rolling back." }
-            DataResult.Failure(e)
+            when (e) {
+                // Technically someone is throwing it instead of returning it
+                // It is rather unreasonable, but it should be consistent with queries
+                is DatabaseException -> return DataResult.Failure(e)
+                //
+                is FatalDatabaseException -> throw e
+            }
         } catch (e: Exception) {
             // Catch any other unexpected exception
+            // These errors haven't been logged
+            logger.error(e) { "An unexpected exception occurred during transaction management. Rolling back." }
             // There is no additional context here
             val context = QueryContext("TRANSACTION_OPERATION", emptyMap())
+            // Try to translate SQLException to DatabaseException
             val ex = ExceptionTranslator.translate(e, context)
-            logger.error(e) { "An unexpected exception occurred during transaction management. Rolling back." }
             // Wrap it in standard Failure
             DataResult.Failure(ex)
         }

@@ -15,7 +15,10 @@ enum class ConstraintViolationExceptionMessage {
     CHECK_CONSTRAINT_VIOLATION,
 
     /** General data integrity error (e.g., exclusion constraint or invalid data format). */
-    DATA_INTEGRITY
+    DATA_INTEGRITY,
+
+    /** Specific error for SQLSTATE 40002. */
+    DEFFERED_CONSTRAINT_VIOLATION
 }
 
 /**
@@ -57,17 +60,19 @@ private fun generateDeveloperMessage(
     return when (messageEnum) {
         ConstraintViolationExceptionMessage.UNIQUE_CONSTRAINT_VIOLATION ->
             "Unique constraint violation$tableInfo$columnInfo. A duplicate value was provided for a unique field$constraintInfo."
-        
+
         ConstraintViolationExceptionMessage.FOREIGN_KEY_VIOLATION ->
             "Foreign key violation$tableInfo$columnInfo. The referenced record does not exist$constraintInfo."
-        
+
         ConstraintViolationExceptionMessage.NOT_NULL_VIOLATION ->
             "Not null violation$tableInfo$columnInfo. A null value was provided for a non-nullable field$constraintInfo."
-        
+
         ConstraintViolationExceptionMessage.CHECK_CONSTRAINT_VIOLATION ->
             "Check constraint violation$tableInfo. The value does not satisfy the business rule$constraintInfo."
-        
+
         ConstraintViolationExceptionMessage.DATA_INTEGRITY ->
             "Data integrity violation$tableInfo. The operation would leave the database in an inconsistent state$constraintInfo."
+
+        ConstraintViolationExceptionMessage.DEFFERED_CONSTRAINT_VIOLATION -> "Deffered constraint violation$tableInfo$columnInfo"
     }
 }

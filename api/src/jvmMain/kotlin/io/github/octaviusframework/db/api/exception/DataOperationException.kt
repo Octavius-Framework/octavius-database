@@ -11,3 +11,5 @@ class DataOperationException(
     val messageEnum: DataOperationExceptionMessage, queryContext: QueryContext? = null,
     cause: Throwable? = null
 ) : DatabaseException(messageEnum.name, cause, queryContext)
+
+// Insufficient privilege to perform this operation.

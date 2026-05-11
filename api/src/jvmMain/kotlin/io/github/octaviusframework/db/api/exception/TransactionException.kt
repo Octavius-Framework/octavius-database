@@ -4,7 +4,8 @@ enum class TransactionExceptionMessage {
     TIMEOUT,
     DEADLOCK,
     SERIALIZATION_FAILURE,
-    UNKNOWN_ROLLBACK
+    TRANSACTION_ROLLBACK,
+    STATEMENT_COMPLETION_UNKNOWN
 }
 
 /**

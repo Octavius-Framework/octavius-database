@@ -7,10 +7,16 @@ enum class BadStatementExceptionMessage {
     MISSING_CLAUSE,
     MISSING_PARAMETERS,
     DUPLICATE_PARAMETERS,
-    SYNTAX_ERROR,
-    OBJECT_NOT_FOUND,
     INVALID_TRANSACTION_STATE,
-    INVALID_STATEMENT_STATE
+    INVALID_STATEMENT_STATE,
+
+    // Class 42 — General Categories
+    SYNTAX_ERROR,
+    UNDEFINED_OBJECT,
+    DUPLICATE_OBJECT,
+    AMBIGUOUS_OBJECT,
+    DATA_TYPE_ERROR,
+    INVALID_DEFINITION
 }
 
 /**
@@ -36,21 +42,17 @@ private fun generateDeveloperMessage(
     messageEnum: BadStatementExceptionMessage
 ): String {
     return when (messageEnum) {
-        BadStatementExceptionMessage.SYNTAX_ERROR ->
-            "SQL syntax error. The statement is malformed or contains invalid syntax."
-
-        BadStatementExceptionMessage.OBJECT_NOT_FOUND ->
-            "Database object not found. Ensure that the table, column, or function exists and is correctly spelled."
-
-        BadStatementExceptionMessage.INVALID_TRANSACTION_STATE ->
-            "Invalid transaction state. The operation cannot be performed in the current state of the transaction (e.g., trying to write in a read-only transaction or after a previous error)."
-
+        BadStatementExceptionMessage.SYNTAX_ERROR -> "SQL syntax error. The statement is malformed."
+        BadStatementExceptionMessage.UNDEFINED_OBJECT -> "Database object not found (table, column, function, etc.)."
+        BadStatementExceptionMessage.DUPLICATE_OBJECT -> "Database object already exists."
+        BadStatementExceptionMessage.AMBIGUOUS_OBJECT -> "Ambiguous reference to a database object."
+        BadStatementExceptionMessage.DATA_TYPE_ERROR -> "Data type mismatch or invalid coercion."
+        BadStatementExceptionMessage.INVALID_DEFINITION -> "Invalid object definition or schema mismatch."
+        BadStatementExceptionMessage.INVALID_TRANSACTION_STATE -> "Invalid transaction state."
         BadStatementExceptionMessage.MISSING_CLAUSE -> "Query clause is missing."
-
-        BadStatementExceptionMessage.MISSING_PARAMETERS -> "Missing parameters in query"
-
-        BadStatementExceptionMessage.DUPLICATE_PARAMETERS -> "Duplicate parameters in query"
-        BadStatementExceptionMessage.INVALID_STATEMENT_STATE -> "Statement is in invalid state"
+        BadStatementExceptionMessage.MISSING_PARAMETERS -> "Missing parameters in query."
+        BadStatementExceptionMessage.DUPLICATE_PARAMETERS -> "Duplicate parameters in query."
+        BadStatementExceptionMessage.INVALID_STATEMENT_STATE -> "Statement is in invalid state."
     }
 }
 

@@ -1,6 +1,8 @@
 package io.github.octaviusframework.db.api.notification
 
 import io.github.octaviusframework.db.api.DataResult
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -55,5 +57,5 @@ interface PgChannelListener : AutoCloseable {
      *
      * @return Flow emitting notifications as they arrive.
      */
-    fun notifications(): Flow<PgNotification>
+    fun notifications(ioDispatcher: CoroutineDispatcher = Dispatchers.IO): Flow<PgNotification>
 }

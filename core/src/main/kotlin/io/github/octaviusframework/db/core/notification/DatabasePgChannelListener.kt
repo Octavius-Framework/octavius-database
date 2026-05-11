@@ -1,11 +1,14 @@
 package io.github.octaviusframework.db.core.notification
 
 import io.github.octaviusframework.db.api.DataResult
+import io.github.octaviusframework.db.api.exception.DatabaseException
 import io.github.octaviusframework.db.api.exception.QueryContext
 import io.github.octaviusframework.db.api.notification.PgChannelListener
 import io.github.octaviusframework.db.api.notification.PgNotification
+import io.github.octaviusframework.db.api.type.QualifiedName
 import io.github.octaviusframework.db.core.exception.ExceptionTranslator
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
@@ -18,36 +21,34 @@ import java.sql.Connection
 internal class DatabasePgChannelListener(
     private val connection: Connection
 ) : PgChannelListener {
-
+    // All notifications aren't part of transactions
     private val pgConnection: PGConnection = connection.unwrap(PGConnection::class.java)
 
     override fun listen(vararg channels: String): DataResult<Unit> {
-        val sql = channels.joinToString("; ") { "LISTEN ${pgConnection.escapeIdentifier(it)}" }
+        val sql = channels.joinToString("; ") { "LISTEN ${QualifiedName.quoteIdentifier(it)}" }
         return try {
-            channels.forEach { channel ->
-                connection.createStatement().use { stmt ->
-                    stmt.execute("LISTEN ${pgConnection.escapeIdentifier(channel)}")
-                }
+            connection.createStatement().use { stmt ->
+                stmt.execute(sql)
             }
             DataResult.Success(Unit)
         } catch (e: Exception) {
-            val translated = ExceptionTranslator.translate(e, QueryContext(sql, emptyMap()))
+            // Translate all exceptions - it will be SQLException
+            val translated = ExceptionTranslator.translate(e, QueryContext(sql, emptyMap())) as DatabaseException
             logger.error(translated) { "Error executing LISTEN on channels: ${channels.toList()}" }
             DataResult.Failure(translated)
         }
     }
 
     override fun unlisten(vararg channels: String): DataResult<Unit> {
-        val sql = channels.joinToString("; ") { "UNLISTEN ${pgConnection.escapeIdentifier(it)}" }
+        val sql = channels.joinToString("; ") { "UNLISTEN ${QualifiedName.quoteIdentifier(it)}" }
         return try {
-            channels.forEach { channel ->
-                connection.createStatement().use { stmt ->
-                    stmt.execute("UNLISTEN ${pgConnection.escapeIdentifier(channel)}")
-                }
+            connection.createStatement().use { stmt ->
+                stmt.execute(sql)
             }
             DataResult.Success(Unit)
         } catch (e: Exception) {
-            val translated = ExceptionTranslator.translate(e, QueryContext(sql, emptyMap()))
+            // Translate all exceptions - it will be SQLException
+            val translated = ExceptionTranslator.translate(e, QueryContext(sql, emptyMap())) as DatabaseException
             logger.error(translated) { "Error executing UNLISTEN on channels: ${channels.toList()}" }
             DataResult.Failure(translated)
         }
@@ -61,20 +62,21 @@ internal class DatabasePgChannelListener(
             }
             DataResult.Success(Unit)
         } catch (e: Exception) {
-            val translated = ExceptionTranslator.translate(e, QueryContext(sql, emptyMap()))
+            // Translate all exceptions - it will be SQLException
+            val translated = ExceptionTranslator.translate(e, QueryContext(sql, emptyMap())) as DatabaseException
             logger.error(translated) { "Error executing UNLISTEN *" }
             DataResult.Failure(translated)
         }
     }
 
-    override fun notifications(): Flow<PgNotification> = flow {
+    override fun notifications(ioDispatcher: CoroutineDispatcher): Flow<PgNotification> = flow {
         while (currentCoroutineContext().isActive) {
             val notifs = pgConnection.getNotifications(POLL_TIMEOUT_MS)
             notifs?.forEach { notif ->
                 emit(PgNotification(notif.name, notif.parameter, notif.pid))
             }
         }
-    }.flowOn(Dispatchers.IO)
+    }.flowOn(ioDispatcher) // Notifications aren't part of transactions
 
     override fun close() {
         if (connection.isClosed) return

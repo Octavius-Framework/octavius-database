@@ -1,7 +1,10 @@
 package io.github.octaviusframework.db.api.exception
 
 /**
- * Infrastructure and connectivity issues.
+ * Exception thrown when there are infrastructure or connectivity issues.
+ *
+ * This includes failures to obtain a connection from the pool, network timeouts,
+ * or the database server being unreachable.
  */
 class ConnectionException(
     message: String,

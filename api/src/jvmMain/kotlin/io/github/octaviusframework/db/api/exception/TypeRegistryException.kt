@@ -11,6 +11,13 @@ enum class TypeRegistryExceptionMessage {
     DUPLICATE_DYNAMIC_TYPE_DEFINITION, // Conflict between @DynamicallyMappable names
 }
 
+/**
+ * Exception thrown when there is a mismatch or missing definition in the type registry.
+ *
+ * The type registry maintains mappings for PostgreSQL enums and composite types.
+ * This exception can occur during startup (schema validation) or at runtime
+ * (when a type is used but not registered).
+ */
 class TypeRegistryException(
     val messageEnum: TypeRegistryExceptionMessage,
     val typeName: String,

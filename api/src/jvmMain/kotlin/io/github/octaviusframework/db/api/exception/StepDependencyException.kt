@@ -21,12 +21,11 @@ enum class StepDependencyExceptionMessage {
 }
 
 /**
- * Thrown when a reference to a result from a previous step (`TransactionValue.FromStep`)
+ * Exception thrown when a reference to a result from a previous transaction step
  * is invalid and cannot be resolved.
  *
- * @param messageEnum Error message enum.
- * @param referencedStepIndex Index of the step that the reference pointed to.
- * @param args Arguments useful for the message.
+ * This typically happens when a step tries to access a result from a future step,
+ * uses an unknown handle, or attempts an invalid row access on a result set.
  */
 class StepDependencyException(
     val messageEnum: StepDependencyExceptionMessage,

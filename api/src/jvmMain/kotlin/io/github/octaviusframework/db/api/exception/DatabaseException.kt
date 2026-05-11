@@ -1,8 +1,10 @@
 package io.github.octaviusframework.db.api.exception
 
 /**
- * Base sealed exception for most Octavius Database errors.
- * Only InitializationException and BuilderException are excluded as they are thrown and can't be inside DataResult
+ * Base exception for recoverable database errors that are returned within [io.github.octaviusframework.db.api.DataResult].
+ *
+ * These exceptions represent errors that occur during query execution (e.g., constraint violations,
+ * serialization failures) and can often be handled by the application logic.
  */
 sealed class DatabaseException(
     message: String,

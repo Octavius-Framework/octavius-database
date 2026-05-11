@@ -31,7 +31,7 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
      * @param oid PostgreSQL type OID.
      * @return Converted value or `null` if `value` was `null`.
      * @throws TypeRegistryException if type is unknown.
-     * @throws ConversionException if conversion fails.
+     * @throws TypeMappingException if conversion fails.
      */
     fun convert(value: String?, oid: Int): Any? {
         if (value == null) {
@@ -81,7 +81,7 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
      * @param value Value from database as String.
      * @param oid OID of standard PostgreSQL type.
      * @return Converted value.
-     * @throws ConversionException if conversion fails.
+     * @throws TypeMappingException if conversion fails.
      */
     private fun convertStandardType(value: String, oid: Int): Any { // null handled in convert method
         // 1. Find the appropriate handler in the registry
@@ -113,7 +113,7 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
      * @param value Enum value from database.
      * @param typeInfo Enum type information from TypeRegistry.
      * @return Kotlin enum instance.
-     * @throws ConversionException if conversion fails.
+     * @throws TypeMappingException if conversion fails.
      */
     private fun convertEnum(value: String, typeInfo: PgEnumDefinition): Any { // null handled in convert method
 
@@ -135,7 +135,7 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
      * @param value String representing PostgreSQL array (format: {elem1,elem2,...}).
      * @param typeInfo Array type information from TypeRegistry.
      * @return List of converted elements.
-     * @throws ConversionException if parsing fails.
+     * @throws TypeMappingException if parsing fails.
      */
     private fun convertArray(value: String, typeInfo: PgArrayDefinition): List<Any?> {
 

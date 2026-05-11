@@ -57,7 +57,7 @@ internal class RowMappers(
      * This mapper is highly optimized for "scalar" queries.
      *
      * @param kType The expected Kotlin type of the field, used for validation and nullability checks.
-     * @return A mapper returning a single value or throwing [io.github.octaviusframework.db.api.exception.ConversionException] on type mismatch or unexpected null.
+     * @return A mapper returning a single value or throwing [io.github.octaviusframework.db.api.exception.TypeMappingException] on type mismatch or unexpected null.
      */
     fun SingleValueMapper(kType: KType): RowMapper<Any?> = RowMapper { rs, _ ->
         val value = valueExtractor.extract(rs, 1)

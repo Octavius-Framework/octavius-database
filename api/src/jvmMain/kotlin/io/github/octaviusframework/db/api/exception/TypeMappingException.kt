@@ -1,26 +1,35 @@
 package io.github.octaviusframework.db.api.exception
 
+/**
+ * Messages for [TypeMappingException] occurring during conversion between Kotlin and PostgreSQL types.
+ */
 enum class TypeMappingExceptionMessage {
-    /** General standard type conversion error */
+    /** General failure when converting a database value to a Kotlin property. */
     VALUE_CONVERSION_FAILED,
 
-    /** Database value doesn't match any enum */
+    /** Database enum string does not match any entry in the Kotlin enum class. */
     ENUM_CONVERSION_FAILED,
 
+    /** 
+     * Attempted to use a native array (Array<T>) for complex types. 
+     * Framework requires List<T> for structured types.
+     */
     UNSUPPORTED_COMPONENT_TYPE_IN_ARRAY,
 
-    /** dynamic_dto parsing error */
+    /** The internal format of a dynamic_dto column is invalid or corrupted. */
     INVALID_DYNAMIC_DTO_FORMAT,
 
+    /** Collection element type does not match the expected generic type. */
     INCOMPATIBLE_COLLECTION_ELEMENT_TYPE,
 
+    /** General type mismatch during mapping. */
     INCOMPATIBLE_TYPE,
 
     // Mapping errors
-    /** Missing key for required field in data class */
+    /** A required (non-null) property in a data class was missing from the query result. */
     MISSING_REQUIRED_PROPERTY,
 
-    /** General error during data class instantiation */
+    /** Critical failure during instantiation of a data class or object mapping. */
     OBJECT_MAPPING_FAILED,
 
 
@@ -30,16 +39,25 @@ enum class TypeMappingExceptionMessage {
     /** Object to JSON serialization error for dynamic_dto */
     JSON_SERIALIZATION_FAILED,
 
-    /** When a non-null value was expected but null was received */
+    /** A non-nullable Kotlin field received a NULL value from the database. */
     UNEXPECTED_NULL_VALUE,
 
-    /** When a single-row method received more than one row */
+    /** Expected a single row but the query returned multiple rows. */
     TOO_MANY_ROWS,
 
-    /** Error during manual mapping via PgCompositeMapper */
+    /** User-defined PgCompositeMapper implementation threw an exception. */
     COMPOSITE_MAPPER_FAILED
 }
 
+/**
+ * Exception thrown when data cannot be mapped between the database and Kotlin objects.
+ *
+ * This covers issues with `kotlinx.serialization`, reflection-based mapping to data classes,
+ * and custom type converters.
+ *
+ * As a [FatalDatabaseException], it usually indicates a mismatch between the SQL query result
+ * and the target Kotlin model (e.g., missing column, incompatible type, or unexpected null).
+ */
 class TypeMappingException(
     val messageEnum: TypeMappingExceptionMessage,
     val value: Any? = null,

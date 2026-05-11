@@ -1,14 +1,24 @@
 package io.github.octaviusframework.db.api.exception
 
+/**
+ * Messages for [TransactionException] covering concurrency and transaction lifecycle errors.
+ */
 enum class TransactionExceptionMessage {
+    /** The operation timed out (PostgreSQL 57014 or lock timeout). */
     TIMEOUT,
+    /** A deadlock was detected and this transaction was rolled back (PostgreSQL 40P01). */
     DEADLOCK,
+    /** Concurrent updates prevented transaction serialization (PostgreSQL 40001). */
     SERIALIZATION_FAILURE,
+    /** The transaction was rolled back by the database for internal reasons (PostgreSQL 40000). */
     TRANSACTION_ROLLBACK
 }
 
 /**
- * Concurrency and transaction-related issues (e.g., deadlocks, timeouts).
+ * Exception thrown for concurrency-related issues and transaction lifecycle failures.
+ *
+ * These errors are typically transient and may succeed if retried (especially [DEADLOCK][TransactionExceptionMessage.DEADLOCK]
+ * and [SERIALIZATION_FAILURE][TransactionExceptionMessage.SERIALIZATION_FAILURE]).
  */
 class TransactionException(
     val messageEnum: TransactionExceptionMessage,

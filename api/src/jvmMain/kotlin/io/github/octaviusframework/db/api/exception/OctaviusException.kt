@@ -1,5 +1,11 @@
 package io.github.octaviusframework.db.api.exception
 
+/**
+ * Base exception for all errors in Octavius Database.
+ *
+ * This class provides a standardized way to include [QueryContext] and formatted error messages
+ * that include technical details and the causal chain.
+ */
 sealed class OctaviusException(
     message: String,
     cause: Throwable? = null,

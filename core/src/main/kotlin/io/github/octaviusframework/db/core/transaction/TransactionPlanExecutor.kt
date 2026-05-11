@@ -81,6 +81,10 @@ internal class TransactionPlanExecutor(
         }
     }
 
+    /**
+     * @throws BadStatementException
+     * @throws StepDependencyException
+     */
     private fun validatePlan(stepsWithHandles: List<Pair<StepHandle<*>, TransactionStep<*>>>): Map<StepHandle<*>, Int> {
         val handleToIndexMap = stepsWithHandles.withIndex().associate { (index, pair) -> pair.first to index }
 
@@ -88,12 +92,12 @@ internal class TransactionPlanExecutor(
             val step = pair.second
             val builder = step.builder as AbstractQueryBuilder<*>
 
-            // Step 1: Validate SQL generation (triggers BuilderException early)
+            // Step 1: Validate SQL generation
             val sql = try {
                 builder.toSql()
-            } catch (e: BuilderException) {
-                // If it's a BuilderException, we wrap it to provide the step index
-                throw BuilderException("Error in transaction step $currentIndex: ${e.message}", e)
+            } catch (e: BadStatementException) {
+                // If it's a BadStatementException, we wrap it to provide the step index
+                throw e.withContext(QueryContext("N/A", parameters = step.params, transactionStepIndex = currentIndex))
             }
 
             // Step 2: Validate parameter dependencies
@@ -159,15 +163,21 @@ internal class TransactionPlanExecutor(
 
         // Execute step logic
         // Handle step result
-        when (val stepResult = step.executionLogic(step.builder, finalParams)) {
-            is DataResult.Success -> {
-                indexedResults[index] = stepResult.value
+        try {
+            when (val stepResult = step.executionLogic(step.builder, finalParams)) {
+                is DataResult.Success -> {
+                    indexedResults[index] = stepResult.value
+                }
+                is DataResult.Failure -> {
+                    val error = stepResult.error
+                    error.withStepIndex(index)
+                    throw error
+                }
             }
-            is DataResult.Failure -> {
-                val error = stepResult.error
-                error.withStepIndex(index)
-                throw error
-            }
+        } catch (e: FatalDatabaseException) {
+            // FatalDatabaseException withContext (from AbstractQueryBuilder) BadStatementException from toSql checked earlier
+            e.withStepIndex(index)
+            throw e
         }
     }
 
@@ -194,22 +204,14 @@ internal class TransactionPlanExecutor(
     }
 
     private fun handleTransactionError(error: Throwable): DataResult.Failure {
-        if (error is BuilderException) {
-            throw error
-        }
-
         return when (error) {
-            is StepDependencyException -> {
-                // StepDependencyException wasn't logged anywhere
+            is FatalDatabaseException -> {
                 logger.error(error) { "Transaction failed and was rolled back." }
-                DataResult.Failure(error)
+                throw error
             }
-
-            is DatabaseException -> {
-                DataResult.Failure(error)
-            }
-
+            is DatabaseException -> DataResult.Failure(error)
             else -> {
+                // SQLException
                 val ex = ExceptionTranslator.translate(error, QueryContext("COMMIT/ROLLBACK", emptyMap()))
                 logger.error(ex) { "Transaction failed and was rolled back." }
                 DataResult.Failure(ex)
@@ -248,7 +250,7 @@ internal class TransactionPlanExecutor(
         indexedResults: Map<Int, Any?>,
         handleToIndexMap: Map<StepHandle<*>, Int>
     ): Any? {
-        // First retrieve the "raw" value from inside (recursion!)
+        // First retrieve the "raw" value from inside
         val rawValue = resolveReference(value.source, indexedResults, handleToIndexMap)
 
         // Apply user-provided function

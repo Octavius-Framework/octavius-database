@@ -327,11 +327,11 @@ Each `PgChannelListener` holds its own dedicated JDBC connection, separate from 
 
 ## Error Handling
 
-Octavius distinguishes between **Database Execution Errors** (returned safely) and **Fatal/Setup Errors** (thrown).
+Octavius distinguishes between **Database Execution Errors** (returned safely) and **Fatal Developer Errors** (thrown).
 
-- **Queries Never Throw:** If a query reaches the database, it returns a `DataResult.Failure(error)` instead of throwing. This forces explicit handling of database errors like constraint violations or syntax issues.
-- **Rich Context:** Every `DatabaseException` includes a `QueryContext` that provides a clean visualization of the SQL and parameters involved (great for logging!).
-- **Structured Exceptions:** Specific types like `ConstraintViolationException` provide direct access to table and constraint names.
+- **Queries Never Throw (On Runtime Errors):** If a query is syntactically correct and reaches the database, it returns a `DataResult.Failure(error)` instead of throwing. This forces explicit handling of expected database errors like constraint violations, lock timeouts, or missing records.
+- **Fail-Fast for Bugs:** If an obvious developer mistake is made (e.g., invalid SQL syntax, a missing `WHERE` clause in a `DELETE`, or a Kotlin type mapping mismatch), Octavius **throws a standard exception** (`FatalDatabaseException`). It fails fast because these errors represent broken code that should be caught and fixed during development.
+- **Rich Context:** Every exception includes a `QueryContext` that provides a clean visualization of the high-level SQL, the low-level JDBC query, and the exact parameters involved (great for logging!).
 
 ```kotlin
 val result = dataAccess.insertInto("citizens")
@@ -344,7 +344,8 @@ result
     .onFailure { error ->
         when (error) {
             is ConstraintViolationException -> println("Conflict in: ${error.constraintName}")
-            is StatementException -> println("SQL Syntax error: ${error.messageEnum}")
+            is DataOperationException -> println("Operation failed: ${error.messageEnum}")
+            is TransactionException -> println("Transient error: ${error.errorType}")
             else -> println("Database error: $error")
         }
     }

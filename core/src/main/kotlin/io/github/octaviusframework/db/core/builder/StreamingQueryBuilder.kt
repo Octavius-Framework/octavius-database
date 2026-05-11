@@ -2,6 +2,7 @@ package io.github.octaviusframework.db.core.builder
 
 import io.github.octaviusframework.db.api.DataResult
 import io.github.octaviusframework.db.api.builder.StreamingTerminalMethods
+import io.github.octaviusframework.db.api.exception.DatabaseException
 import io.github.octaviusframework.db.api.exception.QueryContext
 import io.github.octaviusframework.db.core.exception.ExceptionTranslator
 import io.github.octaviusframework.db.core.jdbc.RowMapper
@@ -23,8 +24,7 @@ internal class StreamingQueryBuilder(
         rowMapper: RowMapper<T>,
         action: (item: T) -> Unit
     ): DataResult<Unit> {
-        // Declare variables outside to make them accessible in `catch`
-        val originalSql = builder.buildSql()
+        val originalSql = builder.buildSql() // Can throw FatalDatabaseException (BadStatementException)
         var positionalQuery: PositionalQuery? = null
 
         return try {
@@ -47,6 +47,8 @@ internal class StreamingQueryBuilder(
 
             DataResult.Success(Unit)
         } catch (e: Exception) {
+            // Translate all exceptions - it will be FatalDatabaseException (BadStatementException (from Converter), TypeMappingException or TypeRegistryException)
+            // or SQLException
             val queryContext = QueryContext(
                 sql = originalSql,
                 parameters = params,

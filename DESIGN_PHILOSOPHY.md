@@ -169,7 +169,7 @@ Octavius uses `DataResult<T>` — a sealed class with `Success<T>` and `Failure`
 - Failures are handled at the call site, not somewhere up the stack.
 - `getOrThrow()`, `getOrElse {}`, `onSuccess {}`, `onFailure {}` give you a full toolkit for handling results without ceremony.
 
-The distinction between fatal errors (`BuilderException`, `InitializationException`) and execution errors (`DataResult.Failure`) is intentional. A `BuilderException` means you've misused the API — that's a programmer error and should crash loudly. A `ConstraintViolationException` wrapped in a `DataResult.Failure` means a unique constraint was violated — that's a runtime condition your application should handle gracefully.
+The distinction between fatal errors (`FatalDatabaseException`) and execution errors (`DatabaseException`) is intentional. A `BadStatementException` means you've misused the API or written invalid SQL — that's a programmer error and should crash loudly. A `ConstraintViolationException` wrapped in a `DataResult.Failure` means a unique constraint was violated — that's a runtime condition your application should handle gracefully. All exceptions inherit from a common sealed `OctaviusException` base.
 
 ---
 

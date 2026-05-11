@@ -2,8 +2,8 @@ package io.github.octaviusframework.db.core.builder
 
 import io.github.octaviusframework.db.api.builder.LockWaitMode
 import io.github.octaviusframework.db.api.builder.SelectQueryBuilder
-import io.github.octaviusframework.db.api.exception.checkBuilder
-import io.github.octaviusframework.db.api.exception.requireBuilder
+import io.github.octaviusframework.db.api.exception.checkStatement
+import io.github.octaviusframework.db.api.exception.requireStatement
 import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
 import io.github.octaviusframework.db.core.jdbc.RowMappers
 import io.github.octaviusframework.db.core.type.KotlinToPostgresConverter
@@ -17,7 +17,8 @@ internal class DatabaseSelectQueryBuilder(
     rowMappers: RowMappers,
     kotlinToPostgresConverter: KotlinToPostgresConverter,
     private val selectClause: String
-) : AbstractQueryBuilder<SelectQueryBuilder>(jdbcTemplate, kotlinToPostgresConverter, rowMappers, null), SelectQueryBuilder {
+) : AbstractQueryBuilder<SelectQueryBuilder>(jdbcTemplate, kotlinToPostgresConverter, rowMappers, null),
+    SelectQueryBuilder {
     override val canReturnResultsByDefault = true
     //------------------------------------------------------------------------------------------------------------------
     //                                    INTERNAL SELECT CLAUSE STATE
@@ -89,8 +90,8 @@ internal class DatabaseSelectQueryBuilder(
     }
 
     override fun page(page: Long, size: Long): SelectQueryBuilder = apply {
-        requireBuilder(page >= 0) { "Page number cannot be negative." }
-        requireBuilder(size > 0) { "Page size must be positive." }
+        requireStatement(page >= 0) { "Page number cannot be negative." }
+        requireStatement(size > 0) { "Page size must be positive." }
         this.offsetValue = page * size
         this.limitValue = size
     }
@@ -106,14 +107,14 @@ internal class DatabaseSelectQueryBuilder(
     //------------------------------------------------------------------------------------------------------------------
 
     override fun buildSql(): String {
-        checkBuilder(!selectClause.isBlank()) { "Cannot build a SELECT query without a SELECT clause." }
+        checkStatement(!selectClause.isBlank()) { "Cannot build a SELECT query without a SELECT clause." }
         // Condition: FROM must exist OR none of the dependent clauses can exist
-        checkBuilder(
+        checkStatement(
             !fromClause.isNullOrBlank() || (whereCondition == null && groupByClause == null && orderByClause == null)
         ) {
             "WHERE, GROUP BY, or ORDER BY clauses require a FROM clause."
         }
-        checkBuilder(
+        checkStatement(
             havingClause.isNullOrBlank() || !groupByClause.isNullOrBlank()
         ) {
             "HAVING clause requires a GROUP BY clause."

@@ -1,7 +1,7 @@
 package io.github.octaviusframework.db.core.jdbc
 
-import io.github.octaviusframework.db.api.exception.ConversionException
-import io.github.octaviusframework.db.api.exception.ConversionExceptionMessage
+import io.github.octaviusframework.db.api.exception.TypeMappingException
+import io.github.octaviusframework.db.api.exception.TypeMappingExceptionMessage
 import io.github.octaviusframework.db.api.toDataObject
 import io.github.octaviusframework.db.api.validateValue
 import io.github.octaviusframework.db.core.type.ResultSetValueExtractor
@@ -57,14 +57,14 @@ internal class RowMappers(
      * This mapper is highly optimized for "scalar" queries.
      *
      * @param kType The expected Kotlin type of the field, used for validation and nullability checks.
-     * @return A mapper returning a single value or throwing [io.github.octaviusframework.db.api.exception.ConversionException] on type mismatch or unexpected null.
+     * @return A mapper returning a single value or throwing [io.github.octaviusframework.db.api.exception.TypeMappingException] on type mismatch or unexpected null.
      */
     fun SingleValueMapper(kType: KType): RowMapper<Any?> = RowMapper { rs, _ ->
         val value = valueExtractor.extract(rs, 1)
         if (value == null) {
             if (!kType.isMarkedNullable) {
-                throw ConversionException(
-                    messageEnum = ConversionExceptionMessage.UNEXPECTED_NULL_VALUE,
+                throw TypeMappingException(
+                    messageEnum = TypeMappingExceptionMessage.UNEXPECTED_NULL_VALUE,
                     value = null,
                     targetType = kType.toString()
                 )

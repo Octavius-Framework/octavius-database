@@ -50,16 +50,19 @@ internal class KotlinToPostgresConverter(
             var lastIndex = 0
             for (parsedParam in parsedParameters) {
                 val paramName = parsedParam.name
-                requireBuilder(params.containsKey(paramName)) { "Missing value for parameter: $paramName" }
+                requireStatement(
+                    params.containsKey(paramName),
+                    BadStatementExceptionMessage.MISSING_PARAMETERS
+                ) { "Missing value for parameter: $paramName" }
                 val paramValue = params[paramName]
 
                 logger.trace { "Processing parameter: @$paramName" }
                 val conversion = convertParameter(paramValue, appendTypeCast = true)
-                
+
                 // Escape question marks in the literal SQL parts between parameters
                 val partBefore = sql.substring(lastIndex, parsedParam.startIndex)
                 append(PostgresSqlPreprocessor.escapeQuestionMarks(partBefore))
-                
+
                 append(conversion.placeholder)
                 finalParams.add(conversion.value)
                 lastIndex = parsedParam.endIndex
@@ -116,31 +119,37 @@ internal class KotlinToPostgresConverter(
         }
 
         // 3. Handle specialized types
-        val resolvedType: QualifiedName = pgType ?: if (appendTypeCast) resolveSqlType(unwrappedValue) else QualifiedName("", "text")
+        val resolvedType: QualifiedName =
+            pgType ?: if (appendTypeCast) resolveSqlType(unwrappedValue) else QualifiedName("pg_catalog", "text")
         val jdbcValue = when (unwrappedValue) {
             is Array<*> -> {
                 logger.trace { "Handling parameter as Array" }
                 return handleArray(unwrappedValue)
             }
+
             is List<*> -> {
                 logger.trace { "Handling parameter as List" }
                 handleList(unwrappedValue, updatedSkipDynamicDto)
             }
+
             is Enum<*> -> {
                 logger.trace { "Handling parameter as Enum" }
                 handleEnum(unwrappedValue)
             }
+
             else -> {
                 when {
                     unwrappedValue::class.isData -> {
                         logger.trace { "Handling parameter as Composite (Data Class)" }
                         pgObject("text", serializer.serializeComposite(unwrappedValue, updatedSkipDynamicDto))
                     }
+
                     unwrappedValue::class.isValue -> throw TypeRegistryException(
                         TypeRegistryExceptionMessage.KOTLIN_CLASS_NOT_MAPPED,
                         unwrappedValue::class.qualifiedName ?: unwrappedValue::class.simpleName ?: "unknown",
                         expectedCategory = "DYNAMIC"
                     )
+
                     else -> {
                         logger.trace { "Falling back to default conversion for type ${unwrappedValue::class.simpleName}" }
                         unwrappedValue
@@ -168,7 +177,10 @@ internal class KotlinToPostgresConverter(
 
     private fun tryConvertAsDynamicDto(value: Any, appendTypeCast: Boolean): ParameterConversion? {
         if (dynamicDtoStrategy == DynamicDtoSerializationStrategy.EXPLICIT_ONLY && value !is DynamicDto) return null
-        if (dynamicDtoStrategy == DynamicDtoSerializationStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS && typeRegistry.isPgType(value::class)) return null
+        if (dynamicDtoStrategy == DynamicDtoSerializationStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS && typeRegistry.isPgType(
+                value::class
+            )
+        ) return null
 
         val dynamicTypeName = typeRegistry.getDynamicTypeNameForClass(value::class) ?: return null
         val dtSerializer = typeRegistry.getDynamicSerializer(dynamicTypeName)
@@ -180,7 +192,11 @@ internal class KotlinToPostgresConverter(
     private fun handleArray(array: Array<*>): ParameterConversion {
         val componentType = array::class.java.componentType!!.kotlin
         if (componentType.isData || componentType == Map::class || componentType == List::class) {
-            throw ConversionException(ConversionExceptionMessage.UNSUPPORTED_COMPONENT_TYPE_IN_ARRAY, array, componentType.qualifiedName ?: componentType.simpleName ?: "unknown")
+            throw TypeMappingException(
+                TypeMappingExceptionMessage.UNSUPPORTED_COMPONENT_TYPE_IN_ARRAY,
+                array,
+                componentType.qualifiedName ?: componentType.simpleName ?: "unknown"
+            )
         }
         return ParameterConversion("?", array)
     }
@@ -206,8 +222,13 @@ internal class KotlinToPostgresConverter(
         return when (value) {
             is List<*> -> {
                 val firstNonNull = value.firstOrNull { it != null }
-                if (firstNonNull != null) resolveSqlType(firstNonNull).asArray() else QualifiedName("", "text", isArray = true)
+                if (firstNonNull != null) resolveSqlType(firstNonNull).asArray() else QualifiedName(
+                    "",
+                    "text",
+                    isArray = true
+                )
             }
+
             else -> {
                 val kClass = value::class
                 when {

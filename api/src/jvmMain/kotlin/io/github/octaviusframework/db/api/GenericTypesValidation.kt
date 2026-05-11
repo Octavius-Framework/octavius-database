@@ -1,7 +1,7 @@
 package io.github.octaviusframework.db.api
 
-import io.github.octaviusframework.db.api.exception.ConversionException
-import io.github.octaviusframework.db.api.exception.ConversionExceptionMessage
+import io.github.octaviusframework.db.api.exception.TypeMappingException
+import io.github.octaviusframework.db.api.exception.TypeMappingExceptionMessage
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
@@ -14,7 +14,7 @@ import kotlin.reflect.KType
  * @param value The value to validate (can be null).
  * @param targetType The expected Kotlin type (KType) including generic parameters.
  * @return The original value if validation passes.
- * @throws ConversionException if the value's type doesn't match the target type.
+ * @throws TypeMappingException if the value's type doesn't match the target type.
  */
 fun validateValue(value: Any?, targetType: KType): Any? {
     if (value == null) {
@@ -25,8 +25,8 @@ fun validateValue(value: Any?, targetType: KType): Any? {
 
     // --- Validation 1: Check main type ---
     if (!targetClass.isInstance(value)) {
-        throw ConversionException(
-            messageEnum = ConversionExceptionMessage.INCOMPATIBLE_TYPE,
+        throw TypeMappingException(
+            messageEnum = TypeMappingExceptionMessage.INCOMPATIBLE_TYPE,
             value = value,
             targetType = targetType.toString()
         )
@@ -53,8 +53,8 @@ private fun validateList(value: List<*>, targetType: KType) {
             ?: return // Couldn't determine element class, we give up
 
         if (!listElementClass.isInstance(firstNonNullElement)) {
-            throw ConversionException(
-                messageEnum = ConversionExceptionMessage.INCOMPATIBLE_COLLECTION_ELEMENT_TYPE,
+            throw TypeMappingException(
+                messageEnum = TypeMappingExceptionMessage.INCOMPATIBLE_COLLECTION_ELEMENT_TYPE,
                 value = firstNonNullElement,
                 targetType = listElementType.toString() // E.g., "kotlin.String"
             )
@@ -74,8 +74,8 @@ private fun validateMap(value: Map<*,*>, targetType: KType) {
 
         // Check key and value type for the first pair
         if (!keyClass.isInstance(firstNonNullEntry.key) || !valueClass.isInstance(firstNonNullEntry.value)) {
-            throw ConversionException(
-                messageEnum = ConversionExceptionMessage.INCOMPATIBLE_COLLECTION_ELEMENT_TYPE,
+            throw TypeMappingException(
+                messageEnum = TypeMappingExceptionMessage.INCOMPATIBLE_COLLECTION_ELEMENT_TYPE,
                 value = firstNonNullEntry,
                 targetType = targetType.toString()
             )

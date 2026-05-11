@@ -27,17 +27,24 @@ object ExceptionTranslator {
      *
      * @param ex The original exception caught during database operation.
      * @param queryContext Metadata about the failed query.
-     * @return A specialized [DatabaseException] subclass.
+     * @return Translated or original [Exception] for non database Exceptions.
      */
     fun translate(ex: Throwable, queryContext: QueryContext): DatabaseException {
-        // Already a domain exception, just pass through (possibly enrich with context)
         when (ex) {
-            is StepDependencyException -> return ex // Context added inside TransactionPlanExecutor
-            // (TypeRegistryException and ConversionException) must be given context
-            is TypeRegistryException, is ConversionException -> return ex.withContext(queryContext)
-            // InitializationException -> only on start - impossible here, ConstraintViolationException -> created here
-            // GrammarException -> created here, PermissionException -> created here, ConnectionException -> only on start - impossible here
-            // ConcurrencyException -> created here, UnknownDatabaseException -> created here
+            // BadStatementException from params or created here
+            // TypeMappingException is without context in AbstractQueryBuilder
+            // TypeRegistryException is without context in AbstractQueryBuilder
+            is BadStatementException, is TypeMappingException, is TypeRegistryException -> throw ex.withContext(
+                queryContext
+            )
+            // InitializationException -> only on start - impossible here
+            // ConstraintViolationException -> created here
+            // ConnectionException -> created here
+            is DataOperationException -> return ex.withContext(queryContext) as DatabaseException // EMPTY_RESULT - rest created here
+            // ConcurrencyException -> created here
+            // UnknownDatabaseException -> created here
+            // TransactionException -> created here
+            is StepDependencyException -> throw ex // Context added inside TransactionPlanExecutor
         }
 
         // If it's a wrapper, find the underlying SQLException
@@ -46,11 +53,11 @@ object ExceptionTranslator {
             return translateSqlException(sqlException, queryContext)
         }
 
-        // Fallback for non-SQL exceptions
-        return UnknownDatabaseException(message = ex.message ?: "An unexpected error occurred", cause = ex)
-            .withContext(queryContext)
+        // Rest of Exceptions are rethrown
+        throw ex
     }
 
+    // Mostly for transactionExceptions from Spring Integration Module
     private fun findSqlException(ex: Throwable): SQLException? {
         var cause: Throwable? = ex
         while (cause != null) {
@@ -72,12 +79,19 @@ object ExceptionTranslator {
             state.startsWith("08") -> ConnectionException(sqlEx.message ?: "Connection error", queryContext, sqlEx)
 
             // Class 22 — Data Exception (Invalid data provided by the user)
-            state.startsWith("22") -> StatementException(
-                messageEnum = StatementExceptionMessage.DATA_EXCEPTION,
-                detail = sqlEx.message,
+            state.startsWith("22") -> DataOperationException(
+                messageEnum = DataOperationExceptionMessage.INVALID_DATA_FORMAT,
                 queryContext = queryContext,
                 cause = sqlEx
             )
+
+            state.startsWith("21") || state.startsWith("0A") || state.startsWith("3D") || state.startsWith("3F") ->
+                throw BadStatementException(
+                    BadStatementExceptionMessage.INVALID_DEFINITION,
+                    errorPosition = pgMetadata.position,
+                    queryContext = queryContext,
+                    cause = sqlEx
+                )
 
             // Class 23 — Integrity Constraint Violation
             state.startsWith("23") -> {
@@ -98,53 +112,91 @@ object ExceptionTranslator {
                 )
             }
 
-            // Class 25 — Invalid Transaction State (includes read-only violations)
-            state.startsWith("25") -> StatementException(StatementExceptionMessage.INVALID_TRANSACTION_STATE, sqlEx.message, queryContext, sqlEx)
+            // Class 25 — Invalid Transaction State
+            state.startsWith("25") -> throw BadStatementException(
+                BadStatementExceptionMessage.INVALID_TRANSACTION_STATE,
+                errorPosition = pgMetadata.position,
+                queryContext = queryContext,
+                cause = sqlEx
+            )
 
             // Class 40 — Transaction Rollback
             state.startsWith("40") -> {
-                val errorType = when (state) {
-                    "40P01" -> ConcurrencyErrorType.DEADLOCK
-                    "40001" -> ConcurrencyErrorType.SERIALIZATION_FAILURE
-                    else -> ConcurrencyErrorType.TIMEOUT
+                if (state == "40003") {
+                    return ConnectionException(
+                        "Statement completion unknown. The connection was lost during transaction finalization (40003).",
+                        queryContext,
+                        sqlEx
+                    )
                 }
-                ConcurrencyException(errorType, queryContext, sqlEx)
+                if (state == "40002") {
+                    return ConstraintViolationException(
+                        messageEnum = ConstraintViolationExceptionMessage.DEFERRED_CONSTRAINT_VIOLATION,
+                        queryContext = queryContext,
+                        cause = sqlEx
+                    )
+                }
+
+                val errorType = when (state) {
+                    "40P01" -> TransactionExceptionMessage.DEADLOCK
+                    "40001" -> TransactionExceptionMessage.SERIALIZATION_FAILURE
+                    "40000" -> TransactionExceptionMessage.TRANSACTION_ROLLBACK
+                    else -> TransactionExceptionMessage.TRANSACTION_ROLLBACK
+                }
+                TransactionException(errorType, queryContext, sqlEx)
             }
 
             // Class 42 — Syntax Error or Access Rule Violation
             state.startsWith("42") -> {
-                val messageEnum = when (state) {
-                    "42501" -> StatementExceptionMessage.PERMISSION_DENIED
-                    "42601" -> StatementExceptionMessage.SYNTAX_ERROR
-                    "42P01", "42703", "42883", "42704" -> StatementExceptionMessage.OBJECT_NOT_FOUND
-                    else -> StatementExceptionMessage.SYNTAX_ERROR
+                if (state == "42501") {
+                    return DataOperationException(
+                        messageEnum = DataOperationExceptionMessage.PERMISSION_DENIED,
+                        queryContext = queryContext,
+                        cause = sqlEx
+                    )
                 }
-                StatementException(messageEnum, sqlEx.message, queryContext, sqlEx)
+                val messageEnum = when (state) {
+                    "42601", "42602", "42622", "42939", "42000" -> BadStatementExceptionMessage.SYNTAX_ERROR
+                    "42703", "42883", "42P01", "42P02", "42704" -> BadStatementExceptionMessage.UNDEFINED_OBJECT
+                    "42701", "42723", "42P03", "42P04", "42P05", "42P06", "42P07", "42712", "42710" -> BadStatementExceptionMessage.DUPLICATE_OBJECT
+                    "42702", "42725", "42P08", "42P09" -> BadStatementExceptionMessage.AMBIGUOUS_OBJECT
+                    "42804", "42P18", "42846", "42P21", "42P22" -> BadStatementExceptionMessage.DATA_TYPE_ERROR
+                    else -> BadStatementExceptionMessage.INVALID_DEFINITION
+                }
+                throw BadStatementException(
+                    messageEnum,
+                    errorPosition = pgMetadata.position,
+                    queryContext = queryContext,
+                    cause = sqlEx
+                )
             }
 
-            // Class 28 — Invalid Authorization Specification
-            state.startsWith("28") -> StatementException(StatementExceptionMessage.INVALID_AUTHORIZATION, sqlEx.message, queryContext, sqlEx)
+            state.startsWith("54") ->
+                throw BadStatementException(
+                    BadStatementExceptionMessage.SYNTAX_ERROR,
+                    errorPosition = pgMetadata.position,
+                    queryContext = queryContext,
+                    cause = sqlEx
+                )
 
-            // Class 57 — Operator Intervention
-            state == "57014" -> ConcurrencyException(ConcurrencyErrorType.TIMEOUT, queryContext, sqlEx)
-            state.startsWith("57") -> ConnectionException("Database operator intervention: ${sqlEx.message}", queryContext, sqlEx)
+            state.startsWith("55") -> {
+                if (state == "55P03") { // lock_not_available
+                    return TransactionException(TransactionExceptionMessage.TIMEOUT, queryContext, sqlEx)
+                }
+                ConnectionException("Database object state error: ${sqlEx.message}", queryContext, sqlEx)
+            }
 
-            // Class 53/54 - Insufficient Resources / Program Limit Exceeded
-            state.startsWith("53") || state.startsWith("54") -> ConnectionException("Database resources exceeded: ${sqlEx.message}", queryContext, sqlEx)
-
-            // Class 55 — Object Not In Prerequisite State
-            state.startsWith("55") -> ConnectionException("Database object state error: ${sqlEx.message}", queryContext, sqlEx)
-
-            // Class 58 — System Error
-            state.startsWith("58") -> ConnectionException("System error: ${sqlEx.message}", queryContext, sqlEx)
-
+            state == "57014" -> TransactionException(TransactionExceptionMessage.TIMEOUT, queryContext, sqlEx)
+            state.startsWith("57") || state.startsWith("53") || state.startsWith("58") || state.startsWith("XX") ->
+                ConnectionException("Database system error: ${sqlEx.message}", queryContext, sqlEx)
             // Class P0 — PL/pgSQL Error
             state.startsWith("P0") -> UnknownDatabaseException("PL/pgSQL Error: ${sqlEx.message}", queryContext, sqlEx)
 
-            // Class XX — Internal Error
-            state.startsWith("XX") -> ConnectionException("Internal database error: ${sqlEx.message}", queryContext, sqlEx)
-
-            else -> UnknownDatabaseException(sqlEx.message ?: "Unknown SQL Error (State: $state)", queryContext, sqlEx).withContext(queryContext)
+            else -> UnknownDatabaseException(
+                sqlEx.message ?: "Unknown SQL Error (State: $state)",
+                queryContext,
+                sqlEx
+            )
         }
     }
 
@@ -156,7 +208,8 @@ object ExceptionTranslator {
                     table = serverError.table,
                     column = serverError.column,
                     constraint = serverError.constraint,
-                    detail = serverError.detail
+                    detail = serverError.detail,
+                    position = serverError.position.takeIf { it > 0 }
                 )
             }
         }
@@ -167,6 +220,7 @@ object ExceptionTranslator {
         val table: String? = null,
         val column: String? = null,
         val constraint: String? = null,
-        val detail: String? = null
+        val detail: String? = null,
+        val position: Int? = null
     )
 }

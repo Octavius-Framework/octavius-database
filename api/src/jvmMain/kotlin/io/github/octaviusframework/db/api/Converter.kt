@@ -1,8 +1,8 @@
 package io.github.octaviusframework.db.api
 
 import io.github.octaviusframework.db.api.annotation.MapKey
-import io.github.octaviusframework.db.api.exception.ConversionException
-import io.github.octaviusframework.db.api.exception.ConversionExceptionMessage
+import io.github.octaviusframework.db.api.exception.TypeMappingException
+import io.github.octaviusframework.db.api.exception.TypeMappingExceptionMessage
 import io.github.octaviusframework.db.api.util.toSnakeCase
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.*
@@ -78,7 +78,7 @@ private fun <T : Any> getOrCreateDataObjectMetadata(kClass: KClass<T>): DataObje
  *
  * @param T Target data class type.
  * @return New instance of T with values from the map.
- * @throws ConversionException if required properties are missing or types don't match.
+ * @throws TypeMappingException if required properties are missing or types don't match.
  *
  * @see MapKey
  */
@@ -106,8 +106,8 @@ fun <T : Any> Map<String, Any?>.toDataObject(kClass: KClass<T>): T {
             param.type.isMarkedNullable -> null
             // Case 4: Parameter is non-nullable (e.g., String) and has no default value,
             // and the key was not found in the map. This is an error.
-            else -> throw ConversionException(
-                messageEnum = ConversionExceptionMessage.MISSING_REQUIRED_PROPERTY,
+            else -> throw TypeMappingException(
+                messageEnum = TypeMappingExceptionMessage.MISSING_REQUIRED_PROPERTY,
                 targetType = kClass.qualifiedName,
                 value = keyName,
                 rowData = this,
@@ -118,8 +118,8 @@ fun <T : Any> Map<String, Any?>.toDataObject(kClass: KClass<T>): T {
         // Validation using cached KType
         val validatedValue = try {
             validateValue(valueToUse, type)
-        } catch (e: ConversionException) {
-            throw ConversionException(
+        } catch (e: TypeMappingException) {
+            throw TypeMappingException(
                 messageEnum = e.messageEnum,
                 value = e.value,
                 targetType = e.targetType,
@@ -135,8 +135,8 @@ fun <T : Any> Map<String, Any?>.toDataObject(kClass: KClass<T>): T {
     try {
         return metadata.constructor.callBy(args)
     } catch (e: Exception) {
-        throw ConversionException(
-            messageEnum = ConversionExceptionMessage.OBJECT_MAPPING_FAILED,
+        throw TypeMappingException(
+            messageEnum = TypeMappingExceptionMessage.OBJECT_MAPPING_FAILED,
             targetType = kClass.qualifiedName ?: kClass.simpleName ?: "unknown",
             rowData = this,
             cause = e

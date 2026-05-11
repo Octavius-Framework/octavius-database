@@ -19,7 +19,7 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 | [ORM-Like Patterns](orm-patterns.md)                  | CRUD patterns, real-world examples, PostgreSQL composite types                                                                       |
 | [Transactions](transactions.md)                       | Transaction blocks, TransactionPlan, StepHandle, passing data between steps , propagation, isolation, read-only, timeouts and errors |
 | [Notifications](notifications.md)                     | PostgreSQL LISTEN/NOTIFY, PgChannelListener, Flow-based receiving                                                                    |
-| [Error Handling](error-handling.md)                   | Fatal errors vs. DataResult, Exception hierarchy, Statement/Constraint errors                                                        |
+| [Error Handling](error-handling.md)                   | Fatal Developer Errors (Thrown) vs. Database Errors (Returned), Exception hierarchy                                                  |
 | [Type System](type-system.md)                         | @PgEnum, @PgComposite, @DynamicallyMappable, dynamic data insertion, Custom Type Handlers, standard type mappings                    |
 
 ## Quick Links
@@ -85,13 +85,21 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 - [Connection Management](notifications.md#connection-management) - Dedicated connections and `use { }`
 
 ### Error Handling
-- [BuilderException](error-handling.md#builderexception) - Programmer errors thrown during query building
-- [InitializationException](error-handling.md#initializationexception) - Setup and configuration failures
-- [Exception Hierarchy](error-handling.md#exception-hierarchy) - `DatabaseException` subtypes returned in `DataResult`
-- [StatementException](error-handling.md#statementexception) - SQL syntax and permission errors
+- [Exception Hierarchy](error-handling.md#exception-hierarchy) - `OctaviusException` base and the thrown/returned split
+- [Fatal Developer Errors (Thrown)](error-handling.md#fatal-developer-errors-thrown) - Why developer bugs fail-fast
+- [BadStatementException](error-handling.md#badstatementexception) - SQL syntax, missing clauses, param mismatches
+- [TypeMappingException](error-handling.md#typemappingexception) - Kotlin ↔ PostgreSQL mapping and conversion failures
+- [TypeRegistryException](error-handling.md#typeregistryexception) - Type registry and schema validation errors
+- [StepDependencyException](error-handling.md#stepdependencyexception) - Invalid references in Transaction Plans
+- [InitializationException](error-handling.md#initializationexception) - Startup and configuration failures
+- [Database Execution Errors (Returned)](error-handling.md#database-execution-errors-returned) - Expected runtime conditions handled via `DataResult`
 - [ConstraintViolationException](error-handling.md#constraintviolationexception) - Data integrity (Unique, FK, Check) violations
-- [ConversionException](error-handling.md#conversionexception) - Type mapping and serialization errors
-- [Logging and Debugging](error-handling.md#logging-and-debugging) - Diagnostics with full `QueryContext`
+- [DataOperationException](error-handling.md#dataoperationexception) - Runtime data conditions (EMPTY_RESULT, PERMISSION_DENIED etc.)
+- [TransactionException](error-handling.md#transactionexception) - Deadlocks, timeouts, and serialization failures
+- [ConnectionException](error-handling.md#connectionexception) - Infrastructure and connectivity issues
+- [UnknownDatabaseException](error-handling.md#unknowndatabaseexception) - Fallback for unrecognized errors
+- [Exception Enrichment](error-handling.md#exception-enrichment) - QueryContext
+- [Logging and Debugging](error-handling.md#logging-and-debugging) - Diagnostics
 
 ### Multiplatform & Shared Models
 - [Architecture Matrix](multiplatform.md#availability-matrix) - Common vs Platform-specific parts

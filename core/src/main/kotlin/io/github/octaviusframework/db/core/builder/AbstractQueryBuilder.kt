@@ -5,10 +5,7 @@ import io.github.octaviusframework.db.api.builder.AsyncTerminalMethods
 import io.github.octaviusframework.db.api.builder.QueryBuilder
 import io.github.octaviusframework.db.api.builder.StepBuilderMethods
 import io.github.octaviusframework.db.api.builder.StreamingTerminalMethods
-import io.github.octaviusframework.db.api.exception.ConversionException
-import io.github.octaviusframework.db.api.exception.ConversionExceptionMessage
-import io.github.octaviusframework.db.api.exception.QueryContext
-import io.github.octaviusframework.db.api.exception.checkBuilder
+import io.github.octaviusframework.db.api.exception.*
 import io.github.octaviusframework.db.core.exception.ExceptionTranslator
 import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
 import io.github.octaviusframework.db.core.jdbc.RowMapper
@@ -34,10 +31,11 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
     val kotlinToPostgresConverter: KotlinToPostgresConverter,
     val rowMappers: RowMappers,
     protected val table: String? = null,
-): QueryBuilder<R> {
+) : QueryBuilder<R> {
     companion object {
         private val logger = KotlinLogging.logger {}
     }
+
     // We really don't want SELECT to die when executing queries
     protected abstract val canReturnResultsByDefault: Boolean
     //------------------------------------------------------------------------------------------------------------------
@@ -136,7 +134,7 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
     fun toSingleStrict(params: Map<String, Any?>): DataResult<Map<String, Any?>> {
         return executeReturningQuery(params, rowMappers.ColumnNameMapper()) {
             if (it.isEmpty()) {
-                throw ConversionException(ConversionExceptionMessage.EMPTY_RESULT, targetType = "Map<String, Any?>")
+                throw DataOperationException(DataOperationExceptionMessage.EMPTY_RESULT)
             }
             assertSingleRow(it, "Map<String, Any?>")
             DataResult.Success(it.first())
@@ -160,7 +158,7 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
         return executeReturningQuery(params, rowMappers.DataObjectMapper(kClass)) {
             assertSingleRow(it, kType.toString())
             if (it.isEmpty() && !kType.isMarkedNullable) {
-                throw ConversionException(ConversionExceptionMessage.EMPTY_RESULT, targetType = kType.toString())
+                throw DataOperationException(DataOperationExceptionMessage.EMPTY_RESULT)
             }
             @Suppress("UNCHECKED_CAST")
             DataResult.Success(it.firstOrNull() as T)
@@ -172,12 +170,11 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
     /** Executes the query and returns the value from the first column of the first row. */
     fun <T> toField(targetType: KType, params: Map<String, Any?>): DataResult<T> {
         return executeReturningQuery(params, rowMappers.SingleValueMapper(targetType)) {
+            if (it.isEmpty() && !targetType.isMarkedNullable) {
+                throw DataOperationException(DataOperationExceptionMessage.EMPTY_RESULT)
+            }
             assertSingleRow(it, targetType.toString())
             val result = it.firstOrNull()
-            if (result == null && !targetType.isMarkedNullable) {
-                val error = if (it.isEmpty()) ConversionExceptionMessage.EMPTY_RESULT else ConversionExceptionMessage.UNEXPECTED_NULL_VALUE
-                throw ConversionException(error, targetType = targetType.toString())
-            }
             @Suppress("UNCHECKED_CAST")
             DataResult.Success(result as T)
         }
@@ -187,13 +184,10 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
     fun <T> toFieldStrict(targetType: KType, params: Map<String, Any?>): DataResult<T> {
         return executeReturningQuery(params, rowMappers.SingleValueMapper(targetType)) {
             if (it.isEmpty()) {
-                throw ConversionException(ConversionExceptionMessage.EMPTY_RESULT, targetType = targetType.toString())
+                throw DataOperationException(DataOperationExceptionMessage.EMPTY_RESULT)
             }
             assertSingleRow(it, targetType.toString())
             val result = it.first()
-            if (result == null && !targetType.isMarkedNullable) {
-                throw ConversionException(ConversionExceptionMessage.UNEXPECTED_NULL_VALUE, targetType = targetType.toString())
-            }
             @Suppress("UNCHECKED_CAST")
             DataResult.Success(result as T)
         }
@@ -209,7 +203,7 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
 
     /** Returns the generated SQL string without executing the query. */
     fun toSql(): String {
-        return buildSql()
+        return buildSql() // Can throw FatalDatabaseException (BadStatementException)
     }
 
     override fun toString(): String {
@@ -222,8 +216,11 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
      * `toList()`, `toSingle()`, etc. methods instead.
      */
     fun execute(params: Map<String, Any?>): DataResult<Int> {
-        checkBuilder(returningClause == null) { "Use toList(), toSingle(), etc. methods when RETURNING clause is defined." }
-        val sql = buildSql()
+        checkStatement(
+            returningClause == null,
+            BadStatementExceptionMessage.INVALID_STATEMENT_STATE
+        ) { "Cannot call execute(), etc. methods when RETURNING clause is defined." }
+        val sql = buildSql() // Can throw FatalDatabaseException (BadStatementException)
         return execute(sql, params) { positionalQuery ->
             val affectedRows = jdbcTemplate.update(positionalQuery)
             DataResult.Success(affectedRows)
@@ -235,13 +232,13 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
     //------------------------------------------------------------------------------------------------------------------
 
     /**
-     * Throws [ConversionException] if the result list contains more than one row.
+     * Throws [TypeMappingException] if the result list contains more than one row.
      * Used by single-row terminal methods to enforce at-most-one-row semantics.
      */
     private fun assertSingleRow(results: List<*>, targetType: String) {
         if (results.size > 1) {
-            throw ConversionException(
-                ConversionExceptionMessage.TOO_MANY_ROWS,
+            throw TypeMappingException(
+                TypeMappingExceptionMessage.TOO_MANY_ROWS,
                 value = results.size,
                 targetType = targetType
             )
@@ -259,8 +256,8 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
         rowMapper: RowMapper<M>,
         transform: (List<M>) -> DataResult<R>
     ): DataResult<R> {
-        checkBuilder(canReturnResultsByDefault || returningClause != null) { "Cannot call toList(), toSingle(), etc. on a modifying query without RETURNING clause. Use .returning()." }
-        val sql = buildSql()
+        checkStatement(canReturnResultsByDefault || returningClause != null) { "Cannot call toList(), toSingle(), etc. on a modifying query without RETURNING clause. Use .returning()." }
+        val sql = buildSql() // Can throw FatalDatabaseException (BadStatementException)
         return execute(sql, params) { positionalQuery ->
             val results: List<M> = jdbcTemplate.query(positionalQuery, rowMapper)
             transform(results)
@@ -300,12 +297,13 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
                 dbSql = positionalQuery?.sql,
                 dbParameters = positionalQuery?.params
             )
-            
-            val translatedException = ExceptionTranslator.translate(e, queryContext)
 
+            // Translate all exceptions - it will be FatalDatabaseException (BadStatementException (from Converter), TypeMappingException or TypeRegistryException)
+            // or DatabaseException (DataOperationException (EMPTY_RESULT)) or SQLException
+            val translatedException = ExceptionTranslator.translate(e, queryContext)
             logger.error(translatedException) { "Database error occurred" }
 
-            DataResult.Failure(translatedException)
+            return DataResult.Failure(translatedException)
         }
     }
 

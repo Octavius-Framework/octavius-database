@@ -147,18 +147,22 @@ val row: DataResult<Map<String, Any?>> = dataAccess.select("*")
 
 ### Terminal Method Behavior Matrix
 
-| Method               | 0 rows                                       | non-null value   | null value, non-null `T` | null value, nullable `T?` | >1 rows          |
-|----------------------|----------------------------------------------|------------------|--------------------------|---------------------------|------------------|
-| `toField<T>()`       | `T` → `EMPTY_RESULT`, `T?` → `Success(null)` | `Success(value)` | `UNEXPECTED_NULL_VALUE`  | `Success(null)`           | `TOO_MANY_ROWS`  |
-| `toFieldStrict<T>()` | always `EMPTY_RESULT`                        | `Success(value)` | `UNEXPECTED_NULL_VALUE`  | `Success(null)`           | `TOO_MANY_ROWS`  |
-| `toSingleOf<T>()`    | `T` → `EMPTY_RESULT`, `T?` → `Success(null)` | `Success(obj)`   | —                        | —                         | `TOO_MANY_ROWS`  |
-| `toSingle()`         | `Success(null)`                              | `Success(map)`   | —                        | —                         | `TOO_MANY_ROWS`  |
-| `toSingleStrict()`   | `EMPTY_RESULT`                               | `Success(map)`   | —                        | —                         | `TOO_MANY_ROWS`  |
-| `toColumn<T>()`      | `Success([])`                                | `Success([...])` | `UNEXPECTED_NULL_VALUE`* | `Success([..., null])`    | `Success([...])` |
-| `toListOf<T>()`      | `Success([])`                                | `Success([...])` | —                        | —                         | `Success([...])` |
-| `toList()`           | `Success([])`                                | `Success([...])` | —                        | —                         | `Success([...])` |
+| Method               | 0 rows                                                  | non-null value   | null value, non-null `T`        | null value, nullable `T?` | >1 rows                |
+|----------------------|---------------------------------------------------------|------------------|---------------------------------|---------------------------|------------------------|
+| `toField<T>()`       | `T` → `Failure(EMPTY_RESULT)`<br>`T?` → `Success(null)` | `Success(value)` | `throws UNEXPECTED_NULL_VALUE`  | `Success(null)`           | `throws TOO_MANY_ROWS` |
+| `toFieldStrict<T>()` | always `Failure(EMPTY_RESULT)`                          | `Success(value)` | `throws UNEXPECTED_NULL_VALUE`  | `Success(null)`           | `throws TOO_MANY_ROWS` |
+| `toSingleOf<T>()`    | `T` → `Failure(EMPTY_RESULT)`<br>`T?` → `Success(null)` | `Success(obj)`   | —                               | —                         | `throws TOO_MANY_ROWS` |
+| `toSingle()`         | `Success(null)`                                         | `Success(map)`   | —                               | —                         | `throws TOO_MANY_ROWS` |
+| `toSingleStrict()`   | `Failure(EMPTY_RESULT)`                                 | `Success(map)`   | —                               | —                         | `throws TOO_MANY_ROWS` |
+| `toColumn<T>()`      | `Success([])`                                           | `Success([...])` | `throws UNEXPECTED_NULL_VALUE`* | `Success([..., null])`    | `Success([...])`       |
+| `toListOf<T>()`      | `Success([])`                                           | `Success([...])` | —                               | —                         | `Success([...])`       |
+| `toList()`           | `Success([])`                                           | `Success([...])` | —                               | —                         | `Success([...])`       |
 
-*`toColumn<T>()` checks **every** element — a single null in any row fails the entire call with `UNEXPECTED_NULL_VALUE`.
+*`toColumn<T>()` checks **every** element — a single null in any row fails the entire call by throwing `UNEXPECTED_NULL_VALUE`.
+
+**Exception Reference:**
+- `EMPTY_RESULT` is part of `DataOperationException` and is returned in DataResult.Failure.
+- `UNEXPECTED_NULL_VALUE` and `TOO_MANY_ROWS` are part of `TypeMappingException` and are thrown.
 
 Key patterns:
 - **Regular** (`toField`, `toSingleOf`, `toSingle`) — empty result follows nullability of `T`

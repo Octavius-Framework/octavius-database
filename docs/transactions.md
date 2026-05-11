@@ -583,38 +583,6 @@ The mechanism used to enforce the timeout depends on your `JdbcTransactionProvid
 
 ---
 
-## Error Handling
-
-### Database Errors
-
-If any step in a transaction fails, the entire transaction is rolled back. The error returned is a `DatabaseException` (e.g., `ConstraintViolationException`, `StatementException`) enriched with the `transactionStepIndex`.
-
-```kotlin
-val result = dataAccess.executeTransactionPlan(plan)
-
-result.onFailure { error ->
-    val stepIndex = error.queryContext?.transactionStepIndex
-    println("Transaction failed at step $stepIndex")
-    println("Error type: ${error::class.simpleName}")
-    println("Details: ${error.message}")
-}
-```
-
-### Step Dependency Errors
-
-If a step references a previous step's result incorrectly, a `StepDependencyException` is returned:
-
-```kotlin
-result.onFailure { error ->
-    if (error is StepDependencyException) {
-        println("Dependency error: ${error.messageEnum}")
-        println("Referenced step: ${error.referencedStepIndex}")
-    }
-}
-```
-
----
-
 ## See Also
 
 - [Executing Queries](executing-queries.md) - DataResult patterns and usage

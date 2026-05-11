@@ -85,7 +85,7 @@ Because the Map holds specific types, `toDataObject()` performs a **strict mappi
 data class SenatorWrong(val name: String, val homeProvince: String)
 
 rowMap.toDataObject<SenatorWrong>()
-// Throws ConversionException: Expected String for field 'homeProvince' but got Province
+// Throws TypeMappingException: Expected String for field 'homeProvince' but got Province
 ```
 
 This ensures type safety: if the structure of your Data Class doesn't match the structure returned by the database (including nested composites, enums, and arrays), the operation fails fast rather than producing incorrect data.

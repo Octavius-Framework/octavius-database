@@ -88,7 +88,7 @@ object OctaviusDatabase {
             HikariDataSource(hikariConfig)
         } catch (e: Exception) {
             throw InitializationException(
-                InitializationExceptionMessage.CONNECTION_FAILED,
+                InitializationExceptionMessage.INITIALIZATION_CONNECTION_FAILED,
                 details = "Failed to initialize HikariCP connection pool.",
                 cause = e,
                 queryContext = QueryContext(sql = "N/A", mapOf())

@@ -24,7 +24,7 @@ internal class StreamingQueryBuilder(
         action: (item: T) -> Unit
     ): DataResult<Unit> {
         // Declare variables outside to make them accessible in `catch`
-        val originalSql = builder.buildSql()
+        val originalSql = builder.buildSql() // Can throw FatalDatabaseException (BadStatementException)
         var positionalQuery: PositionalQuery? = null
 
         return try {

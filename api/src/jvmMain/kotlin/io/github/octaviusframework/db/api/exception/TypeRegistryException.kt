@@ -19,7 +19,7 @@ class TypeRegistryException(
     val details: String? = null,
     cause: Throwable? = null,
     queryContext: QueryContext? = null
-) : DatabaseException(
+) : FatalDatabaseException(
     queryContext = queryContext,
     message = messageEnum.name,
     cause = cause

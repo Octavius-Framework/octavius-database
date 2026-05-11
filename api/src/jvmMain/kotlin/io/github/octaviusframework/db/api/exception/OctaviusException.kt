@@ -1,6 +1,6 @@
 package io.github.octaviusframework.db.api.exception
 
-abstract class OctaviusException(
+sealed class OctaviusException(
     message: String,
     cause: Throwable? = null,
     queryContext: QueryContext? = null,

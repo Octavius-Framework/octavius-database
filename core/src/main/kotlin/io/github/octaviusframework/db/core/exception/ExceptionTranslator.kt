@@ -31,12 +31,18 @@ object ExceptionTranslator {
      */
     fun translate(ex: Throwable, queryContext: QueryContext): Throwable {
         when (ex) {
-            is StepDependencyException -> return ex // Context added inside TransactionPlanExecutor
-            // (TypeRegistryException and ConversionException) must be given context
-            is TypeRegistryException, is ConversionException -> return ex.withContext(queryContext)
-            // InitializationException -> only on start - impossible here, ConstraintViolationException -> created here
-            // GrammarException -> created here, PermissionException -> created here, ConnectionException -> only on start - impossible here
-            // ConcurrencyException -> created here, UnknownDatabaseException -> created here
+            // BadStatementException from params or created here
+            // TypeMappingException is without context in AbstractQueryBuilder
+            // TypeRegistryException is without context in AbstractQueryBuilder
+            is BadStatementException, is TypeMappingException, is TypeRegistryException -> throw ex.withContext(queryContext)
+            // InitializationException -> only on start - impossible here
+            // ConstraintViolationException -> created here
+            // ConnectionException -> created here
+            is DataOperationException -> return ex.withContext(queryContext) // EMPTY_RESULT - rest created here
+            // ConcurrencyException -> created here
+            // UnknownDatabaseException -> created here
+            // TransactionException -> created here
+            is StepDependencyException -> throw ex // Context added inside TransactionPlanExecutor
         }
 
         // If it's a wrapper, find the underlying SQLException
@@ -45,9 +51,11 @@ object ExceptionTranslator {
             return translateSqlException(sqlException, queryContext)
         }
 
-        return ex
+        // Rest of Exceptions are rethrown
+        throw ex
     }
 
+    // Mostly for transactionExceptions from Spring Integration Module
     private fun findSqlException(ex: Throwable): SQLException? {
         var cause: Throwable? = ex
         while (cause != null) {

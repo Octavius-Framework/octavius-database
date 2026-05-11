@@ -170,18 +170,11 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
     /** Executes the query and returns the value from the first column of the first row. */
     fun <T> toField(targetType: KType, params: Map<String, Any?>): DataResult<T> {
         return executeReturningQuery(params, rowMappers.SingleValueMapper(targetType)) {
+            if (it.isEmpty() && !targetType.isMarkedNullable) {
+                throw DataOperationException(DataOperationExceptionMessage.EMPTY_RESULT)
+            }
             assertSingleRow(it, targetType.toString())
             val result = it.firstOrNull()
-            if (result == null && !targetType.isMarkedNullable) {
-                if (it.isEmpty()) {
-                    throw DataOperationException(DataOperationExceptionMessage.EMPTY_RESULT)
-                } else {
-                    throw TypeMappingException(
-                        TypeMappingExceptionMessage.UNEXPECTED_NULL_VALUE,
-                        targetType = targetType.toString()
-                    )
-                }
-            }
             @Suppress("UNCHECKED_CAST")
             DataResult.Success(result as T)
         }
@@ -195,12 +188,6 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
             }
             assertSingleRow(it, targetType.toString())
             val result = it.first()
-            if (result == null && !targetType.isMarkedNullable) {
-                throw TypeMappingException(
-                    TypeMappingExceptionMessage.UNEXPECTED_NULL_VALUE,
-                    targetType = targetType.toString()
-                )
-            }
             @Suppress("UNCHECKED_CAST")
             DataResult.Success(result as T)
         }
@@ -216,7 +203,7 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
 
     /** Returns the generated SQL string without executing the query. */
     fun toSql(): String {
-        return buildSql()
+        return buildSql() // Can throw FatalDatabaseException (BadStatementException)
     }
 
     override fun toString(): String {
@@ -233,7 +220,7 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
             returningClause == null,
             BadStatementExceptionMessage.INVALID_STATEMENT_STATE
         ) { "Cannot call execute(), etc. methods when RETURNING clause is defined." }
-        val sql = buildSql()
+        val sql = buildSql() // Can throw FatalDatabaseException (BadStatementException)
         return execute(sql, params) { positionalQuery ->
             val affectedRows = jdbcTemplate.update(positionalQuery)
             DataResult.Success(affectedRows)
@@ -245,7 +232,7 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
     //------------------------------------------------------------------------------------------------------------------
 
     /**
-     * Throws [ConversionException] if the result list contains more than one row.
+     * Throws [TypeMappingException] if the result list contains more than one row.
      * Used by single-row terminal methods to enforce at-most-one-row semantics.
      */
     private fun assertSingleRow(results: List<*>, targetType: String) {
@@ -270,7 +257,7 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
         transform: (List<M>) -> DataResult<R>
     ): DataResult<R> {
         checkStatement(canReturnResultsByDefault || returningClause != null) { "Cannot call toList(), toSingle(), etc. on a modifying query without RETURNING clause. Use .returning()." }
-        val sql = buildSql()
+        val sql = buildSql() // Can throw FatalDatabaseException (BadStatementException)
         return execute(sql, params) { positionalQuery ->
             val results: List<M> = jdbcTemplate.query(positionalQuery, rowMapper)
             transform(results)
@@ -311,11 +298,12 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
                 dbParameters = positionalQuery?.params
             )
 
-            val translatedException = ExceptionTranslator.translate(e, queryContext)
-
+            // Translate all exceptions - it will be FatalDatabaseException (BadStatementException (from Converter), TypeMappingException or TypeRegistryException)
+            // or DatabaseException (DataOperationException (EMPTY_RESULT)) or SQLException
+            val translatedException = ExceptionTranslator.translate(e, queryContext) as DatabaseException
             logger.error(translatedException) { "Database error occurred" }
 
-            DataResult.Failure(translatedException)
+            return DataResult.Failure(translatedException)
         }
     }
 

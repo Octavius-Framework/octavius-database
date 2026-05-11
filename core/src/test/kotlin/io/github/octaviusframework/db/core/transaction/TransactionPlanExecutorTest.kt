@@ -4,7 +4,8 @@ import io.github.octaviusframework.db.api.DataResult
 import io.github.octaviusframework.db.api.builder.execute
 import io.github.octaviusframework.db.api.builder.toColumn
 import io.github.octaviusframework.db.api.builder.toField
-import io.github.octaviusframework.db.api.exception.BuilderException
+import io.github.octaviusframework.db.api.exception.BadStatementException
+import io.github.octaviusframework.db.api.exception.BadStatementExceptionMessage
 import io.github.octaviusframework.db.api.exception.ConstraintViolationException
 import io.github.octaviusframework.db.api.exception.StepDependencyException
 import io.github.octaviusframework.db.api.getOrThrow
@@ -149,14 +150,11 @@ class TransactionPlanExecutorTest: AbstractIntegrationTest() {
             dataAccess.insertInto("profiles").value("user_id").asStep().execute(mapOf("user_id" to userHandle.field<Any>("non_existent_column")))
         )
 
-        // Act
-        val result = dataAccess.executeTransactionPlan(plan)
-
-        // Assert
-        assertThat(result).isInstanceOf(DataResult.Failure::class.java)
-        val error = (result as DataResult.Failure).error
-        assertThat(error).isInstanceOf(StepDependencyException::class.java)
-        assertThat(error.message).contains("COLUMN_NOT_FOUND")
+        // Act & Assert
+        assertThatThrownBy {
+            dataAccess.executeTransactionPlan(plan)
+        }.isInstanceOf(StepDependencyException::class.java)
+            .hasMessageContaining("COLUMN_NOT_FOUND")
     }
 
     @Test
@@ -193,10 +191,10 @@ class TransactionPlanExecutorTest: AbstractIntegrationTest() {
     }
 
     @Test
-    fun `should throw BuilderException during validation if a step is invalid`() {
+    fun `should throw BadStatementException during validation if a step is invalid`() {
         val plan = TransactionPlan()
 
-        // DELETE without WHERE should throw BuilderException when toSql() is called
+        // DELETE without WHERE should throw BadStatementException when toSql() is called
         val invalidStep = dataAccess.deleteFrom("users")
             .asStep()
             .execute()
@@ -206,13 +204,12 @@ class TransactionPlanExecutorTest: AbstractIntegrationTest() {
         // Act & Assert
         assertThatThrownBy {
             dataAccess.executeTransactionPlan(plan)
-        }.isInstanceOf(BuilderException::class.java)
-            .hasMessageContaining("Error in transaction step 0")
-            .hasMessageContaining("Cannot build a DELETE statement without a WHERE clause")
+        }.isInstanceOf(BadStatementException::class.java)
+            .hasMessageContaining(BadStatementExceptionMessage.MISSING_CLAUSE.name)
     }
 
     @Test
-    fun `should throw BuilderException for second step being invalid`() {
+    fun `should throw BadStatementException for second step being invalid`() {
         val plan = TransactionPlan()
 
         // Step 0: Valid
@@ -229,8 +226,7 @@ class TransactionPlanExecutorTest: AbstractIntegrationTest() {
         // Act & Assert
         assertThatThrownBy {
             dataAccess.executeTransactionPlan(plan)
-        }.isInstanceOf(BuilderException::class.java)
-            .hasMessageContaining("Error in transaction step 1")
-            .hasMessageContaining("Cannot build an UPDATE statement without a SET clause")
+        }.isInstanceOf(BadStatementException::class.java)
+            .hasMessageContaining(BadStatementExceptionMessage.MISSING_CLAUSE.name)
     }
 }

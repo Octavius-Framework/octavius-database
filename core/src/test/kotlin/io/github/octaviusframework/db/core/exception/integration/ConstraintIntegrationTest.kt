@@ -1,4 +1,4 @@
-package io.github.octaviusframework.db.core.exception
+package io.github.octaviusframework.db.core.exception.integration
 
 import io.github.octaviusframework.db.api.DataResult
 import io.github.octaviusframework.db.api.exception.ConstraintViolationException
@@ -7,7 +7,7 @@ import io.github.octaviusframework.db.core.AbstractIntegrationTest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
-class ConstraintIntegrationTest: AbstractIntegrationTest() {
+class ConstraintIntegrationTest : AbstractIntegrationTest() {
 
     override val sqlToExecuteOnSetup: String = """
         CREATE TABLE constraint_test (

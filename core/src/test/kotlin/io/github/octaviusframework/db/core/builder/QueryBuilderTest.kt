@@ -1,7 +1,8 @@
 package io.github.octaviusframework.db.core.builder
 
 import io.github.octaviusframework.db.api.builder.LockWaitMode
-import io.github.octaviusframework.db.api.exception.BuilderException
+import io.github.octaviusframework.db.api.exception.BadStatementException
+import io.github.octaviusframework.db.api.exception.BadStatementExceptionMessage
 import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
 import io.github.octaviusframework.db.core.jdbc.RowMappers
 import io.github.octaviusframework.db.core.type.KotlinToPostgresConverter
@@ -199,8 +200,8 @@ class QueryBuilderTest {
         fun `should throw exception if WHERE clause is missing`() {
             assertThatThrownBy {
                 TestQueryBuilderFactory.update("users").setValue("name").toSql()
-            }.isInstanceOf(BuilderException::class.java)
-                .hasMessageContaining("without a WHERE clause")
+            }.isInstanceOf(BadStatementException::class.java)
+                .hasMessage(BadStatementExceptionMessage.MISSING_CLAUSE.name)
         }
     }
 
@@ -234,8 +235,8 @@ class QueryBuilderTest {
         fun `should throw exception if WHERE clause is missing`() {
             assertThatThrownBy {
                 TestQueryBuilderFactory.delete("users").toSql()
-            }.isInstanceOf(BuilderException::class.java)
-                .hasMessageContaining("without a WHERE clause")
+            }.isInstanceOf(BadStatementException::class.java)
+                .hasMessage(BadStatementExceptionMessage.MISSING_CLAUSE.name)
         }
     }
 }

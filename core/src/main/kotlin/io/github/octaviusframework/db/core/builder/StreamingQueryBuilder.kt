@@ -55,7 +55,7 @@ internal class StreamingQueryBuilder(
                 dbSql = positionalQuery?.sql,
                 dbParameters = positionalQuery?.params
             )
-            val translatedException = ExceptionTranslator.translate(e, queryContext) as DatabaseException
+            val translatedException = ExceptionTranslator.translate(e, queryContext)
             
             logger.error(translatedException) { "Database error executing streaming query" }
             DataResult.Failure(translatedException)

@@ -33,7 +33,7 @@ internal class DatabasePgChannelListener(
             DataResult.Success(Unit)
         } catch (e: Exception) {
             // Translate all exceptions - it will be SQLException
-            val translated = ExceptionTranslator.translate(e, QueryContext(sql, emptyMap())) as DatabaseException
+            val translated = ExceptionTranslator.translate(e, QueryContext(sql, emptyMap()))
             logger.error(translated) { "Error executing LISTEN on channels: ${channels.toList()}" }
             DataResult.Failure(translated)
         }
@@ -48,7 +48,7 @@ internal class DatabasePgChannelListener(
             DataResult.Success(Unit)
         } catch (e: Exception) {
             // Translate all exceptions - it will be SQLException
-            val translated = ExceptionTranslator.translate(e, QueryContext(sql, emptyMap())) as DatabaseException
+            val translated = ExceptionTranslator.translate(e, QueryContext(sql, emptyMap()))
             logger.error(translated) { "Error executing UNLISTEN on channels: ${channels.toList()}" }
             DataResult.Failure(translated)
         }
@@ -63,7 +63,7 @@ internal class DatabasePgChannelListener(
             DataResult.Success(Unit)
         } catch (e: Exception) {
             // Translate all exceptions - it will be SQLException
-            val translated = ExceptionTranslator.translate(e, QueryContext(sql, emptyMap())) as DatabaseException
+            val translated = ExceptionTranslator.translate(e, QueryContext(sql, emptyMap()))
             logger.error(translated) { "Error executing UNLISTEN *" }
             DataResult.Failure(translated)
         }

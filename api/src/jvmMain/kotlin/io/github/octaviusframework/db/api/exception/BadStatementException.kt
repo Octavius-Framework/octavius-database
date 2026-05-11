@@ -28,7 +28,7 @@ class BadStatementException(
     val messageEnum: BadStatementExceptionMessage,
     queryContext: QueryContext? = null, cause: Throwable?
 ) : FatalDatabaseException(messageEnum.name, queryContext, cause) {
-
+    //TODO some kind of context for MISSING_CLAUSE and INVALID_STATEMENT_STATE
     override fun getDetailedMessage(): String {
         return buildString {
             append("\n")

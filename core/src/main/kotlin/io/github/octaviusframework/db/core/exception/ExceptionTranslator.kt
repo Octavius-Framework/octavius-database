@@ -29,7 +29,7 @@ object ExceptionTranslator {
      * @param queryContext Metadata about the failed query.
      * @return Translated or original [Exception] for non database Exceptions.
      */
-    fun translate(ex: Throwable, queryContext: QueryContext): Throwable {
+    fun translate(ex: Throwable, queryContext: QueryContext): DatabaseException {
         when (ex) {
             // BadStatementException from params or created here
             // TypeMappingException is without context in AbstractQueryBuilder
@@ -38,7 +38,7 @@ object ExceptionTranslator {
             // InitializationException -> only on start - impossible here
             // ConstraintViolationException -> created here
             // ConnectionException -> created here
-            is DataOperationException -> return ex.withContext(queryContext) // EMPTY_RESULT - rest created here
+            is DataOperationException -> return ex.withContext(queryContext) as DatabaseException // EMPTY_RESULT - rest created here
             // ConcurrencyException -> created here
             // UnknownDatabaseException -> created here
             // TransactionException -> created here
@@ -68,7 +68,7 @@ object ExceptionTranslator {
     /**
      * Main translation logic based on PostgreSQL SQLSTATE codes.
      */
-    private fun translateSqlException(sqlEx: SQLException, queryContext: QueryContext): OctaviusException {
+    private fun translateSqlException(sqlEx: SQLException, queryContext: QueryContext): DatabaseException {
         val state = sqlEx.sqlState ?: ""
         val pgMetadata = extractPostgresMetadata(sqlEx)
 
@@ -103,7 +103,7 @@ object ExceptionTranslator {
             }
 
             // Class 25 — Invalid Transaction State
-            state.startsWith("25") -> BadStatementException(
+            state.startsWith("25") -> throw BadStatementException(
                 BadStatementExceptionMessage.INVALID_TRANSACTION_STATE,
                 queryContext,
                 sqlEx
@@ -143,7 +143,7 @@ object ExceptionTranslator {
                     "42804", "42P18", "42846", "42P21", "42P22" -> BadStatementExceptionMessage.DATA_TYPE_ERROR
                     else -> BadStatementExceptionMessage.INVALID_DEFINITION
                 }
-                BadStatementException(messageEnum, queryContext, sqlEx)
+                throw BadStatementException(messageEnum, queryContext, sqlEx)
             }
 
             // Class 57 — Operator Intervention
@@ -158,7 +158,7 @@ object ExceptionTranslator {
                 sqlEx.message ?: "Unknown SQL Error (State: $state)",
                 queryContext,
                 sqlEx
-            ).withContext(queryContext)
+            )
         }
     }
 

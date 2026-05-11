@@ -300,7 +300,7 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
 
             // Translate all exceptions - it will be FatalDatabaseException (BadStatementException (from Converter), TypeMappingException or TypeRegistryException)
             // or DatabaseException (DataOperationException (EMPTY_RESULT)) or SQLException
-            val translatedException = ExceptionTranslator.translate(e, queryContext) as DatabaseException
+            val translatedException = ExceptionTranslator.translate(e, queryContext)
             logger.error(translatedException) { "Database error occurred" }
 
             return DataResult.Failure(translatedException)

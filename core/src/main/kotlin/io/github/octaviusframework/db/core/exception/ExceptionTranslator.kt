@@ -86,7 +86,12 @@ object ExceptionTranslator {
             )
 
             state.startsWith("21") || state.startsWith("0A") || state.startsWith("3D") || state.startsWith("3F") ->
-                throw BadStatementException(BadStatementExceptionMessage.INVALID_DEFINITION, queryContext, sqlEx)
+                throw BadStatementException(
+                    BadStatementExceptionMessage.INVALID_DEFINITION,
+                    errorPosition = pgMetadata.position,
+                    queryContext = queryContext,
+                    cause = sqlEx
+                )
 
             // Class 23 — Integrity Constraint Violation
             state.startsWith("23") -> {
@@ -110,8 +115,9 @@ object ExceptionTranslator {
             // Class 25 — Invalid Transaction State
             state.startsWith("25") -> throw BadStatementException(
                 BadStatementExceptionMessage.INVALID_TRANSACTION_STATE,
-                queryContext,
-                sqlEx
+                errorPosition = pgMetadata.position,
+                queryContext = queryContext,
+                cause = sqlEx
             )
 
             // Class 40 — Transaction Rollback
@@ -157,11 +163,21 @@ object ExceptionTranslator {
                     "42804", "42P18", "42846", "42P21", "42P22" -> BadStatementExceptionMessage.DATA_TYPE_ERROR
                     else -> BadStatementExceptionMessage.INVALID_DEFINITION
                 }
-                throw BadStatementException(messageEnum, queryContext, sqlEx)
+                throw BadStatementException(
+                    messageEnum,
+                    errorPosition = pgMetadata.position,
+                    queryContext = queryContext,
+                    cause = sqlEx
+                )
             }
 
             state.startsWith("54") ->
-                throw BadStatementException(BadStatementExceptionMessage.SYNTAX_ERROR, queryContext, sqlEx)
+                throw BadStatementException(
+                    BadStatementExceptionMessage.SYNTAX_ERROR,
+                    errorPosition = pgMetadata.position,
+                    queryContext = queryContext,
+                    cause = sqlEx
+                )
 
             state.startsWith("55") -> {
                 if (state == "55P03") { // lock_not_available
@@ -192,7 +208,8 @@ object ExceptionTranslator {
                     table = serverError.table,
                     column = serverError.column,
                     constraint = serverError.constraint,
-                    detail = serverError.detail
+                    detail = serverError.detail,
+                    position = serverError.position.takeIf { it > 0 }
                 )
             }
         }
@@ -203,6 +220,7 @@ object ExceptionTranslator {
         val table: String? = null,
         val column: String? = null,
         val constraint: String? = null,
-        val detail: String? = null
+        val detail: String? = null,
+        val position: Int? = null
     )
 }

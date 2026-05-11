@@ -49,14 +49,43 @@ enum class BadStatementExceptionMessage {
  */
 class BadStatementException(
     val messageEnum: BadStatementExceptionMessage,
+    val errorPosition: Int? = null,
     queryContext: QueryContext? = null, cause: Throwable?
 ) : FatalDatabaseException(messageEnum.name, queryContext, cause) {
-    //TODO some kind of context for MISSING_CLAUSE and INVALID_STATEMENT_STATE
+
     override fun getDetailedMessage(): String {
         return buildString {
             append("\n")
             appendLine("message: ${generateDeveloperMessage(messageEnum)}")
+
+            val sqlToAnalyze = queryContext?.dbSql ?: queryContext?.sql
+            if (errorPosition != null && sqlToAnalyze != null) {
+                appendLine()
+                appendLine("ERROR LOCATION:")
+                appendLine(highlightSqlPosition(sqlToAnalyze, errorPosition))
+            }
         }
+    }
+
+    private fun highlightSqlPosition(sql: String, position: Int): String {
+        if (position > sql.length) return "Position: $position"
+
+        val zeroBasedPos = position - 1
+
+        var lineStart = sql.lastIndexOf('\n', zeroBasedPos)
+        lineStart = if (lineStart == -1) 0 else lineStart + 1
+
+        var lineEnd = sql.indexOf('\n', zeroBasedPos)
+        if (lineEnd == -1) lineEnd = sql.length
+
+        val line = sql.substring(lineStart, lineEnd).replace("\r", "")
+
+        val colIndex = zeroBasedPos - lineStart
+
+        val cleanLine = line.replace('\t', ' ')
+        val pointer = " ".repeat(colIndex.coerceAtLeast(0)) + "^"
+
+        return "$cleanLine\n$pointer"
     }
 
 }

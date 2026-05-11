@@ -18,7 +18,7 @@ enum class ConstraintViolationExceptionMessage {
     DATA_INTEGRITY,
 
     /** Specific error for SQLSTATE 40002. */
-    DEFFERED_CONSTRAINT_VIOLATION
+    DEFERRED_CONSTRAINT_VIOLATION
 }
 
 /**
@@ -73,6 +73,6 @@ private fun generateDeveloperMessage(
         ConstraintViolationExceptionMessage.DATA_INTEGRITY ->
             "Data integrity violation$tableInfo. The operation would leave the database in an inconsistent state$constraintInfo."
 
-        ConstraintViolationExceptionMessage.DEFFERED_CONSTRAINT_VIOLATION -> "Deffered constraint violation$tableInfo$columnInfo"
+        ConstraintViolationExceptionMessage.DEFERRED_CONSTRAINT_VIOLATION -> "Deferred constraint violation$tableInfo$columnInfo"
     }
 }

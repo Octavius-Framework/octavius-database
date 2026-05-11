@@ -5,8 +5,6 @@ sealed class OctaviusException(
     cause: Throwable? = null,
     queryContext: QueryContext? = null,
 ) : RuntimeException(message, cause) {
-    open val includeCauseInToString: Boolean = true
-
     private var _queryContext: QueryContext? = queryContext
     open val queryContext: QueryContext? get() = _queryContext
 
@@ -39,15 +37,13 @@ sealed class OctaviusException(
         val contextStr = queryContext?.toString() ?: ""
         val detailedMsg = getDetailedMessage()?.let { "DETAILS: $it\n" } ?: ""
 
-        val causeSection = if (includeCauseInToString) {
-            val nestedError = cause?.toString() ?: "No cause available"
-            """
+        val nestedError = cause?.toString() ?: "No cause available"
+        val causeSection = """
 CAUSE:
 ------------------------------------------------------------
 $nestedError
 ------------------------------------------------------------
 """
-        } else ""
 
         return """
 $contextStr

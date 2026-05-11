@@ -34,7 +34,9 @@ object ExceptionTranslator {
             // BadStatementException from params or created here
             // TypeMappingException is without context in AbstractQueryBuilder
             // TypeRegistryException is without context in AbstractQueryBuilder
-            is BadStatementException, is TypeMappingException, is TypeRegistryException -> throw ex.withContext(queryContext)
+            is BadStatementException, is TypeMappingException, is TypeRegistryException -> throw ex.withContext(
+                queryContext
+            )
             // InitializationException -> only on start - impossible here
             // ConstraintViolationException -> created here
             // ConnectionException -> created here
@@ -78,10 +80,13 @@ object ExceptionTranslator {
 
             // Class 22 — Data Exception (Invalid data provided by the user)
             state.startsWith("22") -> DataOperationException(
-                messageEnum =  DataOperationExceptionMessage.INVALID_DATA_FORMAT,
+                messageEnum = DataOperationExceptionMessage.INVALID_DATA_FORMAT,
                 queryContext = queryContext,
                 cause = sqlEx
             )
+
+            state.startsWith("21") || state.startsWith("0A") || state.startsWith("3D") || state.startsWith("3F") ->
+                throw BadStatementException(BadStatementExceptionMessage.INVALID_DEFINITION, queryContext, sqlEx)
 
             // Class 23 — Integrity Constraint Violation
             state.startsWith("23") -> {
@@ -111,15 +116,24 @@ object ExceptionTranslator {
 
             // Class 40 — Transaction Rollback
             state.startsWith("40") -> {
-                val errorType = when (state) {
-                    "40P01" -> TransactionExceptionMessage.DEADLOCK
-                    "40001" -> TransactionExceptionMessage.SERIALIZATION_FAILURE
-                    "40002" -> return ConstraintViolationException(
-                        messageEnum = ConstraintViolationExceptionMessage.DEFFERED_CONSTRAINT_VIOLATION,
+                if (state == "40003") {
+                    return ConnectionException(
+                        "Statement completion unknown. The connection was lost during transaction finalization (40003).",
+                        queryContext,
+                        sqlEx
+                    )
+                }
+                if (state == "40002") {
+                    return ConstraintViolationException(
+                        messageEnum = ConstraintViolationExceptionMessage.DEFERRED_CONSTRAINT_VIOLATION,
                         queryContext = queryContext,
                         cause = sqlEx
                     )
-                    "40003" -> TransactionExceptionMessage.STATEMENT_COMPLETION_UNKNOWN
+                }
+
+                val errorType = when (state) {
+                    "40P01" -> TransactionExceptionMessage.DEADLOCK
+                    "40001" -> TransactionExceptionMessage.SERIALIZATION_FAILURE
                     "40000" -> TransactionExceptionMessage.TRANSACTION_ROLLBACK
                     else -> TransactionExceptionMessage.TRANSACTION_ROLLBACK
                 }
@@ -129,7 +143,7 @@ object ExceptionTranslator {
             // Class 42 — Syntax Error or Access Rule Violation
             state.startsWith("42") -> {
                 if (state == "42501") {
-                    DataOperationException(
+                    return DataOperationException(
                         messageEnum = DataOperationExceptionMessage.PERMISSION_DENIED,
                         queryContext = queryContext,
                         cause = sqlEx
@@ -146,11 +160,19 @@ object ExceptionTranslator {
                 throw BadStatementException(messageEnum, queryContext, sqlEx)
             }
 
-            // Class 57 — Operator Intervention
-            state == "57014" -> TransactionException(TransactionExceptionMessage.TIMEOUT, queryContext, sqlEx)
-            state.startsWith("57") || state.startsWith("53") || state.startsWith("54") || state.startsWith("55") || state.startsWith("58") || state.startsWith("XX") -> 
-                ConnectionException("Database system error: ${sqlEx.message}", queryContext, sqlEx)
+            state.startsWith("54") ->
+                throw BadStatementException(BadStatementExceptionMessage.SYNTAX_ERROR, queryContext, sqlEx)
 
+            state.startsWith("55") -> {
+                if (state == "55P03") { // lock_not_available
+                    return TransactionException(TransactionExceptionMessage.TIMEOUT, queryContext, sqlEx)
+                }
+                ConnectionException("Database object state error: ${sqlEx.message}", queryContext, sqlEx)
+            }
+
+            state == "57014" -> TransactionException(TransactionExceptionMessage.TIMEOUT, queryContext, sqlEx)
+            state.startsWith("57") || state.startsWith("53") || state.startsWith("58") || state.startsWith("XX") ->
+                ConnectionException("Database system error: ${sqlEx.message}", queryContext, sqlEx)
             // Class P0 — PL/pgSQL Error
             state.startsWith("P0") -> UnknownDatabaseException("PL/pgSQL Error: ${sqlEx.message}", queryContext, sqlEx)
 

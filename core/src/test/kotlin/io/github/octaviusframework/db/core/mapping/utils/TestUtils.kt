@@ -196,5 +196,7 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
         classToDynamicNameMap = emptyMap(),
         pgNameToOidMap = pgNameToOidMap,
         oidToNameMap = emptyMap(),
+        searchPath = emptyList(),
+        nameToSchemaOid = emptyMap()
     )
 }

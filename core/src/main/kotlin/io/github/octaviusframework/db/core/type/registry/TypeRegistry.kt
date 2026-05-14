@@ -37,7 +37,10 @@ internal class TypeRegistry(
     // Reverse maps for name-based lookup
     private val pgNameToOidMap: Map<QualifiedName, Int>,
     // Human-readable names for OIDs (for error reporting)
-    private val oidToNameMap: Map<Int, QualifiedName>
+    private val oidToNameMap: Map<Int, QualifiedName>,
+    // Resolution data for name-based lookup with search_path
+    private val searchPath: List<String>,
+    private val nameToSchemaOid: Map<String, Map<String, Int>>
 ) {
     // --- READING (DB -> Kotlin) ---
 
@@ -91,6 +94,15 @@ internal class TypeRegistry(
     fun isPgType(kClass: KClass<*>): Boolean = 
         classToPgNameMap.containsKey(kClass)
 
+    /**
+     * Resolves a PostgreSQL type name to its OID and fully qualified name.
+     * Considers explicit schema and search_path.
+     */
+    fun resolveOid(
+        typeName: String,
+        requestedSchema: String = ""
+    ): Pair<Int, QualifiedName> = resolveOid(typeName, requestedSchema, searchPath, nameToSchemaOid)
+
     // --- HELPERS ---
 
     private fun throwNotFound(oid: Int, expected: String? = null): Nothing {
@@ -102,4 +114,54 @@ internal class TypeRegistry(
             expectedCategory = expected
         )
     }
+
+    companion object {
+        /**
+         * Core OID resolution logic, shared between [TypeRegistry] and [TypeRegistryLoader].
+         */
+        fun resolveOid(
+            typeName: String,
+            requestedSchema: String,
+            searchPath: List<String>,
+            nameToSchemaOid: Map<String, Map<String, Int>>
+        ): Pair<Int, QualifiedName> {
+            val schemasForName = nameToSchemaOid[typeName]
+                ?: throw TypeRegistryException(
+                    messageEnum = TypeRegistryExceptionMessage.TYPE_DEFINITION_MISSING_IN_DB,
+                    typeName = typeName,
+                    details = "Type '$typeName' not found in any scanned schemas"
+                )
+
+            // 1. If schema is explicitly requested
+            if (requestedSchema.isNotBlank()) {
+                val oid = schemasForName[requestedSchema]
+                    ?: throw TypeRegistryException(
+                        messageEnum = TypeRegistryExceptionMessage.TYPE_DEFINITION_MISSING_IN_DB,
+                        typeName = typeName,
+                        details = "Type '$typeName' not found in requested schema '$requestedSchema'"
+                    )
+                return oid to QualifiedName(requestedSchema, typeName)
+            }
+
+            // 2. If schema is empty, look in search_path (first match wins)
+            for (schema in searchPath) {
+                schemasForName[schema]?.let { oid -> return oid to QualifiedName(schema, typeName) }
+            }
+
+            // 3. If not in search_path, check for unambiguous match
+            return when (schemasForName.size) {
+                1 -> {
+                    val (schema, oid) = schemasForName.entries.first()
+                    oid to QualifiedName(schema, typeName)
+                }
+
+                else -> throw TypeRegistryException(
+                    messageEnum = TypeRegistryExceptionMessage.TYPE_DEFINITION_MISSING_IN_DB,
+                    typeName = typeName,
+                    details = "Type '$typeName' is ambiguous. Found in schemas: ${schemasForName.keys.joinToString()}. Please specify schema."
+                )
+            }
+        }
+    }
 }
+

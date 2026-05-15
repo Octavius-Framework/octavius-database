@@ -17,11 +17,12 @@ internal object TestQueryBuilderFactory {
     private val mockJdbcTemplate = mockk<JdbcTemplate>()
     private val mockConverter = mockk<KotlinToPostgresConverter>()
     private val mockMappers = mockk<RowMappers>()
+    private val queryExecutor = QueryExecutor(mockJdbcTemplate, mockConverter)
 
-    fun select(columns: String) = DatabaseSelectQueryBuilder(mockJdbcTemplate, mockMappers, mockConverter, columns)
-    fun insert(table: String) = DatabaseInsertQueryBuilder(mockJdbcTemplate, mockConverter, mockMappers, table)
-    fun update(table: String) = DatabaseUpdateQueryBuilder(mockJdbcTemplate, mockConverter, mockMappers, table)
-    fun delete(table: String) = DatabaseDeleteQueryBuilder(mockJdbcTemplate, mockConverter, mockMappers, table)
+    fun select(columns: String) = DatabaseSelectQueryBuilder(queryExecutor, mockMappers, columns)
+    fun insert(table: String) = DatabaseInsertQueryBuilder(queryExecutor, mockMappers, table)
+    fun update(table: String) = DatabaseUpdateQueryBuilder(queryExecutor, mockMappers, table)
+    fun delete(table: String) = DatabaseDeleteQueryBuilder(queryExecutor, mockMappers, table)
 }
 
 class QueryBuilderTest {

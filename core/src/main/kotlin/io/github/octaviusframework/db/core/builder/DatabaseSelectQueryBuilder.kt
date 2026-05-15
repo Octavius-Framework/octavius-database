@@ -4,20 +4,17 @@ import io.github.octaviusframework.db.api.builder.LockWaitMode
 import io.github.octaviusframework.db.api.builder.SelectQueryBuilder
 import io.github.octaviusframework.db.api.exception.checkStatement
 import io.github.octaviusframework.db.api.exception.requireStatement
-import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
 import io.github.octaviusframework.db.core.jdbc.RowMappers
-import io.github.octaviusframework.db.core.type.KotlinToPostgresConverter
 
 /**
  * Internal implementation of [SelectQueryBuilder] for building SQL SELECT queries.
  * Inherits from [AbstractQueryBuilder] to reuse WITH clause logic and terminal methods.
  */
 internal class DatabaseSelectQueryBuilder(
-    jdbcTemplate: JdbcTemplate,
+    queryExecutor: QueryExecutor,
     rowMappers: RowMappers,
-    kotlinToPostgresConverter: KotlinToPostgresConverter,
     private val selectClause: String
-) : AbstractQueryBuilder<SelectQueryBuilder>(jdbcTemplate, kotlinToPostgresConverter, rowMappers, null),
+) : AbstractQueryBuilder<SelectQueryBuilder>(queryExecutor, rowMappers, null),
     SelectQueryBuilder {
     override val canReturnResultsByDefault = true
     //------------------------------------------------------------------------------------------------------------------
@@ -156,9 +153,8 @@ internal class DatabaseSelectQueryBuilder(
     override fun copy(): DatabaseSelectQueryBuilder {
         // 1. Create a new, "clean" instance using the main constructor
         val newBuilder = DatabaseSelectQueryBuilder(
-            this.jdbcTemplate,
+            this.queryExecutor,
             this.rowMappers,
-            this.kotlinToPostgresConverter,
             this.selectClause
         )
 

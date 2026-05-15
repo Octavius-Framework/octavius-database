@@ -2,17 +2,14 @@ package io.github.octaviusframework.db.core.builder
 
 import io.github.octaviusframework.db.api.builder.UpdateQueryBuilder
 import io.github.octaviusframework.db.api.exception.checkStatement
-import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
 import io.github.octaviusframework.db.core.jdbc.RowMappers
-import io.github.octaviusframework.db.core.type.KotlinToPostgresConverter
 
 /** Internal implementation of [UpdateQueryBuilder] for building SQL UPDATE statements. */
 internal class DatabaseUpdateQueryBuilder(
-    jdbcTemplate: JdbcTemplate,
-    kotlinToPostgresConverter: KotlinToPostgresConverter,
+    queryExecutor: QueryExecutor,
     rowMappers: RowMappers,
     table: String
-) : AbstractQueryBuilder<UpdateQueryBuilder>(jdbcTemplate, kotlinToPostgresConverter, rowMappers, table), UpdateQueryBuilder {
+) : AbstractQueryBuilder<UpdateQueryBuilder>(queryExecutor, rowMappers, table), UpdateQueryBuilder {
     override val canReturnResultsByDefault = false
     private val setClauses = mutableMapOf<String, String>()
     private var fromClause: String? = null
@@ -74,8 +71,7 @@ internal class DatabaseUpdateQueryBuilder(
     override fun copy(): DatabaseUpdateQueryBuilder {
         // 1. Create a new, "clean" instance using the main constructor
         val newBuilder = DatabaseUpdateQueryBuilder(
-            this.jdbcTemplate,
-            this.kotlinToPostgresConverter,
+            this.queryExecutor,
             this.rowMappers,
             this.table!! // Non-null because table is nullable in AbstractQueryBuilder
         )

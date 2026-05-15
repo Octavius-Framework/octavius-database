@@ -5,17 +5,14 @@ import io.github.octaviusframework.db.api.builder.OnConflictClauseBuilder
 import io.github.octaviusframework.db.api.exception.BadStatementExceptionMessage
 import io.github.octaviusframework.db.api.exception.checkStatement
 import io.github.octaviusframework.db.api.exception.requireStatement
-import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
 import io.github.octaviusframework.db.core.jdbc.RowMappers
-import io.github.octaviusframework.db.core.type.KotlinToPostgresConverter
 
 /** Internal implementation of [InsertQueryBuilder] for building SQL INSERT statements. */
 internal class DatabaseInsertQueryBuilder(
-    jdbcTemplate: JdbcTemplate,
-    kotlinToPostgresConverter: KotlinToPostgresConverter,
+    queryExecutor: QueryExecutor,
     rowMappers: RowMappers,
     table: String
-) : AbstractQueryBuilder<InsertQueryBuilder>(jdbcTemplate, kotlinToPostgresConverter, rowMappers, table),
+) : AbstractQueryBuilder<InsertQueryBuilder>(queryExecutor, rowMappers, table),
     InsertQueryBuilder {
     override val canReturnResultsByDefault = false
     private var explicitColumns: List<String>? = null
@@ -171,8 +168,7 @@ internal class DatabaseInsertQueryBuilder(
     override fun copy(): DatabaseInsertQueryBuilder {
         // 1. Create a new, "clean" instance using the main constructor
         val newBuilder = DatabaseInsertQueryBuilder(
-            this.jdbcTemplate,
-            this.kotlinToPostgresConverter,
+            this.queryExecutor,
             this.rowMappers,
             this.table!! // We know table is not null for INSERT
         )

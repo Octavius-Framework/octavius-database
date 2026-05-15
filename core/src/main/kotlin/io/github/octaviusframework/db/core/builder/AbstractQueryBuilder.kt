@@ -3,13 +3,8 @@ package io.github.octaviusframework.db.core.builder
 import io.github.octaviusframework.db.api.DataResult
 import io.github.octaviusframework.db.api.builder.*
 import io.github.octaviusframework.db.api.exception.*
-import io.github.octaviusframework.db.core.exception.ExceptionTranslator
-import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
 import io.github.octaviusframework.db.core.jdbc.RowMapper
 import io.github.octaviusframework.db.core.jdbc.RowMappers
-import io.github.octaviusframework.db.core.type.KotlinToPostgresConverter
-import io.github.octaviusframework.db.core.type.PositionalQuery
-import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlin.reflect.KClass
@@ -24,15 +19,10 @@ import kotlin.reflect.KType
  * a fluent interface in subclasses.
  */
 internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
-    val jdbcTemplate: JdbcTemplate,
-    val kotlinToPostgresConverter: KotlinToPostgresConverter,
+    val queryExecutor: QueryExecutor,
     val rowMappers: RowMappers,
     protected val table: String? = null,
 ) : QueryBuilder<R> {
-    companion object {
-        private val logger = KotlinLogging.logger {}
-    }
-
     // We really don't want SELECT to die when executing queries
     protected abstract val canReturnResultsByDefault: Boolean
 
@@ -227,10 +217,7 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
             BadStatementExceptionMessage.INVALID_STATEMENT_STATE
         ) { "Cannot call execute(), etc. methods when RETURNING clause is defined." }
         val sql = buildSql() // Can throw FatalDatabaseException (BadStatementException)
-        return execute(sql, params) { positionalQuery ->
-            val affectedRows = jdbcTemplate.update(positionalQuery)
-            DataResult.Success(affectedRows)
-        }
+        return queryExecutor.executeUpdate(sql, params)
     }
 
     //------------------------------------------------------------------------------------------------------------------
@@ -264,52 +251,9 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
     ): DataResult<R> {
         checkStatement(canReturnResultsByDefault || returningClause != null) { "Cannot call toList(), toSingle(), etc. on a modifying query without RETURNING clause. Use .returning()." }
         val sql = buildSql() // Can throw FatalDatabaseException (BadStatementException)
-        return execute(sql, params) { positionalQuery ->
-            val results: List<M> = jdbcTemplate.query(positionalQuery, rowMapper)
-            transform(results)
-        }
-    }
-
-    //  ---MAIN QUERY EXECUTION METHOD---
-
-    /**
-     * Generic function for executing queries, wrapping logic in error handling,
-     * type conversion, and logging.
-     *
-     * @param sql SQL query to execute.
-     * @param params Parameter map.
-     * @param action Lambda that will be executed with the prepared query and parameters.
-     * @return Operation result as [DataResult].
-     */
-    protected fun <R> execute(
-        sql: String,
-        params: Map<String, Any?>,
-        action: (positionalQuery: PositionalQuery) -> DataResult<R>
-    ): DataResult<R> {
-        var positionalQuery: PositionalQuery? = null
-        return try {
-            positionalQuery = kotlinToPostgresConverter.toPositionalQuery(sql, params)
-            logger.debug {
-                """
-                Executing query (original): $sql with params: $params
-                  -> (database): ${positionalQuery.sql} with positional params: ${positionalQuery.params}
-                """.trimIndent()
-            }
-            action(positionalQuery)
-        } catch (e: Exception) {
-            val queryContext = QueryContext(
-                sql = sql,
-                parameters = params,
-                dbSql = positionalQuery?.sql,
-                dbParameters = positionalQuery?.params
-            )
-
-            // Translate all exceptions - it will be FatalDatabaseException (BadStatementException (from Converter), TypeMappingException or TypeRegistryException)
-            // or DatabaseException (DataOperationException (EMPTY_RESULT)) or SQLException
-            val translatedException = ExceptionTranslator.translate(e, queryContext)
-            logger.error(translatedException) { "Database error occurred" }
-
-            return DataResult.Failure(translatedException)
+        return when (val result = queryExecutor.executeQuery(sql, params, rowMapper)) {
+            is DataResult.Success -> transform(result.value)
+            is DataResult.Failure -> result
         }
     }
 

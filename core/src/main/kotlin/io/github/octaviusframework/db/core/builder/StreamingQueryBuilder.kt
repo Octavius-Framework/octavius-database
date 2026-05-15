@@ -24,41 +24,8 @@ internal class StreamingQueryBuilder(
         rowMapper: RowMapper<T>,
         action: (item: T) -> Unit
     ): DataResult<Unit> {
-        val originalSql = builder.buildSql() // Can throw FatalDatabaseException (BadStatementException)
-        var positionalQuery: PositionalQuery? = null
-
-        return try {
-            positionalQuery = builder.kotlinToPostgresConverter.toPositionalQuery(originalSql, params)
-
-            logger.debug {
-                """
-                Executing query (original): $originalSql with params: $params
-                  -> (database): ${positionalQuery.sql} with positional params: ${positionalQuery.params}
-                """.trimIndent()
-            }
-
-            builder.jdbcTemplate.query(positionalQuery, fetchSize) { rs ->
-                while (rs.next()) {
-                    val mappedItem = rowMapper.mapRow(rs)
-                    action(mappedItem)
-                }
-            }
-
-            DataResult.Success(Unit)
-        } catch (e: Exception) {
-            // Translate all exceptions - it will be FatalDatabaseException (BadStatementException (from Converter), TypeMappingException or TypeRegistryException)
-            // or SQLException
-            val queryContext = QueryContext(
-                sql = originalSql,
-                parameters = params,
-                dbSql = positionalQuery?.sql,
-                dbParameters = positionalQuery?.params
-            )
-            val translatedException = ExceptionTranslator.translate(e, queryContext)
-            
-            logger.error(translatedException) { "Database error executing streaming query" }
-            DataResult.Failure(translatedException)
-        }
+        val sql = builder.buildSql() // Can throw FatalDatabaseException (BadStatementException)
+        return builder.queryExecutor.executeStream(sql, params, fetchSize, rowMapper, action)
     }
 
     // --- Public terminal methods that use the helper method ---

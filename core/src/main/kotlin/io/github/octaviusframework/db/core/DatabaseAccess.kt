@@ -27,40 +27,40 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import java.sql.Connection
 
 internal class DatabaseAccess(
-    private val jdbcTemplate: JdbcTemplate,
+    jdbcTemplate: JdbcTemplate,
     private val transactionProvider: JdbcTransactionProvider,
     typeRegistry: TypeRegistry,
-    private val kotlinToPostgresConverter: KotlinToPostgresConverter,
+    kotlinToPostgresConverter: KotlinToPostgresConverter,
     private val listenerConnectionFactory: () -> Connection,
     private val onClose: (() -> Unit)? = null
 ) : DataAccess {
     private val rowMappers = RowMappers(typeRegistry)
+    private val queryExecutor = QueryExecutor(jdbcTemplate, kotlinToPostgresConverter)
     val transactionPlanExecutor = TransactionPlanExecutor(transactionProvider)
     // --- QueryOperations implementation (for single queries and transaction usage) ---
 
     override fun select(vararg columns: String): SelectQueryBuilder {
         return DatabaseSelectQueryBuilder(
-            jdbcTemplate,
+            queryExecutor,
             rowMappers,
-            kotlinToPostgresConverter,
             columns.joinToString(",\n")
         )
     }
 
     override fun update(table: String): UpdateQueryBuilder {
-        return DatabaseUpdateQueryBuilder(jdbcTemplate, kotlinToPostgresConverter, rowMappers, table)
+        return DatabaseUpdateQueryBuilder(queryExecutor, rowMappers, table)
     }
 
     override fun insertInto(table: String): InsertQueryBuilder {
-        return DatabaseInsertQueryBuilder(jdbcTemplate, kotlinToPostgresConverter, rowMappers, table)
+        return DatabaseInsertQueryBuilder(queryExecutor, rowMappers, table)
     }
 
     override fun deleteFrom(table: String): DeleteQueryBuilder {
-        return DatabaseDeleteQueryBuilder(jdbcTemplate, kotlinToPostgresConverter, rowMappers, table)
+        return DatabaseDeleteQueryBuilder(queryExecutor, rowMappers, table)
     }
 
     override fun rawQuery(sql: String): RawQueryBuilder {
-        return DatabaseRawQueryBuilder(jdbcTemplate, kotlinToPostgresConverter, rowMappers, sql)
+        return DatabaseRawQueryBuilder(queryExecutor, rowMappers, sql)
     }
 
     //--- Transaction management implementation ---

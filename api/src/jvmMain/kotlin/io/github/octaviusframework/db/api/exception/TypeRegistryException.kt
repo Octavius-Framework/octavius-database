@@ -9,6 +9,7 @@ enum class TypeRegistryExceptionMessage {
     TYPE_DEFINITION_MISSING_IN_DB,     // Code has @PgType, Database is missing CREATE TYPE
     DUPLICATE_PG_TYPE_DEFINITION,      // Conflict between @PgEnum and/or @PgComposite names
     DUPLICATE_DYNAMIC_TYPE_DEFINITION, // Conflict between @DynamicallyMappable names
+    AMBIGUOUS_TYPE_MAPPING,           // Ambiguous mapping (e.g. multiple handlers for same OID)
 }
 
 /**
@@ -60,4 +61,6 @@ private fun generateDeveloperMessage(messageEnum: TypeRegistryExceptionMessage):
             "Configuration error. The PostgreSQL type is defined more than once in the codebase (detected duplicate or collision between @PgEnum and @PgComposite). Postgres requires unique type names within a schema."
         TypeRegistryExceptionMessage.DUPLICATE_DYNAMIC_TYPE_DEFINITION ->
             "Configuration error. The Dynamic DTO key is defined more than once. Check your @DynamicallyMappable(typeName=...) annotations."
+        TypeRegistryExceptionMessage.AMBIGUOUS_TYPE_MAPPING ->
+            "Configuration error. Ambiguous type mapping detected. This typically happens when multiple handlers are registered for the same PostgreSQL type."
     }

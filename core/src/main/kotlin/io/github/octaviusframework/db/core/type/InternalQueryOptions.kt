@@ -1,6 +1,8 @@
 package io.github.octaviusframework.db.core.type
 
 import io.github.octaviusframework.db.api.builder.QueryOptions
+import io.github.octaviusframework.db.api.exception.TypeRegistryException
+import io.github.octaviusframework.db.api.exception.TypeRegistryExceptionMessage
 import io.github.octaviusframework.db.api.type.TypeHandler
 import io.github.octaviusframework.db.core.type.registry.TypeRegistry
 
@@ -24,14 +26,20 @@ internal class InternalQueryOptions(
     } else {
         val map = mutableMapOf<Int, TypeHandler<*>>()
         for (handler in options.typeHandlers) {
-            val (oid, _) = typeRegistry.resolveOid(handler.pgTypeName, handler.pgSchema)
-            // If multiple handlers for same OID, keep the first one (matching previous 'find' behavior)
-            if (!map.containsKey(oid)) {
-                map[oid] = handler
+            val (oid, qualifiedName) = typeRegistry.resolveOid(handler.pgTypeName, handler.pgSchema)
+
+            if (map.containsKey(oid)) {
+                throw TypeRegistryException(
+                    messageEnum = TypeRegistryExceptionMessage.AMBIGUOUS_TYPE_MAPPING,
+                    typeName = qualifiedName.toString(),
+                    details = "Multiple custom type handlers registered for type '$qualifiedName' (OID: $oid) in QueryOptions."
+                )
             }
+            map[oid] = handler
         }
         map
     }
+
 
     companion object {
         /**

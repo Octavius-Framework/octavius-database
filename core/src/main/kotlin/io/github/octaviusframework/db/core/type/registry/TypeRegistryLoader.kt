@@ -240,10 +240,20 @@ internal class TypeRegistryLoader(
             handlersByClass[handler.kotlinClass] = handler
         }
 
-        customHandlers.forEach { handler ->
-            val (oid, _) = resolveOid(handler.pgTypeName, handler.pgSchema, searchPath, nameToSchemaOid)
+        val standardHandlersOids = handlersByOid.keys.toSet()
 
-            if (handlersByOid.containsKey(oid)) {
+        customHandlers.forEach { handler ->
+            val (oid, qualifiedName) = resolveOid(handler.pgTypeName, handler.pgSchema, searchPath, nameToSchemaOid)
+
+            if (handlersByOid.containsKey(oid) && oid !in standardHandlersOids) {
+                 throw TypeRegistryException(
+                    messageEnum = TypeRegistryExceptionMessage.AMBIGUOUS_TYPE_MAPPING,
+                    typeName = qualifiedName.toString(),
+                    details = "Multiple custom global type handlers registered for type '$qualifiedName' (OID: $oid). Handlers: ${handlersByOid[oid]!!.kotlinClass.simpleName} and ${handler.kotlinClass.simpleName}"
+                )
+            }
+
+            if (oid in standardHandlersOids) {
                 logger.info { "Overriding default TypeHandler for PostgreSQL type '${handler.pgTypeName}' (OID: $oid) with custom handler: ${handler.kotlinClass.simpleName}" }
             } else if (handlersByClass.containsKey(handler.kotlinClass)) {
                 logger.info { "Overriding default TypeHandler for Kotlin class '${handler.kotlinClass.simpleName}' with custom handler." }

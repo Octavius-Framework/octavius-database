@@ -6,14 +6,16 @@ import io.github.octaviusframework.db.api.exception.BadStatementExceptionMessage
 import io.github.octaviusframework.db.api.exception.checkStatement
 import io.github.octaviusframework.db.api.exception.requireStatement
 import io.github.octaviusframework.db.core.jdbc.RowMappers
+import io.github.octaviusframework.db.core.type.registry.TypeRegistry
 
 /** Internal implementation of [InsertQueryBuilder] for building SQL INSERT statements. */
 internal class DatabaseInsertQueryBuilder(
     queryExecutor: QueryExecutor,
     rowMappers: RowMappers,
+    typeRegistry: TypeRegistry,
     table: String
-) : AbstractQueryBuilder<InsertQueryBuilder>(queryExecutor, rowMappers, table),
-    InsertQueryBuilder {
+) : AbstractQueryBuilder<InsertQueryBuilder>(queryExecutor, rowMappers, typeRegistry, table), InsertQueryBuilder {
+
     override val canReturnResultsByDefault = false
     private var explicitColumns: List<String>? = null
     private val valuePlaceholders = mutableMapOf<String, String>()
@@ -170,6 +172,7 @@ internal class DatabaseInsertQueryBuilder(
         val newBuilder = DatabaseInsertQueryBuilder(
             this.queryExecutor,
             this.rowMappers,
+            this.typeRegistry,
             this.table!! // We know table is not null for INSERT
         )
 

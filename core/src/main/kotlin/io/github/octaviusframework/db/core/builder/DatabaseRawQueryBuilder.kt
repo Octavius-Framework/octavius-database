@@ -2,6 +2,7 @@ package io.github.octaviusframework.db.core.builder
 
 import io.github.octaviusframework.db.api.builder.RawQueryBuilder
 import io.github.octaviusframework.db.core.jdbc.RowMappers
+import io.github.octaviusframework.db.core.type.registry.TypeRegistry
 
 /**
  * Executes a raw SQL query that returns results.
@@ -10,14 +11,16 @@ import io.github.octaviusframework.db.core.jdbc.RowMappers
 internal class DatabaseRawQueryBuilder(
     queryExecutor: QueryExecutor,
     rowMappers: RowMappers,
+    typeRegistry: TypeRegistry,
     private val sql: String
-) : AbstractQueryBuilder<RawQueryBuilder>(queryExecutor, rowMappers, null), RawQueryBuilder {
+) : AbstractQueryBuilder<RawQueryBuilder>(queryExecutor, rowMappers, typeRegistry), RawQueryBuilder {
+
     override val canReturnResultsByDefault = true
     override fun buildSql(): String = sql
 
-    // NOTE: This function has no practical use
-    // due to the fact that this builder is immutable
     override fun copy(): DatabaseRawQueryBuilder {
-        return this
+        val newBuilder = DatabaseRawQueryBuilder(queryExecutor, rowMappers, typeRegistry, sql)
+        newBuilder.copyBaseStateFrom(this)
+        return newBuilder
     }
 }

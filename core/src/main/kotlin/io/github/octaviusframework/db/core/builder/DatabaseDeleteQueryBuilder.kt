@@ -3,14 +3,16 @@ package io.github.octaviusframework.db.core.builder
 import io.github.octaviusframework.db.api.builder.DeleteQueryBuilder
 import io.github.octaviusframework.db.api.exception.checkStatement
 import io.github.octaviusframework.db.core.jdbc.RowMappers
+import io.github.octaviusframework.db.core.type.registry.TypeRegistry
 
 /** Internal implementation of [DeleteQueryBuilder] for building SQL DELETE statements. */
 internal class DatabaseDeleteQueryBuilder(
     queryExecutor: QueryExecutor,
     rowMappers: RowMappers,
+    typeRegistry: TypeRegistry,
     table: String
-) : AbstractQueryBuilder<DeleteQueryBuilder>(queryExecutor, rowMappers, table),
-    DeleteQueryBuilder {
+) : AbstractQueryBuilder<DeleteQueryBuilder>(queryExecutor, rowMappers, typeRegistry, table), DeleteQueryBuilder {
+
     override val canReturnResultsByDefault = false
     private var whereClause: String? = null
     private var usingClause: String? = null
@@ -40,6 +42,7 @@ internal class DatabaseDeleteQueryBuilder(
         val newBuilder = DatabaseDeleteQueryBuilder(
             this.queryExecutor,
             this.rowMappers,
+            this.typeRegistry,
             this.table!! // Non-null because table is nullable in AbstractQueryBuilder
         )
 

@@ -6,6 +6,7 @@ import io.github.octaviusframework.db.api.exception.BadStatementExceptionMessage
 import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
 import io.github.octaviusframework.db.core.jdbc.RowMappers
 import io.github.octaviusframework.db.core.type.KotlinToPostgresConverter
+import io.github.octaviusframework.db.core.type.registry.TypeRegistry
 import io.mockk.mockk
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -17,12 +18,13 @@ internal object TestQueryBuilderFactory {
     private val mockJdbcTemplate = mockk<JdbcTemplate>()
     private val mockConverter = mockk<KotlinToPostgresConverter>()
     private val mockMappers = mockk<RowMappers>()
-    private val queryExecutor = QueryExecutor(mockJdbcTemplate, mockConverter, mockk())
+    private val mockRegistry = mockk<TypeRegistry>()
+    private val queryExecutor = QueryExecutor(mockJdbcTemplate, mockConverter)
 
-    fun select(columns: String) = DatabaseSelectQueryBuilder(queryExecutor, mockMappers, columns)
-    fun insert(table: String) = DatabaseInsertQueryBuilder(queryExecutor, mockMappers, table)
-    fun update(table: String) = DatabaseUpdateQueryBuilder(queryExecutor, mockMappers, table)
-    fun delete(table: String) = DatabaseDeleteQueryBuilder(queryExecutor, mockMappers, table)
+    fun select(columns: String) = DatabaseSelectQueryBuilder(queryExecutor, mockMappers, mockRegistry, columns)
+    fun insert(table: String) = DatabaseInsertQueryBuilder(queryExecutor, mockMappers, mockRegistry, table)
+    fun update(table: String) = DatabaseUpdateQueryBuilder(queryExecutor, mockMappers, mockRegistry, table)
+    fun delete(table: String) = DatabaseDeleteQueryBuilder(queryExecutor, mockMappers, mockRegistry, table)
 }
 
 class QueryBuilderTest {

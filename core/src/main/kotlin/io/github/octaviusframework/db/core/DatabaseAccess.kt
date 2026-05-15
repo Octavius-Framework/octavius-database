@@ -29,13 +29,13 @@ import java.sql.Connection
 internal class DatabaseAccess(
     jdbcTemplate: JdbcTemplate,
     private val transactionProvider: JdbcTransactionProvider,
-    typeRegistry: TypeRegistry,
+    private val typeRegistry: TypeRegistry,
     kotlinToPostgresConverter: KotlinToPostgresConverter,
     private val listenerConnectionFactory: () -> Connection,
     private val onClose: (() -> Unit)? = null
 ) : DataAccess {
     private val rowMappers = RowMappers(typeRegistry)
-    private val queryExecutor = QueryExecutor(jdbcTemplate, kotlinToPostgresConverter, typeRegistry)
+    private val queryExecutor = QueryExecutor(jdbcTemplate, kotlinToPostgresConverter)
     val transactionPlanExecutor = TransactionPlanExecutor(transactionProvider)
     // --- QueryOperations implementation (for single queries and transaction usage) ---
 
@@ -43,24 +43,25 @@ internal class DatabaseAccess(
         return DatabaseSelectQueryBuilder(
             queryExecutor,
             rowMappers,
+            typeRegistry,
             columns.joinToString(",\n")
         )
     }
 
     override fun update(table: String): UpdateQueryBuilder {
-        return DatabaseUpdateQueryBuilder(queryExecutor, rowMappers, table)
+        return DatabaseUpdateQueryBuilder(queryExecutor, rowMappers, typeRegistry, table)
     }
 
     override fun insertInto(table: String): InsertQueryBuilder {
-        return DatabaseInsertQueryBuilder(queryExecutor, rowMappers, table)
+        return DatabaseInsertQueryBuilder(queryExecutor, rowMappers, typeRegistry, table)
     }
 
     override fun deleteFrom(table: String): DeleteQueryBuilder {
-        return DatabaseDeleteQueryBuilder(queryExecutor, rowMappers, table)
+        return DatabaseDeleteQueryBuilder(queryExecutor, rowMappers, typeRegistry, table)
     }
 
     override fun rawQuery(sql: String): RawQueryBuilder {
-        return DatabaseRawQueryBuilder(queryExecutor, rowMappers, sql)
+        return DatabaseRawQueryBuilder(queryExecutor, rowMappers, typeRegistry, sql)
     }
 
     //--- Transaction management implementation ---

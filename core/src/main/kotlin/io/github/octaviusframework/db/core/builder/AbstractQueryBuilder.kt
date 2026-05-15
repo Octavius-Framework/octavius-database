@@ -5,6 +5,8 @@ import io.github.octaviusframework.db.api.builder.*
 import io.github.octaviusframework.db.api.exception.*
 import io.github.octaviusframework.db.core.jdbc.RowMapper
 import io.github.octaviusframework.db.core.jdbc.RowMappers
+import io.github.octaviusframework.db.core.type.InternalQueryOptions
+import io.github.octaviusframework.db.core.type.registry.TypeRegistry
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlin.reflect.KClass
@@ -21,6 +23,7 @@ import kotlin.reflect.KType
 internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
     val queryExecutor: QueryExecutor,
     val rowMappers: RowMappers,
+    val typeRegistry: TypeRegistry,
     protected val table: String? = null,
 ) : QueryBuilder<R> {
     // We really don't want SELECT to die when executing queries
@@ -34,6 +37,13 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
         builder.block()
         this.queryOptions = builder.build()
     } as R
+
+    /**
+     * Creates InternalQueryOptions for current query state.
+     * Should be called once per terminal method.
+     */
+    internal fun internalOptions() = InternalQueryOptions(queryOptions, typeRegistry)
+
     //------------------------------------------------------------------------------------------------------------------
     //                                 ABSTRACT METHOD TO IMPLEMENT
     //------------------------------------------------------------------------------------------------------------------
@@ -115,12 +125,14 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
 
     /** Executes the query and returns a list of rows as `List<Map<String, Any?>>`. */
     fun toList(params: Map<String, Any?>): DataResult<List<Map<String, Any?>>> {
-        return executeReturningQuery(params, rowMappers.ColumnNameMapper(queryOptions)) { DataResult.Success(it) }
+        val options = internalOptions()
+        return executeReturningQuery(params, rowMappers.ColumnNameMapper(options), options) { DataResult.Success(it) }
     }
 
     /** Executes the query and returns a single row as `Map<String, Any?>?`. */
     fun toSingle(params: Map<String, Any?>): DataResult<Map<String, Any?>?> {
-        return executeReturningQuery(params, rowMappers.ColumnNameMapper(queryOptions)) {
+        val options = internalOptions()
+        return executeReturningQuery(params, rowMappers.ColumnNameMapper(options), options) {
             assertSingleRow(it, "Map<String, Any?>?")
             DataResult.Success(it.firstOrNull())
         }
@@ -128,7 +140,8 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
 
     /** Executes the query and returns the first row. Always fails on empty result. */
     fun toSingleStrict(params: Map<String, Any?>): DataResult<Map<String, Any?>> {
-        return executeReturningQuery(params, rowMappers.ColumnNameMapper(queryOptions)) {
+        val options = internalOptions()
+        return executeReturningQuery(params, rowMappers.ColumnNameMapper(options), options) {
             if (it.isEmpty()) {
                 throw DataOperationException(DataOperationExceptionMessage.EMPTY_RESULT)
             }
@@ -141,17 +154,19 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
 
     /** Executes the query and maps results to a list of objects of the given type. */
     fun <T> toListOf(kType: KType, params: Map<String, Any?>): DataResult<List<T>> {
+        val options = internalOptions()
         val kClass = kType.classifier as KClass<*>
         @Suppress("UNCHECKED_CAST")
-        return executeReturningQuery(params, rowMappers.DataObjectMapper(kClass, queryOptions)) {
+        return executeReturningQuery(params, rowMappers.DataObjectMapper(kClass, options), options) {
             DataResult.Success(it as List<T>)
         }
     }
 
     /** Executes the query and maps the result to a single object of the given type. */
     fun <T> toSingleOf(kType: KType, params: Map<String, Any?>): DataResult<T> {
+        val options = internalOptions()
         val kClass = kType.classifier as KClass<*>
-        return executeReturningQuery(params, rowMappers.DataObjectMapper(kClass, queryOptions)) {
+        return executeReturningQuery(params, rowMappers.DataObjectMapper(kClass, options), options) {
             assertSingleRow(it, kType.toString())
             if (it.isEmpty() && !kType.isMarkedNullable) {
                 throw DataOperationException(DataOperationExceptionMessage.EMPTY_RESULT)
@@ -165,7 +180,8 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
 
     /** Executes the query and returns the value from the first column of the first row. */
     fun <T> toField(targetType: KType, params: Map<String, Any?>): DataResult<T> {
-        return executeReturningQuery(params, rowMappers.SingleValueMapper(targetType, queryOptions)) {
+        val options = internalOptions()
+        return executeReturningQuery(params, rowMappers.SingleValueMapper(targetType, options), options) {
             if (it.isEmpty() && !targetType.isMarkedNullable) {
                 throw DataOperationException(DataOperationExceptionMessage.EMPTY_RESULT)
             }
@@ -178,7 +194,8 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
 
     /** Executes the query and returns the value from the first column of the first row. Always fails on empty result. */
     fun <T> toFieldStrict(targetType: KType, params: Map<String, Any?>): DataResult<T> {
-        return executeReturningQuery(params, rowMappers.SingleValueMapper(targetType, queryOptions)) {
+        val options = internalOptions()
+        return executeReturningQuery(params, rowMappers.SingleValueMapper(targetType, options), options) {
             if (it.isEmpty()) {
                 throw DataOperationException(DataOperationExceptionMessage.EMPTY_RESULT)
             }
@@ -191,7 +208,8 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
 
     /** Executes the query and returns a list of values from the first column of all rows. */
     fun <T> toColumn(targetType: KType, params: Map<String, Any?>): DataResult<List<T>> {
-        return executeReturningQuery(params, rowMappers.SingleValueMapper(targetType, queryOptions)) {
+        val options = internalOptions()
+        return executeReturningQuery(params, rowMappers.SingleValueMapper(targetType, options), options) {
             @Suppress("UNCHECKED_CAST")
             DataResult.Success(it as List<T>)
         }
@@ -217,7 +235,7 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
             BadStatementExceptionMessage.INVALID_STATEMENT_STATE
         ) { "Cannot call execute(), etc. methods when RETURNING clause is defined." }
         val sql = buildSql() // Can throw FatalDatabaseException (BadStatementException)
-        return queryExecutor.executeUpdate(sql, params, queryOptions)
+        return queryExecutor.executeUpdate(sql, params, internalOptions())
     }
 
     //------------------------------------------------------------------------------------------------------------------
@@ -242,16 +260,18 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
      * Private helper method for executing queries that return rows.
      * @param params Query parameters.
      * @param rowMapper Method for mapping a single row.
+     * @param options Execution options.
      * @param transform Function that transforms the mapped result list into the final [DataResult].
      */
     private fun <R, M> executeReturningQuery(
         params: Map<String, Any?>,
         rowMapper: RowMapper<M>,
+        options: InternalQueryOptions,
         transform: (List<M>) -> DataResult<R>
     ): DataResult<R> {
         checkStatement(canReturnResultsByDefault || returningClause != null) { "Cannot call toList(), toSingle(), etc. on a modifying query without RETURNING clause. Use .returning()." }
         val sql = buildSql() // Can throw FatalDatabaseException (BadStatementException)
-        return when (val result = queryExecutor.executeQuery(sql, params, rowMapper, queryOptions)) {
+        return when (val result = queryExecutor.executeQuery(sql, params, rowMapper, options)) {
             is DataResult.Success -> transform(result.value)
             is DataResult.Failure -> result
         }

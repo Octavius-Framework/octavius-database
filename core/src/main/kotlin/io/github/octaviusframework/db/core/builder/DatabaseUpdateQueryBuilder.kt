@@ -3,13 +3,16 @@ package io.github.octaviusframework.db.core.builder
 import io.github.octaviusframework.db.api.builder.UpdateQueryBuilder
 import io.github.octaviusframework.db.api.exception.checkStatement
 import io.github.octaviusframework.db.core.jdbc.RowMappers
+import io.github.octaviusframework.db.core.type.registry.TypeRegistry
 
 /** Internal implementation of [UpdateQueryBuilder] for building SQL UPDATE statements. */
 internal class DatabaseUpdateQueryBuilder(
     queryExecutor: QueryExecutor,
     rowMappers: RowMappers,
+    typeRegistry: TypeRegistry,
     table: String
-) : AbstractQueryBuilder<UpdateQueryBuilder>(queryExecutor, rowMappers, table), UpdateQueryBuilder {
+) : AbstractQueryBuilder<UpdateQueryBuilder>(queryExecutor, rowMappers, typeRegistry, table), UpdateQueryBuilder {
+
     override val canReturnResultsByDefault = false
     private val setClauses = mutableMapOf<String, String>()
     private var fromClause: String? = null
@@ -73,6 +76,7 @@ internal class DatabaseUpdateQueryBuilder(
         val newBuilder = DatabaseUpdateQueryBuilder(
             this.queryExecutor,
             this.rowMappers,
+            this.typeRegistry,
             this.table!! // Non-null because table is nullable in AbstractQueryBuilder
         )
 

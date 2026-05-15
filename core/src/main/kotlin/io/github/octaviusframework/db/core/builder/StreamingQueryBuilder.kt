@@ -38,9 +38,8 @@ internal class StreamingQueryBuilder(
             }
 
             builder.jdbcTemplate.query(positionalQuery, fetchSize) { rs ->
-                var rowNum = 0
                 while (rs.next()) {
-                    val mappedItem = rowMapper.mapRow(rs, rowNum++)
+                    val mappedItem = rowMapper.mapRow(rs)
                     action(mappedItem)
                 }
             }

@@ -39,7 +39,7 @@ internal class RowMappers(
      * - Reporting and ad-hoc data analysis.
      * - Simple queries where defining a data class is unnecessary.
      */
-    fun ColumnNameMapper(): RowMapper<Map<String, Any?>> = RowMapper { rs, _ ->
+    fun ColumnNameMapper(): RowMapper<Map<String, Any?>> = RowMapper { rs ->
         val data = mutableMapOf<String, Any?>()
         val metaData = rs.metaData
 
@@ -59,7 +59,7 @@ internal class RowMappers(
      * @param kType The expected Kotlin type of the field, used for validation and nullability checks.
      * @return A mapper returning a single value or throwing [io.github.octaviusframework.db.api.exception.TypeMappingException] on type mismatch or unexpected null.
      */
-    fun SingleValueMapper(kType: KType): RowMapper<Any?> = RowMapper { rs, _ ->
+    fun SingleValueMapper(kType: KType): RowMapper<Any?> = RowMapper { rs ->
         val value = valueExtractor.extract(rs, 1)
         if (value == null) {
             if (!kType.isMarkedNullable) {
@@ -92,9 +92,9 @@ internal class RowMappers(
      */
     fun <T : Any> DataObjectMapper(kClass: KClass<T>): RowMapper<T> {
         val baseMapper = ColumnNameMapper()
-        return RowMapper { rs, rowNum ->
+        return RowMapper { rs ->
             logger.trace { "Mapping row to ${kClass.simpleName} using DataObjectMapper" }
-            val map = baseMapper.mapRow(rs, rowNum)
+            val map = baseMapper.mapRow(rs)
 
             val result = map.toDataObject(kClass)
             logger.trace { "Successfully mapped row to ${kClass.simpleName}" }

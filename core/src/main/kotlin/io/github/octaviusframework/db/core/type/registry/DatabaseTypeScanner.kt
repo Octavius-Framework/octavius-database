@@ -32,7 +32,7 @@ internal class DatabaseTypeScanner(
 
         try {
             val query1 = PositionalQuery(SQL_QUERY_DETAILS, listOf(schemas, schemas))
-            jdbcTemplate.query(query1) { rs, _ ->
+            jdbcTemplate.query(query1) { rs ->
                 val type = rs.getString("info_type")
                 val oid = rs.getInt("type_oid")
                 val col1 = rs.getString("col1")
@@ -54,7 +54,7 @@ internal class DatabaseTypeScanner(
 
         try {
             val query2 = PositionalQuery(SQL_QUERY_OIDS_AND_ARRAYS, listOf(schemas))
-            jdbcTemplate.query(query2) { rs, _ ->
+            jdbcTemplate.query(query2) { rs ->
                 val oid = rs.getInt("type_oid")
                 val schema = rs.getString("schema_name")
                 val name = rs.getString("type_name")
@@ -78,7 +78,7 @@ internal class DatabaseTypeScanner(
 
     fun fetchSearchPath(): List<String> {
         return try {
-            jdbcTemplate.query(PositionalQuery("SELECT UNNEST(current_schemas(true))", emptyList())) { rs, _ ->
+            jdbcTemplate.query(PositionalQuery("SELECT UNNEST(current_schemas(true))", emptyList())) { rs ->
                 rs.getString(1)
             }
         } catch (e: Exception) {

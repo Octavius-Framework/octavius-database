@@ -156,7 +156,7 @@ class SimpleTypeOverheadBenchmark {
  * Linia bazowa - najszybszy możliwy kod.
  */
 private class RawJdbcRowMapper : RowMapper<Map<String, Any?>> {
-    override fun mapRow(rs: ResultSet, rowNum: Int): Map<String, Any?> {
+    override fun mapRow(rs: ResultSet): Map<String, Any?> {
         val data = mutableMapOf<String, Any?>()
         data["id"] = rs.getInt(1)
         data["int_val"] = rs.getInt(2)

@@ -16,8 +16,7 @@ internal fun interface RowMapper<T> {
      * `ResultSet`. This method should not call `next()` on the
      * `ResultSet`; it is only supposed to map values of the current row.
      * @param rs the `ResultSet` to map (pre-initialized for the current row)
-     * @param rowNum the number of the current row
      * @return the result object for the current row (may be `null`)
      */
-    fun mapRow(rs: ResultSet, rowNum: Int): T
+    fun mapRow(rs: ResultSet): T
 }

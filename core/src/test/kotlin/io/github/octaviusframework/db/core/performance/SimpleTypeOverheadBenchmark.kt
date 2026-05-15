@@ -2,6 +2,7 @@
 package io.github.octaviusframework.db.core.performance
 
 import com.zaxxer.hikari.HikariDataSource
+import io.github.octaviusframework.db.api.builder.QueryOptions
 import io.github.octaviusframework.db.core.config.DatabaseConfig
 import io.github.octaviusframework.db.core.jdbc.DefaultJdbcTransactionProvider
 import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
@@ -94,7 +95,7 @@ class SimpleTypeOverheadBenchmark {
     fun `run full benchmark comparison`() {
         val sql = "SELECT * FROM simple_type_benchmark LIMIT $TOTAL_ROWS_TO_FETCH"
         val rawMapper = RawJdbcRowMapper()
-        val frameworkMapper = RowMappers(typeRegistry).ColumnNameMapper() // NOWY MAPPER
+        val frameworkMapper = RowMappers(typeRegistry).ColumnNameMapper(QueryOptions()) // NOWY MAPPER
 
         // --- WARM-UP ---
         println("\n--- ROZGRZEWKA (x$WARMUP_ITERATIONS iteracji, wyniki ignorowane) ---")

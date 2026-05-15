@@ -64,7 +64,7 @@ internal class StreamingQueryBuilder(
     // --- Public terminal methods that use the helper method ---
 
     override fun forEachRow(params: Map<String, Any?>, action: (row: Map<String, Any?>) -> Unit): DataResult<Unit> {
-        return executeStream(params, builder.rowMappers.ColumnNameMapper(), action)
+        return executeStream(params, builder.rowMappers.ColumnNameMapper(builder.queryOptions), action)
     }
 
     override fun <T : Any> forEachRowOf(
@@ -72,6 +72,6 @@ internal class StreamingQueryBuilder(
         params: Map<String, Any?>,
         action: (obj: T) -> Unit
     ): DataResult<Unit> {
-        return executeStream(params, builder.rowMappers.DataObjectMapper(kClass), action)
+        return executeStream(params, builder.rowMappers.DataObjectMapper(kClass, builder.queryOptions), action)
     }
 }

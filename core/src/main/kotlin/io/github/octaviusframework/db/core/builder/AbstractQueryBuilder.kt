@@ -36,12 +36,13 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
     // We really don't want SELECT to die when executing queries
     protected abstract val canReturnResultsByDefault: Boolean
 
-    var optionsQueryBuilder: DatabaseQueryOptionsBuilder? = null
+    internal var queryOptions: QueryOptions = QueryOptions()
 
     @Suppress("UNCHECKED_CAST")
     override fun options(block: QueryOptionsBuilder.() -> Unit): R = apply {
-        val builder = optionsQueryBuilder ?: DatabaseQueryOptionsBuilder().also { optionsQueryBuilder = it }
+        val builder = DatabaseQueryOptionsBuilder()
         builder.block()
+        this.queryOptions = builder.build()
     } as R
     //------------------------------------------------------------------------------------------------------------------
     //                                 ABSTRACT METHOD TO IMPLEMENT
@@ -124,12 +125,12 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
 
     /** Executes the query and returns a list of rows as `List<Map<String, Any?>>`. */
     fun toList(params: Map<String, Any?>): DataResult<List<Map<String, Any?>>> {
-        return executeReturningQuery(params, rowMappers.ColumnNameMapper()) { DataResult.Success(it) }
+        return executeReturningQuery(params, rowMappers.ColumnNameMapper(queryOptions)) { DataResult.Success(it) }
     }
 
     /** Executes the query and returns a single row as `Map<String, Any?>?`. */
     fun toSingle(params: Map<String, Any?>): DataResult<Map<String, Any?>?> {
-        return executeReturningQuery(params, rowMappers.ColumnNameMapper()) {
+        return executeReturningQuery(params, rowMappers.ColumnNameMapper(queryOptions)) {
             assertSingleRow(it, "Map<String, Any?>?")
             DataResult.Success(it.firstOrNull())
         }
@@ -137,7 +138,7 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
 
     /** Executes the query and returns the first row. Always fails on empty result. */
     fun toSingleStrict(params: Map<String, Any?>): DataResult<Map<String, Any?>> {
-        return executeReturningQuery(params, rowMappers.ColumnNameMapper()) {
+        return executeReturningQuery(params, rowMappers.ColumnNameMapper(queryOptions)) {
             if (it.isEmpty()) {
                 throw DataOperationException(DataOperationExceptionMessage.EMPTY_RESULT)
             }
@@ -152,7 +153,7 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
     fun <T> toListOf(kType: KType, params: Map<String, Any?>): DataResult<List<T>> {
         val kClass = kType.classifier as KClass<*>
         @Suppress("UNCHECKED_CAST")
-        return executeReturningQuery(params, rowMappers.DataObjectMapper(kClass)) {
+        return executeReturningQuery(params, rowMappers.DataObjectMapper(kClass, queryOptions)) {
             DataResult.Success(it as List<T>)
         }
     }
@@ -160,7 +161,7 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
     /** Executes the query and maps the result to a single object of the given type. */
     fun <T> toSingleOf(kType: KType, params: Map<String, Any?>): DataResult<T> {
         val kClass = kType.classifier as KClass<*>
-        return executeReturningQuery(params, rowMappers.DataObjectMapper(kClass)) {
+        return executeReturningQuery(params, rowMappers.DataObjectMapper(kClass, queryOptions)) {
             assertSingleRow(it, kType.toString())
             if (it.isEmpty() && !kType.isMarkedNullable) {
                 throw DataOperationException(DataOperationExceptionMessage.EMPTY_RESULT)
@@ -174,7 +175,7 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
 
     /** Executes the query and returns the value from the first column of the first row. */
     fun <T> toField(targetType: KType, params: Map<String, Any?>): DataResult<T> {
-        return executeReturningQuery(params, rowMappers.SingleValueMapper(targetType)) {
+        return executeReturningQuery(params, rowMappers.SingleValueMapper(targetType, queryOptions)) {
             if (it.isEmpty() && !targetType.isMarkedNullable) {
                 throw DataOperationException(DataOperationExceptionMessage.EMPTY_RESULT)
             }
@@ -187,7 +188,7 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
 
     /** Executes the query and returns the value from the first column of the first row. Always fails on empty result. */
     fun <T> toFieldStrict(targetType: KType, params: Map<String, Any?>): DataResult<T> {
-        return executeReturningQuery(params, rowMappers.SingleValueMapper(targetType)) {
+        return executeReturningQuery(params, rowMappers.SingleValueMapper(targetType, queryOptions)) {
             if (it.isEmpty()) {
                 throw DataOperationException(DataOperationExceptionMessage.EMPTY_RESULT)
             }
@@ -200,7 +201,7 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
 
     /** Executes the query and returns a list of values from the first column of all rows. */
     fun <T> toColumn(targetType: KType, params: Map<String, Any?>): DataResult<List<T>> {
-        return executeReturningQuery(params, rowMappers.SingleValueMapper(targetType)) {
+        return executeReturningQuery(params, rowMappers.SingleValueMapper(targetType, queryOptions)) {
             @Suppress("UNCHECKED_CAST")
             DataResult.Success(it as List<T>)
         }
@@ -348,7 +349,7 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
         this.withClauses.clear()
         this.withClauses.addAll(source.withClauses)
         this.recursiveWith = source.recursiveWith
-        this.optionsQueryBuilder = source.optionsQueryBuilder?.copy()
+        this.queryOptions = source.queryOptions.copy()
     }
 
     abstract override fun copy(): R

@@ -8,14 +8,14 @@ import kotlin.time.Duration
 /**
  * Configuration options for a single database query.
  *
- * Allows for overriding global settings like timeouts, type handlers, and composite mapping
+ * Allows for overriding global settings like type handlers, and composite mapping
  * for a specific query execution.
  */
 data class QueryOptions(
-    val typeHandlers: List<TypeHandler<*>>,
-    val compositeAsMapTypes: Set<QualifiedName>,
-    val customCompositeMappers: Map<QualifiedName, PgCompositeMapper<*>>,
-    val returnAllCompositesAsMaps: Boolean
+    val typeHandlers: List<TypeHandler<*>> = emptyList(),
+    val compositeAsMapTypes: Set<QualifiedName> = emptySet(),
+    val customCompositeMappers: Map<QualifiedName, PgCompositeMapper<*>> = emptyMap(),
+    val returnAllCompositesAsMaps: Boolean = false
 )
 
 /**

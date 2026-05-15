@@ -6,21 +6,21 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 
 ## Guides
 
-| Document                                              | Description                                                                                                                          |
-|-------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
-| [Configuration](configuration.md)                     | Initialization, DatabaseConfig, Flyway (optional), core types, Type Registry scanning, DynamicDto strategy                           |
-| [Multiplatform Support](multiplatform.md)             | Sharing DTOs between JVM backend and JS frontend, Multiplatform BigDecimal, Serializers                                              |
-| [Lifecycle & Shutdown](lifecycle-and-shutdown.md)     | Proper cleanup, .use {} block, common integration patterns                                                                           |
-| [Query Builders](query-builders.md)                   | SELECT, INSERT, UPDATE, DELETE, raw queries, CTEs, subqueries, ON CONFLICT                                                           |
-| [Functions & Procedures](functions-and-procedures.md) | Calling functions and procedures                                                                                                     |
-| [Executing Queries](executing-queries.md)             | Terminal methods, DataResult, getOrThrow, async execution, streaming                                                                 |
-| [Parameter Handling](parameter-handling.md)           | Named parameters (@), JSONB operator escaping (?), collections & flattening, unnest and bulk operations                              |
-| [Data Mapping](data-mapping.md)                       | toDataMap(), toDataObject(), @MapKey - converting between objects and maps                                                           |
-| [ORM-Like Patterns](orm-patterns.md)                  | CRUD patterns, real-world examples, PostgreSQL composite types                                                                       |
-| [Transactions](transactions.md)                       | Transaction blocks, TransactionPlan, StepHandle, passing data between steps , propagation, isolation, read-only, timeouts and errors |
-| [Notifications](notifications.md)                     | PostgreSQL LISTEN/NOTIFY, PgChannelListener, Flow-based receiving                                                                    |
-| [Error Handling](error-handling.md)                   | Fatal Developer Errors (Thrown) vs. Database Errors (Returned), Exception hierarchy                                                  |
-| [Type System](type-system.md)                         | @PgEnum, @PgComposite, @DynamicallyMappable, dynamic data insertion, Custom Type Handlers, standard type mappings                    |
+| Document                                              | Description                                                                                                                                                        |
+|-------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [Configuration](configuration.md)                     | Initialization, DatabaseConfig, Flyway (optional), core types, Type Registry scanning, DynamicDto strategy                                                         |
+| [Multiplatform Support](multiplatform.md)             | Sharing DTOs between JVM backend and JS frontend, Multiplatform BigDecimal, Serializers                                                                            |
+| [Lifecycle & Shutdown](lifecycle-and-shutdown.md)     | Proper cleanup, .use {} block, common integration patterns                                                                                                         |
+| [Query Builders](query-builders.md)                   | SELECT (FOR UPDATE), INSERT (ON CONFLICT), UPDATE, DELETE, fragments, `.options()` and builder modes                                                               |
+| [Functions & Procedures](functions-and-procedures.md) | Calling functions and procedures                                                                                                                                   |
+| [Executing Queries](executing-queries.md)             | Terminal methods, DataResult, getOrThrow, async execution, streaming                                                                                               |
+| [Parameter Handling](parameter-handling.md)           | Named parameters (@), JSONB operator escaping (?), collections & flattening, unnest and bulk operations                                                            |
+| [Data Mapping](data-mapping.md)                       | toDataMap(), toDataObject(), @MapKey - converting between objects and maps                                                                                         |
+| [ORM-Like Patterns](orm-patterns.md)                  | CRUD patterns, real-world examples, PostgreSQL composite types                                                                                                     |
+| [Transactions](transactions.md)                       | Transaction blocks, TransactionPlan, StepHandle, passing data between steps , propagation, isolation, read-only, timeouts and errors                               |
+| [Notifications](notifications.md)                     | PostgreSQL LISTEN/NOTIFY, PgChannelListener, Flow-based receiving                                                                                                  |
+| [Error Handling](error-handling.md)                   | Fatal Developer Errors (Thrown) vs. Database Errors (Returned), Exception hierarchy                                                                                |
+| [Type System](type-system.md)                         | @PgEnum, @PgComposite, @DynamicallyMappable, dynamic data insertion, Custom Type Handlers, GlobalTypeHandler, .options() per-query configs, standard type mappings |
 
 ## Quick Links
 
@@ -34,6 +34,8 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 - [ON CONFLICT (Upsert)](query-builders.md#on-conflict-upsert) - Insert or update on conflict
 - [Row-Level Locking](query-builders.md#row-level-locking-for-update) - FOR UPDATE, NOWAIT, SKIP LOCKED
 - [Auto Placeholders](query-builders.md#auto-generated-placeholders) - `values()`, `setValues()` auto-generation
+- [Query Configuration](query-builders.md#options---query-configuration) - `.options()` for ad-hoc mapping and custom handlers
+- [Builder Modes](query-builders.md#builder-modes) - builder modes
 
 ### Parameter Handling
 - [Named Parameters Syntax](parameter-handling.md#named-parameters-syntax) - Why `@` is used instead of `:`
@@ -116,6 +118,8 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 - [@DynamicallyMappable](type-system.md#dynamicallymappable) - Polymorphic storage with `dynamic_dto`
 - [Inserting Dynamic Data](type-system.md#inserting-dynamic-data) - How to persist dynamic_dto and polymorphic lists
 - [Custom Type Handlers](type-system.md#custom-type-handlers) - Implement custom serialization for any PostgreSQL type
+- [Global Registration](type-system.md#global-registration-via-globaltypehandler) - `GlobalTypeHandler` and auto-discovery
+- [Per-Query Configuration](type-system.md#per-query-configuration-via-options-) - `.options()` for ad-hoc mapping and handler overrides
 - [Helper Serializers & KMP Types](type-system.md#helper-serializers--multiplatform-types) - Links to multiplatform-specific type details
 
 ### Configuration

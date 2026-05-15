@@ -454,74 +454,191 @@ It covers:
 
 ## Custom Type Handlers
 
-For types not supported out-of-the-box, or when you need full control over the serialization and deserialization process, you can implement a `TypeHandler<T>`.
+For types not supported out-of-the-box — or when you need full control over how a value moves between PostgreSQL and Kotlin — you can implement a `TypeHandler<T>`.
 
-### The TypeHandler Interface
+Octavius provides two interfaces:
+
+- **`GlobalTypeHandler<T>`** — discovered automatically during startup via classpath scanning. Registered globally and applied to every query in the application.
+- **`TypeHandler<T>`** — the base interface. Used when you want to register a handler only for a specific query via `.options {}`, without affecting global state.
+
+`GlobalTypeHandler<T>` extends `TypeHandler<T>` — every `GlobalTypeHandler` is also a `TypeHandler`.
+
+---
+
+### The Interface
 
 ```kotlin
 interface TypeHandler<T : Any> {
-    /** The PostgreSQL type name (e.g., "circle", "point", "geometry") */
+    /** The PostgreSQL type name (e.g., "circle", "ltree", "geometry") */
     val pgTypeName: String
-    
-    /** The PostgreSQL schema (defaults to "") */
+
+    /** The PostgreSQL schema. Defaults to "" (resolved via search_path). */
     val pgSchema: String get() = ""
-    
-    /** The Kotlin class this handler manages */
+
+    /** The Kotlin class this handler manages. */
     val kotlinClass: KClass<T>
-    
-    /** 
-     * Optional: Efficiently read value from JDBC ResultSet.
-     * If null, Octavius will fallback to [fromPgString].
+
+    /**
+     * Whether this handler is the default mapping for [kotlinClass].
+     * When true, this handler is used when Octavius needs to decide how
+     * to serialize a value of [kotlinClass] to PostgreSQL (e.g., in a List<T>
+     * element or composite field). See [Handler Priority] below.
+     */
+    val isDefaultForKotlinType: Boolean get() = false
+
+    /**
+     * Optional: read value directly from JDBC ResultSet.
+     * If null, Octavius falls back to [fromPgString].
      */
     val fromResultSet: ((ResultSet, Int) -> T?)? get() = null
-    
-    /** Parse value from PostgreSQL text representation (e.g., "<(1,2),3>") */
+
+    /** Parse a value from PostgreSQL text representation (e.g., `"<(1,2),3>"`) */
     val fromPgString: (String) -> T
-    
+
     /**
-     * Optional: Convert value to a JDBC-compatible object.
-     * If null, Octavius will fallback to [toPgString].
+     * Optional: convert value to a JDBC-compatible object.
+     * If null, Octavius falls back to [toPgString].
      */
     val toJdbc: ((T) -> Any)? get() = null
-    
-    /** Convert value to PostgreSQL text representation for literals and composite fields */
+
+    /** Convert value to PostgreSQL text representation (used inside literals and composite fields) */
     val toPgString: (T) -> String
 }
 ```
 
-### Automatic Registration
+---
 
-Octavius automatically discovers and registers `TypeHandler` implementations during startup. To be discovered, your handler must:
-1. Be located within one of the `packagesToScan` defined in your `DatabaseConfig`.
-2. Be a public `object` or a `class` with a public no-arg constructor.
+### Reading from PostgreSQL (DB → Kotlin)
 
-### Example: PostgreSQL Circle Type
+When Octavius reads a result set, it resolves each column's type using its **OID** — the internal PostgreSQL type identifier. If a custom handler is registered for that OID, it takes precedence over the built-in mapping.
+
+The rules are simple:
+- A custom handler silently overrides the default handler for the same OID (logged at `INFO`).
+- Two custom handlers registered for the same OID throw `TypeRegistryException` with `AMBIGUOUS_TYPE_MAPPING`.
+
+---
+
+### Writing to PostgreSQL (Kotlin → DB)
+
+When Octavius converts a Kotlin value to a PostgreSQL parameter, it must decide which `TypeHandler` to use. It applies the following priority chain to find the correct handler for a given value:
+
+#### 1. `PgTyped` — explicit type cast
+
+If a value is wrapped in `PgTyped` (via `.withPgType()`), that wrapper controls the final `::cast` appended to the placeholder. The handler still performs the actual serialization, but the PostgreSQL type used for casting is whatever `PgTyped` specifies, not what the handler declares.
 
 ```kotlin
-data class PgCircle(val x: Double, val y: Double, val radius: Double)
+// Handler serializes the value; PgTyped controls what type it's cast to
+val param = myValue.withPgType("custom_schema", "my_type")
+```
 
-object PgCircleHandler : TypeHandler<PgCircle> {
-    override val pgTypeName = "circle"
-    override val kotlinClass = PgCircle::class
+Use this when the handler's declared `pgTypeName` differs from what you need in a specific query.
 
-    override val fromPgString = { s: String ->
-        // Input format: <(x,y),r>
-        val parts = s.trim('<', '>', '(', ')').split(',', ')')
-        PgCircle(parts[0].toDouble(), parts[1].trim('(', ',').toDouble(), parts[parts.size - 1].toDouble())
-    }
+#### 2. Resolving the Default Handler for a Class
 
-    override val toPgString = { c: PgCircle -> 
-        "<( ${c.x} , ${c.y} ),${c.radius}>" 
-    }
+When Octavius serializes a raw value (e.g., as a parameter, an element inside a `List<T>`, or a field in a composite), it looks up the handler associated with that Kotlin class. The priority is strictly determined by the `isDefaultForKotlinType` flag and the registration scope:
+
+| Handler scope          | `isDefaultForKotlinType` | Priority                                          |
+|------------------------|--------------------------|---------------------------------------------------|
+| Per-query (`.options`) | `true`                   | **Highest** — overrides everything for that query |
+| Global custom          | `true`                   | High — overrides built-ins and `false` customs    |
+| Global custom          | `false`                  | Medium — overrides other `false` customs only     |
+| Built-in standard      | `true`                   | Lowest — always overridable                       |
+
+**Crucial Note on Per-Query Handlers:** A handler registered via `.options { registerTypeHandler(...) }` will **only** override the serialization of its Kotlin class if its `isDefaultForKotlinType` property is set to `true`. Otherwise, it is only used when explicitly requested (e.g., when reading a column of its specific PostgreSQL type).
+
+```kotlin
+// SpecialLegionHandler must have `isDefaultForKotlinType = true` to override Legion serialization
+dataAccess.select("*").from("legions")
+    .options { registerTypeHandler(SpecialLegionHandler) }
+    .toListOf<Legion>()
+```
+
+*(Note: Two global custom handlers both marked `isDefaultForKotlinType = true` for the same class will throw an `AMBIGUOUS_TYPE_MAPPING` error during startup.)*
+
+#### 3. Fallback
+
+If no handler matches, Octavius falls back to composite serialization (for data classes), enum serialization, or `toString()`.
+
+---
+
+### A Note on Primitive Types
+
+A `TypeHandler` is keyed on a Kotlin class. This means you cannot register two different handlers for `String` — one for column A and another for column B. There is only one `String` class, so there can only be one default handler for it.
+
+If you need a type to be serialized differently in different contexts, **wrap it in a value class**:
+
+```kotlin
+// ❌ Won't work — can't have two different String handlers
+object LtreeHandler : GlobalTypeHandler<String> { ... }     // conflicts with default String handler
+object RegexpHandler : GlobalTypeHandler<String> { ... }    // also String — AMBIGUOUS_TYPE_MAPPING
+
+// ✅ Correct — separate types, separate handlers
+@JvmInline value class LTree(val path: String)
+@JvmInline value class PgRegexp(val pattern: String)
+
+object LTreeHandler : GlobalTypeHandler<LTree> {
+    override val pgTypeName = "ltree"
+    override val kotlinClass = LTree::class
+    override val isDefaultForKotlinType = true
+    override val fromPgString = { s: String -> LTree(s) }
+    override val toPgString = { t: LTree -> t.path }
 }
 ```
 
-Once registered, `PgCircle` can be used as:
-- A simple query parameter or result column.
-- A field within a `@PgComposite` data class.
-- An element in a PostgreSQL array (`List<PgCircle>`).
+Value classes enforce strict type safety in your domain, giving Octavius a distinct class to key the handler on without heavy abstractions.
 
 ---
+
+### Global Registration via `GlobalTypeHandler`
+
+To register a handler globally, implement `GlobalTypeHandler<T>` (not just `TypeHandler<T>`) and place it within a package listed in `packagesToScan`. It must be either:
+- A public `object`, or
+- A public `class` with a public no-arg constructor.
+
+```kotlin
+object LTreeHandler : GlobalTypeHandler<LTree> {
+    override val pgTypeName = "ltree"
+    override val kotlinClass = LTree::class
+    override val isDefaultForKotlinType = true
+    override val fromPgString = { s: String -> LTree(s) }
+    override val toPgString = { t: LTree -> t.path }
+}
+```
+
+Once registered, `LTree` can be used as:
+- A query parameter or result column.
+- A field within a `@PgComposite` data class.
+- An element in a PostgreSQL array (`List<LTree>`).
+
+---
+
+### Per-Query Configuration via `.options {}`
+
+The `.options()` method on query builders provides a way to override global mapping configurations for a specific query execution. This is extremely useful when you need to handle ad-hoc data structures, bypass reflection, or temporarily redefine how a specific type is mapped without affecting the entire application.
+
+Available configurations:
+
+- **`returnCompositeAsMap(name, schema)`**: Directs the framework to return a specific PostgreSQL composite type as a nested `Map<String, Any?>` instead of attempting to map it to a Kotlin data class.
+- **`returnAllCompositesAsMaps()`**: Forces all composite types encountered in the query result to be returned as Maps. Perfect for dynamic reporting or exporting raw data.
+- **`registerCompositeMapper(name, schema, mapper)`**: Bypasses the default reflection-based mapper and uses your custom `PgCompositeMapper` just for this query. **This works symmetrically** — it is used both when reading the composite from the ResultSet and when serializing it as a query parameter.
+- **`registerTypeHandler(handler)`**: Registers a custom `TypeHandler` that takes precedence over global handlers during this query's execution.
+
+```kotlin
+dataAccess.select("*").from("legions")
+    .options {
+        // Return the 'address' composite as a Map
+        returnCompositeAsMap(name = "address")
+        
+        // Return all composites as Maps
+        // returnAllCompositesAsMaps()
+        
+        // Register a custom TypeHandler for this query only
+        // registerTypeHandler(MyCustomHandler)
+    }
+    .toListOf<Legion>()
+```
+
+Per-query configurations are resolved once at query construction and never affect global state.
 
 ## Object Conversion Utilities
 

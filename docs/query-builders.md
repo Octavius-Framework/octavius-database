@@ -23,6 +23,7 @@ Octavius Database provides fluent query builders for all CRUD operations. Each b
 - [Common Table Expressions (CTE)](#common-table-expressions-cte)
 - [Subqueries](#subqueries)
 - [Auto-Generated Placeholders](#auto-generated-placeholders)
+- [`.options()` - Query Configuration](#options---query-configuration)
 - [Builder Modes](#builder-modes)
 
 > **Executing Queries**: For terminal methods (`toList()`, `toSingleOf()`, `execute()`, etc.), async execution, and streaming, see [Executing Queries](executing-queries.md).
@@ -637,6 +638,36 @@ dataAccess.update("citizens")
 
 ---
 
+### `.options()` - Query Configuration
+
+The `.options()` method provides a way to override global mapping configurations for a specific query execution. This is useful for handling ad-hoc data structures or temporarily changing how types are mapped without affecting the entire application.
+
+```kotlin
+dataAccess.select("*").from("legions")
+    .options {
+        returnCompositeAsMap(name = "address")
+    }
+    .toListOf<Legion>()
+```
+
+For a full list of available configurations (custom handlers, map conversions, etc.), see [Per-Query Configuration via `.options {}`](type-system.md#per-query-configuration-via-options-).
+
+### `.copy()` - Clone Builder
+
+Create a deep copy of the builder for creating variants:
+
+```kotlin
+val baseQuery = dataAccess.select("id", "name")
+    .from("legionnaires")
+    .orderBy("name")
+
+// Create variants without modifying the original
+val activeLegionnaires = baseQuery.copy().where("active = true").toListOf<Legionnaire>()
+val retiredLegionnaires = baseQuery.copy().where("active = false").toListOf<Legionnaire>()
+```
+
+---
+
 ## Builder Modes
 
 Each builder can be converted to different execution modes.
@@ -668,17 +699,3 @@ Execute queries asynchronously using coroutines. See [Executing Queries - Async]
 ### `.asStream()` - Streaming
 
 Process large datasets without loading everything into memory. See [Executing Queries - Streaming](executing-queries.md#streaming).
-
-### `.copy()` - Clone Builder
-
-Create a deep copy of the builder for creating variants:
-
-```kotlin
-val baseQuery = dataAccess.select("id", "name")
-    .from("legionnaires")
-    .orderBy("name")
-
-// Create variants without modifying the original
-val activeLegionnaires = baseQuery.copy().where("active = true").toListOf<Legionnaire>()
-val retiredLegionnaires = baseQuery.copy().where("active = false").toListOf<Legionnaire>()
-```

@@ -28,9 +28,15 @@ Common use cases: cache invalidation, real-time UI updates, cross-service events
 
 ---
 
-## Sending Notifications — notify()
+## Sending Notifications
 
-`DataAccess.notify()` sends a notification to a PostgreSQL channel via `pg_notify`.
+Octavius provides two helper functions to send notifications: `notify()` for standard queries, and `notifyStep()` for use inside `TransactionPlan`.
+
+**Important:** Both of these functions are purely **syntactic sugar**. Under the hood, they simply construct a `SELECT pg_notify(channel, payload)` query. You are not forced to use them; you can always invoke `pg_notify` manually using `rawQuery` or standard builders if you prefer.
+
+### `notify()`
+
+`DataAccess.notify()` sends a notification to a PostgreSQL channel.
 
 ```kotlin
 // With payload
@@ -47,6 +53,42 @@ dataAccess.notify("senate_decrees", payload)
 **Signature:**
 ```kotlin
 fun notify(channel: String, payload: String? = null): DataResult<Unit>
+```
+
+### `notifyStep()`
+
+If you are using a [Transaction Plan](transactions.md#transaction-plans), you can use `notifyStep()` to add a notification to your operation sequence. Just like `notify()`, it will only be delivered if the transaction commits.
+
+```kotlin
+val plan = TransactionPlan()
+
+plan.add(
+    dataAccess.insertInto("edicts").values(listOf("issuer_id", "text"))
+        .asStep()
+        .execute("issuer_id" to 1, "text" to "Let it be known...")
+)
+
+plan.add(dataAccess.notifyStep("senate_decrees", "new_edict"))
+
+dataAccess.executeTransactionPlan(plan)
+```
+
+### Manual Invocation
+
+Since the helpers are just wrappers, you can achieve the exact same result manually. This is particularly useful if you want to notify multiple channels dynamically or construct the payload directly in SQL using functions like `jsonb_build_object()`.
+
+```kotlin
+// Equivalent to notify("legion_dispatch", "legion_id:VII")
+dataAccess.select("pg_notify(@channel, @payload)")
+    .execute("channel" to "legion_dispatch", "payload" to "legion_id:VII")
+
+// Using rawQuery to build JSON payload on the database side
+dataAccess.rawQuery("""
+    SELECT pg_notify('senate_decrees', json_build_object(
+        'type', 'new_edict',
+        'issuer_id', @issuer_id
+    )::text)
+""").execute("issuer_id" to 1)
 ```
 
 The payload is limited to **8000 bytes** (PostgreSQL constraint). For larger data, send an identifier and fetch the full record separately.

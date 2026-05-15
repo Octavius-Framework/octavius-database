@@ -1,10 +1,7 @@
 package io.github.octaviusframework.db.core.builder
 
 import io.github.octaviusframework.db.api.DataResult
-import io.github.octaviusframework.db.api.builder.AsyncTerminalMethods
-import io.github.octaviusframework.db.api.builder.QueryBuilder
-import io.github.octaviusframework.db.api.builder.StepBuilderMethods
-import io.github.octaviusframework.db.api.builder.StreamingTerminalMethods
+import io.github.octaviusframework.db.api.builder.*
 import io.github.octaviusframework.db.api.exception.*
 import io.github.octaviusframework.db.core.exception.ExceptionTranslator
 import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
@@ -38,6 +35,14 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
 
     // We really don't want SELECT to die when executing queries
     protected abstract val canReturnResultsByDefault: Boolean
+
+    var optionsQueryBuilder: DatabaseQueryOptionsBuilder? = null
+
+    @Suppress("UNCHECKED_CAST")
+    override fun options(block: QueryOptionsBuilder.() -> Unit): R = apply {
+        val builder = optionsQueryBuilder ?: DatabaseQueryOptionsBuilder().also { optionsQueryBuilder = it }
+        builder.block()
+    } as R
     //------------------------------------------------------------------------------------------------------------------
     //                                 ABSTRACT METHOD TO IMPLEMENT
     //------------------------------------------------------------------------------------------------------------------
@@ -343,6 +348,7 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
         this.withClauses.clear()
         this.withClauses.addAll(source.withClauses)
         this.recursiveWith = source.recursiveWith
+        this.optionsQueryBuilder = source.optionsQueryBuilder?.copy()
     }
 
     abstract override fun copy(): R

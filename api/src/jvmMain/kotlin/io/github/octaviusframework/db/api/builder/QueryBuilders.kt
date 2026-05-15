@@ -365,6 +365,22 @@ interface RawQueryBuilder : TerminalReturningMethods, TerminalModificationMethod
 // ==================== QueryBuilder ====================
 
 interface QueryBuilder<T : QueryBuilder<T>> {
+
+    /**
+     * Configures additional options for this query.
+     *
+     * ```kotlin
+     * dataAccess.select("*").from("legions")
+     *     .options {
+     *         returnCompositeAsMap(name = "address")
+     *     }
+     *     .toList()
+     * ```
+     * @see QueryOptionsBuilder
+     * @see QueryOptions
+     */
+    fun options(block: QueryOptionsBuilder.() -> Unit): T
+
     /**
      * Converts this builder to a [StepBuilderMethods] for lazy execution within a [TransactionPlan][io.github.octaviusframework.db.api.transaction.TransactionPlan].
      *

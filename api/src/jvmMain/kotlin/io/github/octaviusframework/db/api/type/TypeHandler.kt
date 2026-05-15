@@ -22,3 +22,16 @@ interface TypeHandler<T : Any> {
     val toJdbc: ((T) -> Any)? get() = null
     val toPgString: (T) -> String
 }
+
+/**
+ * Interface for handling conversion between Kotlin types and PostgreSQL types.
+ * Classes extending this interface are automatically scanned at the initialization
+ *
+ * Registered converters are automatically used for:
+ * - Single values in queries
+ * - Elements in PostgreSQL arrays
+ * - Fields within composite types
+ *
+ * @param T The Kotlin type this converter handles.
+ */
+interface GlobalTypeHandler<T : Any>: TypeHandler<T>

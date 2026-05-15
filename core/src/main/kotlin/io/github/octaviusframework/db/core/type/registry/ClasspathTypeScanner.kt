@@ -12,6 +12,7 @@ import io.github.octaviusframework.db.api.exception.InitializationException
 import io.github.octaviusframework.db.api.exception.InitializationExceptionMessage
 import io.github.octaviusframework.db.api.exception.TypeRegistryException
 import io.github.octaviusframework.db.api.exception.TypeRegistryExceptionMessage
+import io.github.octaviusframework.db.api.type.GlobalTypeHandler
 import io.github.octaviusframework.db.api.type.TypeHandler
 import io.github.octaviusframework.db.api.util.CaseConvention
 import io.github.octaviusframework.db.api.util.toSnakeCase
@@ -192,10 +193,10 @@ internal class ClasspathTypeScanner(
         scanResult: ScanResult,
         target: MutableList<TypeHandler<*>>
     ) {
-        val typeHandlerClassName = TypeHandler::class.qualifiedName!!
+        val typeHandlerClassName = GlobalTypeHandler::class.qualifiedName!!
 
         scanResult.getClassesImplementing(typeHandlerClassName).forEach { classInfo ->
-            if (classInfo.isAbstract || classInfo.isInterface || classInfo.name.startsWith("io.github.octaviusframework.db.core.type.registry.StandardTypeHandler")) {
+            if (classInfo.isAbstract || classInfo.isInterface) {
                 return@forEach
             }
 

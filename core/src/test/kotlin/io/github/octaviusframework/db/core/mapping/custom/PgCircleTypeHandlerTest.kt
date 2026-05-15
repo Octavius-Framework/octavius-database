@@ -2,6 +2,7 @@ package io.github.octaviusframework.db.core.mapping.custom
 
 import io.github.octaviusframework.db.api.builder.toField
 import io.github.octaviusframework.db.api.getOrThrow
+import io.github.octaviusframework.db.api.type.GlobalTypeHandler
 import io.github.octaviusframework.db.api.type.TypeHandler
 import io.github.octaviusframework.db.core.AbstractIntegrationTest
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -11,7 +12,7 @@ import kotlin.reflect.KClass
 
 data class PgCircle(val x: Double, val y: Double, val r: Double)
 
-object PgCircleHandler : TypeHandler<PgCircle> {
+object PgCircleHandler : GlobalTypeHandler<PgCircle> {
     override val pgTypeName: String = "circle"
     override val pgSchema: String = "pg_catalog"
     override val kotlinClass: KClass<PgCircle> = PgCircle::class

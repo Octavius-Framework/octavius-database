@@ -30,6 +30,7 @@ internal data class StandardTypeHandler<T : Any>(
     override val toPgString: (T) -> String
 ): TypeHandler<T> {
     override val pgSchema: String = "pg_catalog"
+    override val isDefaultForKotlinType: Boolean = true
 }
 
 /**

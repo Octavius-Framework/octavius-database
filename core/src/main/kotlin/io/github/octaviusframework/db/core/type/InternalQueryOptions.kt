@@ -49,16 +49,25 @@ internal class InternalQueryOptions(
                     )
                 }
                 oidMap[oid] = handler
-                
+
                 // 2. Class Mapping & Validation
-                if (classMap.containsKey(handler.kotlinClass)) {
-                    throw TypeRegistryException(
-                        messageEnum = TypeRegistryExceptionMessage.AMBIGUOUS_TYPE_MAPPING,
-                        typeName = handler.kotlinClass.simpleName ?: "unknown",
-                        details = "Multiple custom type handlers registered for Kotlin class '${handler.kotlinClass.simpleName}' in QueryOptions."
-                    )
+                val existingLocal = classMap[handler.kotlinClass]
+
+                if (handler.isDefaultForKotlinType) {
+                    if (existingLocal != null && existingLocal.isDefaultForKotlinType) {
+                        throw TypeRegistryException(
+                            messageEnum = TypeRegistryExceptionMessage.AMBIGUOUS_TYPE_MAPPING,
+                            typeName = handler.kotlinClass.simpleName ?: "unknown",
+                            details = "Multiple custom type handlers marked as default for Kotlin class '${handler.kotlinClass.simpleName}' in QueryOptions."
+                        )
+                    }
+                    classMap[handler.kotlinClass] = handler
+                } else {
+                    val globalHandler = typeRegistry.getHandlerByClass(handler.kotlinClass)
+                    if (existingLocal == null && globalHandler == null) {
+                        classMap[handler.kotlinClass] = handler
+                    }
                 }
-                classMap[handler.kotlinClass] = handler
             }
             customHandlersByOid = oidMap
             customHandlersByClass = classMap

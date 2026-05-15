@@ -17,6 +17,7 @@ interface TypeHandler<T : Any> {
     val pgTypeName: String
     val pgSchema: String get() = ""
     val kotlinClass: KClass<T>
+    val isDefaultForKotlinType: Boolean get() = false
     val fromResultSet: ((ResultSet, Int) -> T?)? get() = null
     val fromPgString: (String) -> T
     val toJdbc: ((T) -> Any)? get() = null

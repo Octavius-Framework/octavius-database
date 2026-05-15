@@ -1,7 +1,8 @@
 package io.github.octaviusframework.db.core.builder
 
 import io.github.octaviusframework.db.api.annotation.PgCompositeMapper
-import io.github.octaviusframework.db.api.builder.*
+import io.github.octaviusframework.db.api.builder.toColumn
+import io.github.octaviusframework.db.api.builder.toSingle
 import io.github.octaviusframework.db.api.getOrThrow
 import io.github.octaviusframework.db.api.type.TypeHandler
 import io.github.octaviusframework.db.core.AbstractIntegrationTest
@@ -35,6 +36,30 @@ class QueryOptionsTest : AbstractIntegrationTest() {
             .getOrThrow()
 
         // Then
+        assertEquals(142, result!!["val"])
+    }
+
+    @Test
+    fun `should override type handler for writing using QueryOptions`() {
+        // Given
+        val customIntHandler = object : TypeHandler<Int> {
+            override val pgTypeName: String = "int4"
+            override val kotlinClass: KClass<Int> = Int::class
+            override val isDefaultForKotlinType: Boolean = true
+            override val fromPgString: (String) -> Int = { it.toInt() }
+            override val toPgString: (Int) -> String = { (it + 100).toString() }
+            override val toJdbc: ((Int) -> Any) = { it + 100 }
+            override val fromResultSet: (ResultSet, Int) -> Int = { rs, i -> rs.getInt(i) }
+        }
+
+        // When
+        val result = dataAccess.rawQuery("SELECT @val as val")
+            .options { registerTypeHandler(customIntHandler) }
+            .toSingle("val" to 42)
+            .getOrThrow()
+
+        // Then
+        // The value 42 should be serialized to 142 during writing
         assertEquals(142, result!!["val"])
     }
 

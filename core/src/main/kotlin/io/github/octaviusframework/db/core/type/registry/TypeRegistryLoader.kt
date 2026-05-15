@@ -225,7 +225,7 @@ internal class TypeRegistryLoader(
         return definitions to classMap
     }
 
-    private fun mergeHandlers(
+    internal fun mergeHandlers(
         customHandlers: List<TypeHandler<*>>,
         searchPath: List<String>,
         nameToSchemaOid: Map<String, Map<String, Int>>
@@ -245,24 +245,47 @@ internal class TypeRegistryLoader(
         customHandlers.forEach { handler ->
             val (oid, qualifiedName) = resolveOid(handler.pgTypeName, handler.pgSchema, searchPath, nameToSchemaOid)
 
+            // 1. OID Conflict check
             if (handlersByOid.containsKey(oid) && oid !in standardHandlersOids) {
-                 throw TypeRegistryException(
+                throw TypeRegistryException(
                     messageEnum = TypeRegistryExceptionMessage.AMBIGUOUS_TYPE_MAPPING,
                     typeName = qualifiedName.toString(),
-                    details = "Multiple custom global type handlers registered for type '$qualifiedName' (OID: $oid). Handlers: ${handlersByOid[oid]!!.kotlinClass.simpleName} and ${handler.kotlinClass.simpleName}"
+                    details = "Multiple custom global type handlers registered for PostgreSQL type '$qualifiedName' (OID: $oid). Handlers: ${handlersByOid[oid]!!.kotlinClass.simpleName} and ${handler.kotlinClass.simpleName}"
                 )
+            }
+
+            // 2. Class Priority check
+            val existingForClass = handlersByClass[handler.kotlinClass]
+            val shouldOverrideClass = when {
+                existingForClass == null -> true
+                handler.isDefaultForKotlinType -> {
+                    if (existingForClass !is StandardTypeHandler && existingForClass.isDefaultForKotlinType) {
+                        throw TypeRegistryException(
+                            messageEnum = TypeRegistryExceptionMessage.AMBIGUOUS_TYPE_MAPPING,
+                            typeName = handler.kotlinClass.simpleName ?: "Unknown",
+                            details = "Multiple custom global type handlers marked as default for Kotlin class '${handler.kotlinClass.simpleName}'. Handlers: ${existingForClass::class.simpleName} and ${handler::class.simpleName}"
+                        )
+                    }
+                    true // Custom(true) overrides Standard and Custom(false)
+                }
+                else -> {
+                    // Custom(false) only overrides Custom(false). Does NOT override Standard or Custom(true).
+                    existingForClass !is StandardTypeHandler && !existingForClass.isDefaultForKotlinType
+                }
             }
 
             if (oid in standardHandlersOids) {
                 logger.info { "Overriding default TypeHandler for PostgreSQL type '${handler.pgTypeName}' (OID: $oid) with custom handler: ${handler.kotlinClass.simpleName}" }
-            } else if (handlersByClass.containsKey(handler.kotlinClass)) {
-                logger.info { "Overriding default TypeHandler for Kotlin class '${handler.kotlinClass.simpleName}' with custom handler." }
-            } else {
-                logger.info { "Registered custom TypeHandler for '${handler.pgTypeName}' -> ${handler.kotlinClass.simpleName} (OID: $oid)" }
+            }
+            
+            if (shouldOverrideClass && existingForClass != null) {
+                logger.info { "Overriding default TypeHandler for Kotlin class '${handler.kotlinClass.simpleName}' with custom handler: ${handler::class.simpleName}" }
             }
 
             handlersByOid[oid] = handler
-            handlersByClass[handler.kotlinClass] = handler
+            if (shouldOverrideClass) {
+                handlersByClass[handler.kotlinClass] = handler
+            }
         }
         return (handlersByOid to handlersByClass)
     }

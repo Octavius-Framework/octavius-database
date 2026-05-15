@@ -16,7 +16,7 @@ import kotlin.reflect.KClass
  */
 internal class InternalQueryOptions(
     val options: QueryOptions,
-    private val typeRegistry: TypeRegistry
+    typeRegistry: TypeRegistry
 ) {
     /**
      * Maps PostgreSQL OID to a query-specific custom [TypeHandler].

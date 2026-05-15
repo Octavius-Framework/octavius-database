@@ -55,4 +55,4 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT generate_benchmark_data(10000);
+SELECT generate_benchmark_data(100000);

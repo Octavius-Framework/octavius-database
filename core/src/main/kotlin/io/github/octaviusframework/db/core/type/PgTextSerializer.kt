@@ -32,11 +32,9 @@ internal class PgTextSerializer(
     fun serializeList(list: List<*>, skipDynamicDto: Boolean): String {
         logger.trace { "Serializing list with ${list.size} elements" }
         if (list.isEmpty()) return "{}"
+
         return list.joinToString(prefix = "{", postfix = "}", separator = ",") { item ->
-            if (item == null) "NULL" else {
-                val literal = serializeValue(item, skipDynamicDto, useNullLiteral = true)
-                if (shouldQuote(item)) escapeAndQuote(literal) else literal
-            }
+            if (item == null) "NULL" else serializeValue(item, skipDynamicDto, useNullLiteral = true)
         }
     }
 
@@ -66,10 +64,7 @@ internal class PgTextSerializer(
 
         return typeInfo.attributes.keys.joinToString(prefix = "(", postfix = ")", separator = ",") { key ->
             val value = valueMap[key]
-            if (value == null) "" else {
-                val literal = serializeValue(value, skipDynamicDto, useNullLiteral = false)
-                if (shouldQuote(value)) escapeAndQuote(literal) else literal
-            }
+            if (value == null) "" else serializeValue(value, skipDynamicDto, useNullLiteral = false)
         }
     }
 
@@ -86,10 +81,13 @@ internal class PgTextSerializer(
         logger.trace { "Serializing value of type ${current::class.qualifiedName ?: current::class.simpleName}" }
 
         // 1. Try standard handlers first
-        typeRegistry.getHandlerByClass(current::class)?.let {
-            logger.trace { "Using standard handler for type ${it.pgTypeName}" }
+        typeRegistry.getHandlerByClass(current::class)?.let { handler ->
+            logger.trace { "Using standard handler for type ${handler.pgTypeName}" }
             @Suppress("UNCHECKED_CAST")
-            return (it as TypeHandler<Any>).toPgString(current)
+            val literal = (handler as TypeHandler<Any>).toPgString(current)
+
+            val shouldQuote = handler.pgSchema != "pg_catalog" || handler.pgTypeName !in NUMERIC_BOOLEAN_TYPES
+            return if (shouldQuote) escapeAndQuote(literal) else literal
         }
 
         // 2. Try Dynamic DTO automatic conversion
@@ -104,7 +102,7 @@ internal class PgTextSerializer(
         }
 
         // 3. Handle recursive/complex types
-        return when (current) {
+        val literal = when (current) {
             is Enum<*> -> {
                 val typeName = typeRegistry.getPgTypeNameForClass(current::class)
                 val oid = typeRegistry.getOidForName(typeName)
@@ -126,16 +124,8 @@ internal class PgTextSerializer(
                 }
             }
         }
-    }
 
-    private fun shouldQuote(item: Any): Boolean {
-        var curr = item
-        while (curr is PgTyped) curr = curr.value ?: return false
-
-        typeRegistry.getHandlerByClass(curr::class)?.let { handler ->
-            return handler.pgTypeName !in NUMERIC_BOOLEAN_TYPES
-        }
-        return true
+        return escapeAndQuote(literal)
     }
 
     private fun escapeAndQuote(s: String): String = buildString(s.length + 2) {

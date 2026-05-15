@@ -244,10 +244,6 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
         }
     }
 
-// =================================================================
-    // --- POSTGRESQL STRUCTURE PARSER (ZERO-ALLOCATION STATE) ---
-    // =================================================================
-
     /**
      * Universal inline parser for nested structures (arrays and composites).
      * Handles quotes, escaping, `NULL` values, and nesting.

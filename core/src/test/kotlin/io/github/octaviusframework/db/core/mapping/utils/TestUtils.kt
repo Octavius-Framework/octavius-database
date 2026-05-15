@@ -41,7 +41,7 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
         }
         
         val finalArrayOid = arrayOid ?: nextOid++
-        arraysByOid[finalArrayOid] = PgArrayDefinition(finalArrayOid, qualifiedName.toString(), elementOid)
+        arraysByOid[finalArrayOid] = PgArrayDefinition(finalArrayOid, qualifiedName, elementOid)
         oidCategoryMap[finalArrayOid] = TypeCategory.ARRAY
         pgNameToOidMap[qualifiedName] = finalArrayOid
     }
@@ -65,7 +65,7 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
         val qualifiedName = QualifiedName("public", typeName)
         enumsByOid[oid] = PgEnumDefinition(
             oid = oid,
-            typeName = qualifiedName.toString(),
+            typeName = qualifiedName,
             valueToEnumMap = lookupMap,
             kClass = kClass
         )
@@ -84,7 +84,7 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
         val qualifiedName = QualifiedName("public", typeName)
         compositesByOid[oid] = PgCompositeDefinition(
             oid = oid,
-            typeName = qualifiedName.toString(),
+            typeName = qualifiedName,
             attributes = attributes,
             kClass = kClass
         )

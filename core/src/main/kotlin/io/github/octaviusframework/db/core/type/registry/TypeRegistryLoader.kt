@@ -80,7 +80,7 @@ internal class TypeRegistryLoader(
             .filter { it.value in registeredBaseOids } // Only create arrays for known elements
             .mapValues { (arrayOid, elementOid) ->
                 val arrayQualifiedName = databaseData.allOidNames.getValue(arrayOid)
-                PgArrayDefinition(arrayOid, arrayQualifiedName.toString(), elementOid)
+                PgArrayDefinition(arrayOid, arrayQualifiedName, elementOid)
             }
 
         // Build maps by OID for TypeRegistry
@@ -165,7 +165,7 @@ internal class TypeRegistryLoader(
             @Suppress("UNCHECKED_CAST")
             definitions[qualifiedName] = PgEnumDefinition(
                 oid = oid,
-                typeName = qualifiedName.toString(),
+                typeName = qualifiedName,
                 valueToEnumMap = lookupMap,
                 kClass = kt.kClass as KClass<out Enum<*>>
             )
@@ -214,7 +214,7 @@ internal class TypeRegistryLoader(
 
             definitions[qualifiedName] = PgCompositeDefinition(
                 oid = oid,
-                typeName = qualifiedName.toString(),
+                typeName = qualifiedName,
                 attributes = attributes,
                 kClass = kt.kClass,
                 mapper = mapperInstance

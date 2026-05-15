@@ -1,12 +1,15 @@
 package io.github.octaviusframework.db.core.builder
 
 import io.github.octaviusframework.db.api.DataResult
+import io.github.octaviusframework.db.api.builder.QueryOptions
 import io.github.octaviusframework.db.api.exception.QueryContext
 import io.github.octaviusframework.db.core.exception.ExceptionTranslator
 import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
 import io.github.octaviusframework.db.core.jdbc.RowMapper
+import io.github.octaviusframework.db.core.type.InternalQueryOptions
 import io.github.octaviusframework.db.core.type.KotlinToPostgresConverter
 import io.github.octaviusframework.db.core.type.PositionalQuery
+import io.github.octaviusframework.db.core.type.registry.TypeRegistry
 import io.github.oshai.kotlinlogging.KotlinLogging
 
 /**
@@ -21,6 +24,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 internal class QueryExecutor(
     private val jdbcTemplate: JdbcTemplate,
     private val kotlinToPostgresConverter: KotlinToPostgresConverter,
+    private val typeRegistry: TypeRegistry
 ) {
     companion object {
         private val logger = KotlinLogging.logger {}
@@ -32,9 +36,10 @@ internal class QueryExecutor(
     fun <M> executeQuery(
         sql: String,
         params: Map<String, Any?>,
-        rowMapper: RowMapper<M>
+        rowMapper: RowMapper<M>,
+        options: QueryOptions = QueryOptions()
     ): DataResult<List<M>> {
-        return execute(sql, params) { positionalQuery ->
+        return execute(sql, params, options) { positionalQuery ->
             val results: List<M> = jdbcTemplate.query(positionalQuery, rowMapper)
             DataResult.Success(results)
         }
@@ -45,9 +50,10 @@ internal class QueryExecutor(
      */
     fun executeUpdate(
         sql: String,
-        params: Map<String, Any?>
+        params: Map<String, Any?>,
+        options: QueryOptions = QueryOptions()
     ): DataResult<Int> {
-        return execute(sql, params) { positionalQuery ->
+        return execute(sql, params, options) { positionalQuery ->
             val affectedRows = jdbcTemplate.update(positionalQuery)
             DataResult.Success(affectedRows)
         }
@@ -61,9 +67,10 @@ internal class QueryExecutor(
         params: Map<String, Any?>,
         fetchSize: Int,
         rowMapper: RowMapper<M>,
+        options: QueryOptions = QueryOptions(),
         action: (item: M) -> Unit
     ): DataResult<Unit> {
-        return execute(sql, params) { positionalQuery ->
+        return execute(sql, params, options) { positionalQuery ->
             jdbcTemplate.query(positionalQuery, fetchSize) { rs ->
                 while (rs.next()) {
                     val mappedItem = rowMapper.mapRow(rs)
@@ -80,11 +87,13 @@ internal class QueryExecutor(
     private fun <R> execute(
         sql: String,
         params: Map<String, Any?>,
+        options: QueryOptions,
         action: (positionalQuery: PositionalQuery) -> DataResult<R>
     ): DataResult<R> {
         var positionalQuery: PositionalQuery? = null
         return try {
-            positionalQuery = kotlinToPostgresConverter.toPositionalQuery(sql, params)
+            val internalOptions = InternalQueryOptions(options, typeRegistry)
+            positionalQuery = kotlinToPostgresConverter.toPositionalQuery(sql, params, internalOptions)
             logger.debug {
                 """
                 Executing query (original): $sql with params: $params

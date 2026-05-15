@@ -17,7 +17,7 @@ internal object TestQueryBuilderFactory {
     private val mockJdbcTemplate = mockk<JdbcTemplate>()
     private val mockConverter = mockk<KotlinToPostgresConverter>()
     private val mockMappers = mockk<RowMappers>()
-    private val queryExecutor = QueryExecutor(mockJdbcTemplate, mockConverter)
+    private val queryExecutor = QueryExecutor(mockJdbcTemplate, mockConverter, mockk())
 
     fun select(columns: String) = DatabaseSelectQueryBuilder(queryExecutor, mockMappers, columns)
     fun insert(table: String) = DatabaseInsertQueryBuilder(queryExecutor, mockMappers, table)

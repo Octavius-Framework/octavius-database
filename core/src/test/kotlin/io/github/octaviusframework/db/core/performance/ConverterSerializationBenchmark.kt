@@ -1,6 +1,8 @@
 package io.github.octaviusframework.db.core.performance
 
+import io.github.octaviusframework.db.api.builder.QueryOptions
 import io.github.octaviusframework.db.core.mapping.utils.createFakeTypeRegistry
+import io.github.octaviusframework.db.core.type.InternalQueryOptions
 import io.github.octaviusframework.db.core.type.KotlinToPostgresConverter
 import io.github.octaviusframework.db.core.type.registry.TypeRegistry
 import org.junit.jupiter.api.*
@@ -36,6 +38,7 @@ class ConverterSerializationBenchmark {
     // --- Komponenty testowane ---
     private lateinit var converter: KotlinToPostgresConverter
     private lateinit var typeRegistry: TypeRegistry
+    private lateinit var options: InternalQueryOptions
 
     companion object {
         // Liczba wierszy w symulowanym zapytaniu Bulk Insert (każdy wiersz to kilka parametrów)
@@ -48,11 +51,12 @@ class ConverterSerializationBenchmark {
         println("--- ROZPOCZYNANIE KONFIGURACJI BENCHMARKU SERIALIZACJI (Kotlin -> Postgres) ---")
         typeRegistry = createFakeTypeRegistry()
         this.converter = KotlinToPostgresConverter(typeRegistry)
+        this.options = InternalQueryOptions.empty(typeRegistry)
 
         println("\n--- WARM-UP RUN (500 wierszy, wyniki ignorowane) ---")
         val (warmupSql, warmupParams) = buildTestQueryAndParams(500)
         repeat(10) {
-            converter.toPositionalQuery(warmupSql, warmupParams)
+            converter.toPositionalQuery(warmupSql, warmupParams, options)
         }
         println("--- WARM-UP COMPLETE ---")
     }
@@ -67,7 +71,7 @@ class ConverterSerializationBenchmark {
 
         repeat(ITERATIONS_PER_SIZE) {
             val time = measureNanoTime {
-                converter.toPositionalQuery(testSql, testParams)
+                converter.toPositionalQuery(testSql, testParams, options)
             }
             timings.add(time)
         }

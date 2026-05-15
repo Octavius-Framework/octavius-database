@@ -35,7 +35,7 @@ internal class DatabaseAccess(
     private val onClose: (() -> Unit)? = null
 ) : DataAccess {
     private val rowMappers = RowMappers(typeRegistry)
-    private val queryExecutor = QueryExecutor(jdbcTemplate, kotlinToPostgresConverter)
+    private val queryExecutor = QueryExecutor(jdbcTemplate, kotlinToPostgresConverter, typeRegistry)
     val transactionPlanExecutor = TransactionPlanExecutor(transactionProvider)
     // --- QueryOperations implementation (for single queries and transaction usage) ---
 

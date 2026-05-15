@@ -25,7 +25,7 @@ internal class StreamingQueryBuilder(
         action: (item: T) -> Unit
     ): DataResult<Unit> {
         val sql = builder.buildSql() // Can throw FatalDatabaseException (BadStatementException)
-        return builder.queryExecutor.executeStream(sql, params, fetchSize, rowMapper, action)
+        return builder.queryExecutor.executeStream(sql, params, fetchSize, rowMapper, builder.queryOptions, action)
     }
 
     // --- Public terminal methods that use the helper method ---

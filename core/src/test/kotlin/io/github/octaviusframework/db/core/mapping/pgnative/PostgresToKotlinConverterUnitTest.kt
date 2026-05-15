@@ -60,23 +60,23 @@ class PostgresToKotlinConverterUnitTest {
 
     @Test
     fun `should convert all standard types correctly`() {
-        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_TEXT, getOid(QualifiedName("","text")), options)).isEqualTo("Test \"quoted\" text with special chars: ąćęłńóśźż")
-        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_NUMBER, getOid(QualifiedName("","int4")), options)).isEqualTo(42)
-        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_BOOL, getOid(QualifiedName("","bool")), options)).isEqualTo(true)
-        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_JSON, getOid(QualifiedName("","jsonb")), options)).isEqualTo(Json.parseToJsonElement(GOLDEN_STRING_SIMPLE_JSON) as JsonObject)
-        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_UUID, getOid(QualifiedName("","uuid")), options)).isEqualTo(UUID.fromString("7b14b7bb-625c-408c-b5ff-ccd2233747dc"))
-        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_DATE, getOid(QualifiedName("","date")), options)).isEqualTo(LocalDate.parse("2024-01-15"))
+        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_TEXT, getOid(QualifiedName("pg_catalog","text")), options)).isEqualTo("Test \"quoted\" text with special chars: ąćęłńóśźż")
+        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_NUMBER, getOid(QualifiedName("pg_catalog","int4")), options)).isEqualTo(42)
+        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_BOOL, getOid(QualifiedName("pg_catalog","bool")), options)).isEqualTo(true)
+        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_JSON, getOid(QualifiedName("pg_catalog","jsonb")), options)).isEqualTo(Json.parseToJsonElement(GOLDEN_STRING_SIMPLE_JSON) as JsonObject)
+        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_UUID, getOid(QualifiedName("pg_catalog","uuid")), options)).isEqualTo(UUID.fromString("7b14b7bb-625c-408c-b5ff-ccd2233747dc"))
+        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_DATE, getOid(QualifiedName("pg_catalog","date")), options)).isEqualTo(LocalDate.parse("2024-01-15"))
     }
 
     @OptIn(ExperimentalTime::class)
     @Test
     fun `should convert time standard types correctly`() {
-        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_TIMESTAMP, getOid(QualifiedName("","timestamp")), options)).isEqualTo(LocalDateTime.parse("2024-01-15T14:30:00"))
-        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_TIMESTAMPTZ, getOid(QualifiedName("","timestamptz")), options))
+        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_TIMESTAMP, getOid(QualifiedName("pg_catalog","timestamp")), options)).isEqualTo(LocalDateTime.parse("2024-01-15T14:30:00"))
+        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_TIMESTAMPTZ, getOid(QualifiedName("pg_catalog","timestamptz")), options))
             .isEqualTo(Instant.parse("2024-01-15T13:30:00Z"))
-        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_NUMERIC, getOid(QualifiedName("","numeric")), options))
+        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_NUMERIC, getOid(QualifiedName("pg_catalog","numeric")), options))
             .isEqualTo(BigDecimal("98765.4321"))
-        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_INTERVAL, getOid(QualifiedName("","interval")), options))
+        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_INTERVAL, getOid(QualifiedName("pg_catalog","interval")), options))
             .isEqualTo(Duration.parse("PT3H25M10S"))
     }
 
@@ -90,19 +90,19 @@ class PostgresToKotlinConverterUnitTest {
 
     @Test
     fun `should convert all simple array types correctly`() {
-        assertThat(converter.convert(GOLDEN_STRING_TEXT_ARRAY, getOid(QualifiedName("","text", isArray = true)), options)).isEqualTo(listOf("first", "second", "third with \"quotes\"", "fourth with ąćę"))
-        assertThat(converter.convert(GOLDEN_STRING_NUMBER_ARRAY, getOid(QualifiedName("","int4", isArray = true)), options)).isEqualTo(listOf(1, 2, 3, 4, 5))
-        assertThat(converter.convert(GOLDEN_STRING_NESTED_TEXT_ARRAY, getOid(QualifiedName("","text", isArray = true)), options)).isEqualTo(listOf(listOf("a", "b"), listOf("c", "d"), listOf("e with \"quotes\"", "f")))
+        assertThat(converter.convert(GOLDEN_STRING_TEXT_ARRAY, getOid(QualifiedName("pg_catalog","text", isArray = true)), options)).isEqualTo(listOf("first", "second", "third with \"quotes\"", "fourth with ąćę"))
+        assertThat(converter.convert(GOLDEN_STRING_NUMBER_ARRAY, getOid(QualifiedName("pg_catalog","int4", isArray = true)), options)).isEqualTo(listOf(1, 2, 3, 4, 5))
+        assertThat(converter.convert(GOLDEN_STRING_NESTED_TEXT_ARRAY, getOid(QualifiedName("pg_catalog","text", isArray = true)), options)).isEqualTo(listOf(listOf("a", "b"), listOf("c", "d"), listOf("e with \"quotes\"", "f")))
 
         // JSON array
         val expectedJsonArray = listOf(
             Json.parseToJsonElement("{\"id\": 1}"),
             Json.parseToJsonElement("{\"id\": 2}")
         )
-        assertThat(converter.convert(GOLDEN_STRING_JSON_ARRAY, getOid(QualifiedName("","jsonb", isArray = true)), options)).isEqualTo(expectedJsonArray)
+        assertThat(converter.convert(GOLDEN_STRING_JSON_ARRAY, getOid(QualifiedName("pg_catalog","jsonb", isArray = true)), options)).isEqualTo(expectedJsonArray)
 
         // Special text array (starts with {)
-        assertThat(converter.convert(GOLDEN_STRING_TEXT_ARRAY_SPECIAL, getOid(QualifiedName("","text", isArray = true)), options)).isEqualTo(listOf("{starts with brace", "normal text"))
+        assertThat(converter.convert(GOLDEN_STRING_TEXT_ARRAY_SPECIAL, getOid(QualifiedName("pg_catalog","text", isArray = true)), options)).isEqualTo(listOf("{starts with brace", "normal text"))
     }
 
     @Test

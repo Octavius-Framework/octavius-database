@@ -217,7 +217,7 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
             BadStatementExceptionMessage.INVALID_STATEMENT_STATE
         ) { "Cannot call execute(), etc. methods when RETURNING clause is defined." }
         val sql = buildSql() // Can throw FatalDatabaseException (BadStatementException)
-        return queryExecutor.executeUpdate(sql, params)
+        return queryExecutor.executeUpdate(sql, params, queryOptions)
     }
 
     //------------------------------------------------------------------------------------------------------------------
@@ -251,7 +251,7 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
     ): DataResult<R> {
         checkStatement(canReturnResultsByDefault || returningClause != null) { "Cannot call toList(), toSingle(), etc. on a modifying query without RETURNING clause. Use .returning()." }
         val sql = buildSql() // Can throw FatalDatabaseException (BadStatementException)
-        return when (val result = queryExecutor.executeQuery(sql, params, rowMapper)) {
+        return when (val result = queryExecutor.executeQuery(sql, params, rowMapper, queryOptions)) {
             is DataResult.Success -> transform(result.value)
             is DataResult.Failure -> result
         }

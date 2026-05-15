@@ -1,6 +1,5 @@
 package io.github.octaviusframework.db.core.type
 
-import io.github.octaviusframework.db.api.builder.QueryOptions
 import io.github.octaviusframework.db.core.type.registry.TypeCategory
 import io.github.octaviusframework.db.core.type.registry.TypeRegistry
 import org.postgresql.jdbc.PgResultSet

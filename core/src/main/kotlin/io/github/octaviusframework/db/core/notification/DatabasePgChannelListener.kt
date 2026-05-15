@@ -1,7 +1,6 @@
 package io.github.octaviusframework.db.core.notification
 
 import io.github.octaviusframework.db.api.DataResult
-import io.github.octaviusframework.db.api.exception.DatabaseException
 import io.github.octaviusframework.db.api.exception.QueryContext
 import io.github.octaviusframework.db.api.notification.PgChannelListener
 import io.github.octaviusframework.db.api.notification.PgNotification
@@ -9,7 +8,6 @@ import io.github.octaviusframework.db.api.type.QualifiedName
 import io.github.octaviusframework.db.core.exception.ExceptionTranslator
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow

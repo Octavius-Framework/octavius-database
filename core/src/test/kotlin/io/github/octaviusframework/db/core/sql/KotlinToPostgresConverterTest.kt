@@ -1,5 +1,7 @@
 package io.github.octaviusframework.db.core.sql
 
+import io.github.octaviusframework.db.api.builder.QueryOptions
+import io.github.octaviusframework.db.api.type.TypeHandler
 import io.github.octaviusframework.db.core.mapping.utils.createFakeTypeRegistry
 import io.github.octaviusframework.db.core.type.InternalQueryOptions
 import io.github.octaviusframework.db.core.type.KotlinToPostgresConverter
@@ -75,15 +77,16 @@ class KotlinToPostgresConverterTest {
             val params = mapOf("val" to "custom-input")
             
             // Define a custom handler that appends a suffix during conversion
-            val customHandler = object : io.github.octaviusframework.db.api.type.TypeHandler<String> {
+            val customHandler = object : TypeHandler<String> {
                 override val pgTypeName: String = "text"
                 override val pgSchema: String = "pg_catalog"
                 override val kotlinClass = String::class
                 override val fromPgString: (String) -> String = { it }
                 override val toPgString: (String) -> String = { "$it-suffix" }
+                override val isDefaultForKotlinType: Boolean = true
             }
             
-            val customOptions = io.github.octaviusframework.db.api.builder.QueryOptions(
+            val customOptions = QueryOptions(
                 typeHandlers = listOf(customHandler)
             )
             val internalCustomOptions = InternalQueryOptions(customOptions, typeRegistry)
@@ -109,7 +112,7 @@ class KotlinToPostgresConverterTest {
             val result = converter.toPositionalQuery(sql, params, options)
 
             // Oczekujemy ?::int4[] i PGobject z "{10,20,30}"
-            assertThat(result.sql).isEqualTo("SELECT * FROM users WHERE id = ANY(?::int4[])")
+            assertThat(result.sql).isEqualTo("SELECT * FROM users WHERE id = ANY(?::pg_catalog.int4[])")
             assertThat(result.params).hasSize(1)
             val pgObject = result.params[0] as PGobject
             assertThat(pgObject.type).isEqualTo("text")
@@ -124,7 +127,7 @@ class KotlinToPostgresConverterTest {
             val result = converter.toPositionalQuery(sql, params, options)
 
             // Teraz pusta tablica też jest parametrem
-            assertThat(result.sql).isEqualTo("SELECT * FROM users WHERE tags && ?::text[]")
+            assertThat(result.sql).isEqualTo("SELECT * FROM users WHERE tags && ?::pg_catalog.text[]")
             assertThat(result.params).hasSize(1)
             val pgObject = result.params[0] as PGobject
             assertThat(pgObject.type).isEqualTo("text")

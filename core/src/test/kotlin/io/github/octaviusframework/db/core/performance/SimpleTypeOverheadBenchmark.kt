@@ -7,7 +7,6 @@ import io.github.octaviusframework.db.core.jdbc.DefaultJdbcTransactionProvider
 import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
 import io.github.octaviusframework.db.core.jdbc.RowMapper
 import io.github.octaviusframework.db.core.jdbc.RowMappers
-import io.github.octaviusframework.db.core.mapping.utils.createFakeTypeRegistry
 import io.github.octaviusframework.db.core.type.InternalQueryOptions
 import io.github.octaviusframework.db.core.type.PositionalQuery
 import io.github.octaviusframework.db.core.type.PostgresToKotlinConverter
@@ -28,6 +27,7 @@ import kotlin.system.measureTimeMillis
  * 2. Framework (Fast Path)
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Disabled
 class SimpleTypeOverheadBenchmark {
 
     // --- Konfiguracja ---

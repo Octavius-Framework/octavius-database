@@ -1,6 +1,5 @@
 package io.github.octaviusframework.db.core.performance
 
-import io.github.octaviusframework.db.api.builder.QueryOptions
 import io.github.octaviusframework.db.core.mapping.utils.createFakeTypeRegistry
 import io.github.octaviusframework.db.core.type.InternalQueryOptions
 import io.github.octaviusframework.db.core.type.KotlinToPostgresConverter

@@ -3,7 +3,6 @@ package io.github.octaviusframework.db.api.builder
 import io.github.octaviusframework.db.api.annotation.PgCompositeMapper
 import io.github.octaviusframework.db.api.type.QualifiedName
 import io.github.octaviusframework.db.api.type.TypeHandler
-import kotlin.time.Duration
 
 /**
  * Configuration options for a single database query.

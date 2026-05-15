@@ -3,7 +3,6 @@ package io.github.octaviusframework.db.core.mapping.custom
 import io.github.octaviusframework.db.api.builder.toField
 import io.github.octaviusframework.db.api.getOrThrow
 import io.github.octaviusframework.db.api.type.GlobalTypeHandler
-import io.github.octaviusframework.db.api.type.TypeHandler
 import io.github.octaviusframework.db.core.AbstractIntegrationTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test

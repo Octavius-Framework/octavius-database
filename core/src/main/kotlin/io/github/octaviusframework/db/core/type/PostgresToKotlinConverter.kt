@@ -1,5 +1,6 @@
 package io.github.octaviusframework.db.core.type
 
+import io.github.octaviusframework.db.api.annotation.PgCompositeMapper
 import io.github.octaviusframework.db.api.exception.TypeMappingException
 import io.github.octaviusframework.db.api.exception.TypeMappingExceptionMessage
 import io.github.octaviusframework.db.api.exception.TypeRegistryException
@@ -187,42 +188,47 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
 
         // --- Respect QueryOptions for Composite Mapping ---
 
-        // 1. Force return as Map if requested
-        if (options.options.returnAllCompositesAsMaps || typeInfo.typeName in options.options.compositeAsMapTypes) {
-            logger.trace { "Returning composite type ${typeInfo.typeName} as Map as per QueryOptions" }
-            return constructorArgsMap
-        }
-
-        // 2. Use custom mapper from QueryOptions if provided
         val customMapper = options.options.customCompositeMappers[typeInfo.typeName]
 
-        val result = if (customMapper != null) {
-            logger.trace { "Using query-specific custom mapper for ${typeInfo.typeName}" }
-            try {
-                @Suppress("UNCHECKED_CAST")
-                (customMapper as io.github.octaviusframework.db.api.annotation.PgCompositeMapper<Any>).toDataObject(constructorArgsMap)
-            } catch (e: Exception) {
-                throw TypeMappingException(
-                    TypeMappingExceptionMessage.COMPOSITE_MAPPER_FAILED,
-                    targetType = typeInfo.typeName.toString(),
-                    rowData = constructorArgsMap,
-                    cause = e
-                )
+        val result = when {
+            // 1. Force return as Map if requested or class is not mapped
+            typeInfo.kClass == Map::class || options.options.returnAllCompositesAsMaps || typeInfo.typeName in options.options.compositeAsMapTypes -> {
+                logger.trace { "Returning composite type ${typeInfo.typeName} as Map" }
+                constructorArgsMap
             }
-        } else if (typeInfo.mapper != null) {
-            logger.trace { "Using default mapper for ${typeInfo.typeName}" }
-            try {
-                typeInfo.mapper.toDataObject(constructorArgsMap)
-            } catch (e: Exception) {
-                throw TypeMappingException(
-                    TypeMappingExceptionMessage.COMPOSITE_MAPPER_FAILED,
-                    targetType = typeInfo.typeName.toString(),
-                    rowData = constructorArgsMap,
-                    cause = e
-                )
+            customMapper != null -> {
+                // 2. Use custom mapper from QueryOptions if provided
+                logger.trace { "Using query-specific custom mapper for ${typeInfo.typeName}" }
+                try {
+                    @Suppress("UNCHECKED_CAST")
+                    (customMapper as PgCompositeMapper<Any>).toDataObject(constructorArgsMap)
+                } catch (e: Exception) {
+                    throw TypeMappingException(
+                        TypeMappingExceptionMessage.COMPOSITE_MAPPER_FAILED,
+                        targetType = typeInfo.typeName.toString(),
+                        rowData = constructorArgsMap,
+                        cause = e
+                    )
+                }
             }
-        } else {
-            constructorArgsMap.toDataObject(typeInfo.kClass)
+            // 3. Mapper from annotation
+            typeInfo.mapper != null -> {
+                logger.trace { "Using default mapper for ${typeInfo.typeName}" }
+                try {
+                    typeInfo.mapper.toDataObject(constructorArgsMap)
+                } catch (e: Exception) {
+                    throw TypeMappingException(
+                        TypeMappingExceptionMessage.COMPOSITE_MAPPER_FAILED,
+                        targetType = typeInfo.typeName.toString(),
+                        rowData = constructorArgsMap,
+                        cause = e
+                    )
+                }
+            }
+            // 4. Reflection fallback
+            else -> {
+                constructorArgsMap.toDataObject(typeInfo.kClass)
+            }
         }
         logger.trace { "Successfully created instance of ${typeInfo.kClass.simpleName}" }
         return result

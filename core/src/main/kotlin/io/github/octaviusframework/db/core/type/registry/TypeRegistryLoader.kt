@@ -63,7 +63,7 @@ internal class TypeRegistryLoader(
             classpathData.enums, databaseData.enums, nameToSchemaOid, searchPath
         )
         val (finalComposites, compositeClassMap) = mergeComposites(
-            classpathData.composites, databaseData.composites, nameToSchemaOid, searchPath
+            classpathData.composites, databaseData.composites, nameToSchemaOid, searchPath, databaseData.allOidNames
         )
 
         // Merge Standard and Custom Handlers
@@ -73,9 +73,6 @@ internal class TypeRegistryLoader(
         val pgNameToOidMap = databaseData.allOidNames.entries.associate { it.value to it.key }
 
         // 2. ARRAYS MAP
-        val registeredBaseOids =
-            finalEnums.values.map { it.oid } + finalComposites.values.map { it.oid } + handlersByOid.keys
-
         val arraysByOid = databaseData.arrayOids
             .mapValues { (arrayOid, elementOid) ->
                 val arrayQualifiedName = databaseData.allOidNames.getValue(arrayOid)
@@ -179,11 +176,13 @@ internal class TypeRegistryLoader(
         ktComposites: List<KtCompositeInfo>,
         dbComposites: Map<Int, Map<String, Int>>,
         nameToSchemaOid: Map<String, Map<String, Int>>,
-        searchPath: List<String>
+        searchPath: List<String>,
+        allOidNames: Map<Int, QualifiedName>
     ): Pair<Map<QualifiedName, PgCompositeDefinition>, Map<KClass<*>, QualifiedName>> {
 
         val definitions = mutableMapOf<QualifiedName, PgCompositeDefinition>()
         val classMap = mutableMapOf<KClass<*>, QualifiedName>()
+        val mappedOids = mutableSetOf<Int>()
 
         ktComposites.forEach { kt ->
             val (oid, qualifiedName) = resolveOid(kt.pgName, kt.schema, searchPath, nameToSchemaOid)
@@ -220,6 +219,20 @@ internal class TypeRegistryLoader(
                 mapper = mapperInstance
             )
             classMap[kt.kClass] = qualifiedName
+            mappedOids.add(oid)
+        }
+
+        dbComposites.forEach { (oid, attributes) ->
+            if (oid !in mappedOids) {
+                val qualifiedName = allOidNames.getValue(oid)
+                definitions[qualifiedName] = PgCompositeDefinition(
+                    oid = oid,
+                    typeName = qualifiedName,
+                    attributes = attributes,
+                    kClass = Map::class,
+                    mapper = null
+                )
+            }
         }
 
         return definitions to classMap

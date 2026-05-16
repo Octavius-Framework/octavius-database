@@ -72,12 +72,11 @@ internal class TypeRegistryLoader(
         // 1. OID MAPS (Reversing allOidNames gives us mapping for ALL types: Base & Array)
         val pgNameToOidMap = databaseData.allOidNames.entries.associate { it.value to it.key }
 
-        // 2. ARRAYS MAP (Only keep array definitions for types we actually registered)
+        // 2. ARRAYS MAP
         val registeredBaseOids =
             finalEnums.values.map { it.oid } + finalComposites.values.map { it.oid } + handlersByOid.keys
 
         val arraysByOid = databaseData.arrayOids
-            .filter { it.value in registeredBaseOids } // Only create arrays for known elements
             .mapValues { (arrayOid, elementOid) ->
                 val arrayQualifiedName = databaseData.allOidNames.getValue(arrayOid)
                 PgArrayDefinition(arrayOid, arrayQualifiedName, elementOid)
@@ -89,8 +88,9 @@ internal class TypeRegistryLoader(
 
         // Category routing map
         val oidCategoryMap = buildOidCategoryMap(
+            databaseData.allOidNames.keys,
             enumsByOid.keys, compositesByOid.keys, arraysByOid.keys,
-            handlersByOid.keys, finalComposites
+            finalComposites
         )
 
         // Merge class maps
@@ -268,6 +268,7 @@ internal class TypeRegistryLoader(
                     }
                     true // Custom(true) overrides Standard and Custom(false)
                 }
+
                 else -> {
                     // Custom(false) only overrides Custom(false). Does NOT override Standard or Custom(true).
                     existingForClass !is StandardTypeHandler && !existingForClass.isDefaultForKotlinType
@@ -277,7 +278,7 @@ internal class TypeRegistryLoader(
             if (oid in standardHandlersOids) {
                 logger.info { "Overriding default TypeHandler for PostgreSQL type '${handler.pgTypeName}' (OID: $oid) with custom handler: ${handler.kotlinClass.simpleName}" }
             }
-            
+
             if (shouldOverrideClass && existingForClass != null) {
                 logger.info { "Overriding default TypeHandler for Kotlin class '${handler.kotlinClass.simpleName}' with custom handler: ${handler::class.simpleName}" }
             }
@@ -295,22 +296,23 @@ internal class TypeRegistryLoader(
     // -------------------------------------------------------------------------
 
     private fun buildOidCategoryMap(
+        allOids: Set<Int>,
         enums: Set<Int>,
         composites: Set<Int>,
         arrays: Set<Int>,
-        standard: Set<Int>,
         finalComposites: Map<QualifiedName, PgCompositeDefinition>
     ): Map<Int, TypeCategory> {
         val map = mutableMapOf<Int, TypeCategory>()
 
         val dynamicDtoOid = finalComposites[DYNAMIC_DTO_QUALIFIED_NAME]?.oid
 
+        allOids.forEach { map[it] = TypeCategory.STANDARD }
+
+        arrays.forEach { map[it] = TypeCategory.ARRAY }
         enums.forEach { map[it] = TypeCategory.ENUM }
         composites.forEach { oid ->
             map[oid] = if (oid == dynamicDtoOid) TypeCategory.DYNAMIC else TypeCategory.COMPOSITE
         }
-        arrays.forEach { map[it] = TypeCategory.ARRAY }
-        standard.forEach { map[it] = TypeCategory.STANDARD }
 
         return map
     }

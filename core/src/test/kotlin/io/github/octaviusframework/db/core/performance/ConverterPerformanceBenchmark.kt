@@ -1,7 +1,9 @@
 package io.github.octaviusframework.db.core.performance
 
+import io.github.octaviusframework.db.api.builder.QueryOptions
 import io.github.octaviusframework.db.api.type.QualifiedName
 import io.github.octaviusframework.db.core.mapping.utils.createFakeTypeRegistry
+import io.github.octaviusframework.db.core.type.InternalQueryOptions
 import io.github.octaviusframework.db.core.type.PostgresToKotlinConverter
 import io.github.octaviusframework.db.core.type.registry.TypeRegistry
 import org.junit.jupiter.api.*
@@ -37,6 +39,7 @@ class ConverterPerformanceBenchmark {
     // --- Komponenty testowane ---
     private lateinit var converter: PostgresToKotlinConverter
     private lateinit var typeRegistry: TypeRegistry
+    private lateinit var options: InternalQueryOptions
 
     companion object {
         // Definiujemy liczbę obiektów (projektów) do sparsowania w jednym wywołaniu
@@ -55,13 +58,14 @@ class ConverterPerformanceBenchmark {
         println("--- ROZPOCZYNANIE KONFIGURACJI BENCHMARKU PARSOWANIA ---")
         typeRegistry = createFakeTypeRegistry()
         this.converter = PostgresToKotlinConverter(typeRegistry)
+        this.options = InternalQueryOptions(QueryOptions(), typeRegistry)
 
         val oid = typeRegistry.getOidForName(QualifiedName("public","test_project", isArray = true))
 
         println("\n--- WARM-UP RUN (500 projektów, wyniki ignorowane) ---")
         val warmupString = buildTestArrayString(500)
         repeat(10) {
-            converter.convert(warmupString, oid)
+            converter.convert(warmupString, oid, options)
         }
         println("--- WARM-UP COMPLETE ---")
     }
@@ -77,7 +81,7 @@ class ConverterPerformanceBenchmark {
 
         repeat(ITERATIONS_PER_SIZE) {
             val time = measureNanoTime {
-                converter.convert(testString, oid)
+                converter.convert(testString, oid, options)
             }
             timings.add(time)
         }

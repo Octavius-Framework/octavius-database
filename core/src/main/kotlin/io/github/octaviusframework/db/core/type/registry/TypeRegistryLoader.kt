@@ -80,7 +80,7 @@ internal class TypeRegistryLoader(
             .filter { it.value in registeredBaseOids } // Only create arrays for known elements
             .mapValues { (arrayOid, elementOid) ->
                 val arrayQualifiedName = databaseData.allOidNames.getValue(arrayOid)
-                PgArrayDefinition(arrayOid, arrayQualifiedName.toString(), elementOid)
+                PgArrayDefinition(arrayOid, arrayQualifiedName, elementOid)
             }
 
         // Build maps by OID for TypeRegistry
@@ -109,7 +109,9 @@ internal class TypeRegistryLoader(
             dynamicSerializers = classpathData.dynamicSerializers,
             classToDynamicNameMap = classpathData.dynamicReverseMap,
             pgNameToOidMap = pgNameToOidMap,
-            oidToNameMap = databaseData.allOidNames
+            oidToNameMap = databaseData.allOidNames,
+            searchPath = searchPath,
+            nameToSchemaOid = nameToSchemaOid
         )
     }
 
@@ -118,44 +120,7 @@ internal class TypeRegistryLoader(
         requestedSchema: String,
         searchPath: List<String>,
         nameToSchemaOid: Map<String, Map<String, Int>>
-    ): Pair<Int, QualifiedName> {
-        val schemasForName = nameToSchemaOid[typeName]
-            ?: throw TypeRegistryException(
-                messageEnum = TypeRegistryExceptionMessage.TYPE_DEFINITION_MISSING_IN_DB,
-                typeName = typeName,
-                details = "Type '$typeName' not found in any scanned schemas"
-            )
-
-        // 1. If schema is explicitly requested
-        if (requestedSchema.isNotBlank()) {
-            val oid = schemasForName[requestedSchema]
-                ?: throw TypeRegistryException(
-                    messageEnum = TypeRegistryExceptionMessage.TYPE_DEFINITION_MISSING_IN_DB,
-                    typeName = typeName,
-                    details = "Type '$typeName' not found in requested schema '$requestedSchema'"
-                )
-            return oid to QualifiedName(requestedSchema, typeName)
-        }
-
-        // 2. If schema is empty, look in search_path (first match wins)
-        for (schema in searchPath) {
-            schemasForName[schema]?.let { oid -> return oid to QualifiedName(schema, typeName) }
-        }
-
-        // 3. If not in search_path, check for unambiguous match
-        return when (schemasForName.size) {
-            1 -> {
-                val (schema, oid) = schemasForName.entries.first()
-                oid to QualifiedName(schema, typeName)
-            }
-
-            else -> throw TypeRegistryException(
-                messageEnum = TypeRegistryExceptionMessage.TYPE_DEFINITION_MISSING_IN_DB,
-                typeName = typeName,
-                details = "Type '$typeName' is ambiguous. Found in schemas: ${schemasForName.keys.joinToString()}. Please specify schema in annotation."
-            )
-        }
-    }
+    ): Pair<Int, QualifiedName> = TypeRegistry.resolveOid(typeName, requestedSchema, searchPath, nameToSchemaOid)
 
     // -------------------------------------------------------------------------
     // MERGE & VALIDATE
@@ -200,7 +165,7 @@ internal class TypeRegistryLoader(
             @Suppress("UNCHECKED_CAST")
             definitions[qualifiedName] = PgEnumDefinition(
                 oid = oid,
-                typeName = qualifiedName.toString(),
+                typeName = qualifiedName,
                 valueToEnumMap = lookupMap,
                 kClass = kt.kClass as KClass<out Enum<*>>
             )
@@ -249,7 +214,7 @@ internal class TypeRegistryLoader(
 
             definitions[qualifiedName] = PgCompositeDefinition(
                 oid = oid,
-                typeName = qualifiedName.toString(),
+                typeName = qualifiedName,
                 attributes = attributes,
                 kClass = kt.kClass,
                 mapper = mapperInstance
@@ -260,7 +225,7 @@ internal class TypeRegistryLoader(
         return definitions to classMap
     }
 
-    private fun mergeHandlers(
+    internal fun mergeHandlers(
         customHandlers: List<TypeHandler<*>>,
         searchPath: List<String>,
         nameToSchemaOid: Map<String, Map<String, Int>>
@@ -275,19 +240,52 @@ internal class TypeRegistryLoader(
             handlersByClass[handler.kotlinClass] = handler
         }
 
-        customHandlers.forEach { handler ->
-            val (oid, _) = resolveOid(handler.pgTypeName, handler.pgSchema, searchPath, nameToSchemaOid)
+        val standardHandlersOids = handlersByOid.keys.toSet()
 
-            if (handlersByOid.containsKey(oid)) {
+        customHandlers.forEach { handler ->
+            val (oid, qualifiedName) = resolveOid(handler.pgTypeName, handler.pgSchema, searchPath, nameToSchemaOid)
+
+            // 1. OID Conflict check
+            if (handlersByOid.containsKey(oid) && oid !in standardHandlersOids) {
+                throw TypeRegistryException(
+                    messageEnum = TypeRegistryExceptionMessage.AMBIGUOUS_TYPE_MAPPING,
+                    typeName = qualifiedName.toString(),
+                    details = "Multiple custom global type handlers registered for PostgreSQL type '$qualifiedName' (OID: $oid). Handlers: ${handlersByOid[oid]!!.kotlinClass.simpleName} and ${handler.kotlinClass.simpleName}"
+                )
+            }
+
+            // 2. Class Priority check
+            val existingForClass = handlersByClass[handler.kotlinClass]
+            val shouldOverrideClass = when {
+                existingForClass == null -> true
+                handler.isDefaultForKotlinType -> {
+                    if (existingForClass !is StandardTypeHandler && existingForClass.isDefaultForKotlinType) {
+                        throw TypeRegistryException(
+                            messageEnum = TypeRegistryExceptionMessage.AMBIGUOUS_TYPE_MAPPING,
+                            typeName = handler.kotlinClass.simpleName ?: "Unknown",
+                            details = "Multiple custom global type handlers marked as default for Kotlin class '${handler.kotlinClass.simpleName}'. Handlers: ${existingForClass::class.simpleName} and ${handler::class.simpleName}"
+                        )
+                    }
+                    true // Custom(true) overrides Standard and Custom(false)
+                }
+                else -> {
+                    // Custom(false) only overrides Custom(false). Does NOT override Standard or Custom(true).
+                    existingForClass !is StandardTypeHandler && !existingForClass.isDefaultForKotlinType
+                }
+            }
+
+            if (oid in standardHandlersOids) {
                 logger.info { "Overriding default TypeHandler for PostgreSQL type '${handler.pgTypeName}' (OID: $oid) with custom handler: ${handler.kotlinClass.simpleName}" }
-            } else if (handlersByClass.containsKey(handler.kotlinClass)) {
-                logger.info { "Overriding default TypeHandler for Kotlin class '${handler.kotlinClass.simpleName}' with custom handler." }
-            } else {
-                logger.info { "Registered custom TypeHandler for '${handler.pgTypeName}' -> ${handler.kotlinClass.simpleName} (OID: $oid)" }
+            }
+            
+            if (shouldOverrideClass && existingForClass != null) {
+                logger.info { "Overriding default TypeHandler for Kotlin class '${handler.kotlinClass.simpleName}' with custom handler: ${handler::class.simpleName}" }
             }
 
             handlersByOid[oid] = handler
-            handlersByClass[handler.kotlinClass] = handler
+            if (shouldOverrideClass) {
+                handlersByClass[handler.kotlinClass] = handler
+            }
         }
         return (handlersByOid to handlersByClass)
     }

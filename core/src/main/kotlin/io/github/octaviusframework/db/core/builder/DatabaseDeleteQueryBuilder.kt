@@ -2,18 +2,17 @@ package io.github.octaviusframework.db.core.builder
 
 import io.github.octaviusframework.db.api.builder.DeleteQueryBuilder
 import io.github.octaviusframework.db.api.exception.checkStatement
-import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
 import io.github.octaviusframework.db.core.jdbc.RowMappers
-import io.github.octaviusframework.db.core.type.KotlinToPostgresConverter
+import io.github.octaviusframework.db.core.type.registry.TypeRegistry
 
 /** Internal implementation of [DeleteQueryBuilder] for building SQL DELETE statements. */
 internal class DatabaseDeleteQueryBuilder(
-    jdbcTemplate: JdbcTemplate,
-    kotlinToPostgresConverter: KotlinToPostgresConverter,
+    queryExecutor: QueryExecutor,
     rowMappers: RowMappers,
+    typeRegistry: TypeRegistry,
     table: String
-) : AbstractQueryBuilder<DeleteQueryBuilder>(jdbcTemplate, kotlinToPostgresConverter, rowMappers, table),
-    DeleteQueryBuilder {
+) : AbstractQueryBuilder<DeleteQueryBuilder>(queryExecutor, rowMappers, typeRegistry, table), DeleteQueryBuilder {
+
     override val canReturnResultsByDefault = false
     private var whereClause: String? = null
     private var usingClause: String? = null
@@ -41,9 +40,9 @@ internal class DatabaseDeleteQueryBuilder(
     override fun copy(): DatabaseDeleteQueryBuilder {
         // 1. Create a new, "clean" instance using the main constructor
         val newBuilder = DatabaseDeleteQueryBuilder(
-            this.jdbcTemplate,
-            this.kotlinToPostgresConverter,
+            this.queryExecutor,
             this.rowMappers,
+            this.typeRegistry,
             this.table!! // Non-null because table is nullable in AbstractQueryBuilder
         )
 

@@ -15,7 +15,7 @@ internal class ResultSetValueExtractor(
 ) {
     private val stringConverter = PostgresToKotlinConverter(typeRegistry)
 
-    fun extract(rs: ResultSet, columnIndex: Int): Any? {
+    fun extract(rs: ResultSet, columnIndex: Int, options: InternalQueryOptions): Any? {
         // Unwrap to get PostgreSQL-specific OID directly from ResultSet
         val pgRs = rs.unwrap(PgResultSet::class.java)
         val oid = pgRs.getColumnOID(columnIndex)
@@ -29,10 +29,10 @@ internal class ResultSetValueExtractor(
 
         // Main logic: path distinction
         return when (typeCategory) {
-            TypeCategory.STANDARD -> extractStandardType(rs, columnIndex, oid)
+            TypeCategory.STANDARD -> extractStandardType(rs, columnIndex, oid, options)
             else -> {
                 val rawValue = rs.getString(columnIndex)
-                stringConverter.convert(rawValue, oid)
+                stringConverter.convert(rawValue, oid, options)
             }
         }
     }
@@ -41,17 +41,23 @@ internal class ResultSetValueExtractor(
     /**
      * Fast path for standard types.
      */
-    private fun extractStandardType(rs: ResultSet, columnIndex: Int, oid: Int): Any? {
+    private fun extractStandardType(rs: ResultSet, columnIndex: Int, oid: Int, options: InternalQueryOptions): Any? {
+
         val handler = typeRegistry.getHandlerByOid(oid)
 
-        // 1. Try to use dedicated "fast path" if it exists.
-        handler?.fromResultSet?.let { fastPath ->
+        // 1. Specific match: Check if any handler in QueryOptions matches this OID
+        val customHandler = options.customHandlersByOid[oid]
+
+        val handlerToUse = customHandler ?: handler
+
+        // 2. Try to use dedicated "fast path" if it exists.
+        handlerToUse?.fromResultSet?.let { fastPath ->
             return fastPath(rs, columnIndex)
         }
 
-        // 2. If there's no fast path (handler is null or fromResultSet is null),
+        // 3. If there's no fast path (handler is null or fromResultSet is null),
         //    use the universal but slower path based on String conversion.
         val rawValue = rs.getString(columnIndex)
-        return stringConverter.convert(rawValue, oid)
+        return stringConverter.convert(rawValue, oid, options)
     }
 }

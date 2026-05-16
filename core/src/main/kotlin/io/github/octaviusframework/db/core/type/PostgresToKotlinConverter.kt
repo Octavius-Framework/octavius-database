@@ -29,11 +29,12 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
      *
      * @param value Value from database as `String` (can be `null`).
      * @param oid PostgreSQL type OID.
+     * @param options Query-specific options.
      * @return Converted value or `null` if `value` was `null`.
      * @throws TypeRegistryException if type is unknown.
      * @throws TypeMappingException if conversion fails.
      */
-    fun convert(value: String?, oid: Int): Any? {
+    fun convert(value: String?, oid: Int, options: InternalQueryOptions): Any? {
         if (value == null) {
             logger.trace { "Converting null value for OID: $oid" }
             return null
@@ -45,7 +46,7 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
         return when (category) {
             TypeCategory.STANDARD -> {
                 logger.trace { "Converting standard value '$value' for OID $oid" }
-                convertStandardType(value, oid)
+                convertStandardType(value, oid, options)
             }
 
             TypeCategory.ENUM -> {
@@ -57,13 +58,13 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
             TypeCategory.ARRAY -> {
                 logger.trace { "Converting array value for OID $oid" }
                 val def = typeRegistry.getArrayDefinition(oid)
-                convertArray(value, def)
+                convertArray(value, def, options)
             }
 
             TypeCategory.COMPOSITE -> {
                 logger.trace { "Converting composite value for OID $oid" }
                 val def = typeRegistry.getCompositeDefinition(oid)
-                convertCompositeType(value, def)
+                convertCompositeType(value, def, options)
             }
 
             TypeCategory.DYNAMIC -> {
@@ -80,26 +81,30 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
      *
      * @param value Value from database as String.
      * @param oid OID of standard PostgreSQL type.
+     * @param options Query-specific options.
      * @return Converted value.
      * @throws TypeMappingException if conversion fails.
      */
-    private fun convertStandardType(value: String, oid: Int): Any { // null handled in convert method
-        // 1. Find the appropriate handler in the registry
-        val handler = typeRegistry.getHandlerByOid(oid)
+    private fun convertStandardType(value: String, oid: Int, options: InternalQueryOptions): Any { // null handled in convert method
 
-        if (handler == null) {
+        // 1. Specific match: Check if any handler in QueryOptions matches this OID
+        val customHandler = options.customHandlersByOid[oid]
+
+        val handlerToUse = customHandler ?: typeRegistry.getHandlerByOid(oid)
+
+        if (handlerToUse == null) {
             logger.warn { "No type handler found for PostgreSQL OID '$oid'. Returning raw string value." }
             return value // Default behavior: return string if type is unknown
         }
 
-        // 2. Use the 'fromString' function from the handler for conversion
+        // 3. Use the 'fromString' function from the handler for conversion
         return try {
-            handler.fromPgString(value)
+            handlerToUse.fromPgString(value)
         } catch (e: Exception) {
             throw TypeMappingException(
                 messageEnum = TypeMappingExceptionMessage.VALUE_CONVERSION_FAILED,
                 value = value,
-                targetType = handler.kotlinClass.simpleName ?: oid.toString(),
+                targetType = handlerToUse.kotlinClass.simpleName ?: oid.toString(),
                 cause = e
             )
         }
@@ -122,7 +127,7 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
             ?: throw TypeMappingException(
                 messageEnum = TypeMappingExceptionMessage.ENUM_CONVERSION_FAILED,
                 value = value,
-                targetType = typeInfo.typeName
+                targetType = typeInfo.typeName.toString()
             )
     }
 
@@ -134,10 +139,11 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
      *
      * @param value String representing PostgreSQL array (format: {elem1,elem2,...}).
      * @param typeInfo Array type information from TypeRegistry.
+     * @param options Query-specific options.
      * @return List of converted elements.
      * @throws TypeMappingException if parsing fails.
      */
-    private fun convertArray(value: String, typeInfo: PgArrayDefinition): List<Any?> {
+    private fun convertArray(value: String, typeInfo: PgArrayDefinition, options: InternalQueryOptions): List<Any?> {
 
         logger.trace { "Parsing PostgreSQL array ${typeInfo.typeName} with element OID: ${typeInfo.elementOid}" }
 
@@ -151,13 +157,13 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
             // Otherwise, continue with standard elementType logic.
             val oidToUse = if (isNestedArray) typeInfo.oid else typeInfo.elementOid
             // Recursively convert each array element using the main conversion function
-            results.add(convert(elementValue, oidToUse))
+            results.add(convert(elementValue, oidToUse, options))
         }
         logger.trace { "Parsed ${results.size} array elements" }
         return results
     }
 
-    private fun convertCompositeType(value: String, typeInfo: PgCompositeDefinition): Any {
+    private fun convertCompositeType(value: String, typeInfo: PgCompositeDefinition, options: InternalQueryOptions): Any {
         logger.trace { "Converting composite type ${typeInfo.typeName} (OID: ${typeInfo.oid}) to class: ${typeInfo.kClass.qualifiedName}" }
 
         val dbAttributes = typeInfo.dbAttributes
@@ -166,28 +172,51 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
 
         parseNestedStructure(value) { elementValue, _ ->
             val (dbAttributeName, dbAttributeOid) = dbAttributes[index]
-            constructorArgsMap[dbAttributeName] = convert(elementValue, dbAttributeOid)
+            constructorArgsMap[dbAttributeName] = convert(elementValue, dbAttributeOid, options)
             index++
         }
 
         if (index != dbAttributes.size) {
             throw TypeRegistryException(
                 TypeRegistryExceptionMessage.WRONG_FIELD_NUMBER_IN_COMPOSITE,
-                typeName = typeInfo.typeName,
+                typeName = typeInfo.typeName.toString(),
                 oid = typeInfo.oid,
                 expectedCategory = "COMPOSITE"
             )
         }
 
+        // --- Respect QueryOptions for Composite Mapping ---
 
-        val result = if (typeInfo.mapper != null) {
-            logger.trace { "Using manual mapper for ${typeInfo.typeName}" }
+        // 1. Force return as Map if requested
+        if (options.options.returnAllCompositesAsMaps || typeInfo.typeName in options.options.compositeAsMapTypes) {
+            logger.trace { "Returning composite type ${typeInfo.typeName} as Map as per QueryOptions" }
+            return constructorArgsMap
+        }
+
+        // 2. Use custom mapper from QueryOptions if provided
+        val customMapper = options.options.customCompositeMappers[typeInfo.typeName]
+
+        val result = if (customMapper != null) {
+            logger.trace { "Using query-specific custom mapper for ${typeInfo.typeName}" }
+            try {
+                @Suppress("UNCHECKED_CAST")
+                (customMapper as io.github.octaviusframework.db.api.annotation.PgCompositeMapper<Any>).toDataObject(constructorArgsMap)
+            } catch (e: Exception) {
+                throw TypeMappingException(
+                    TypeMappingExceptionMessage.COMPOSITE_MAPPER_FAILED,
+                    targetType = typeInfo.typeName.toString(),
+                    rowData = constructorArgsMap,
+                    cause = e
+                )
+            }
+        } else if (typeInfo.mapper != null) {
+            logger.trace { "Using default mapper for ${typeInfo.typeName}" }
             try {
                 typeInfo.mapper.toDataObject(constructorArgsMap)
             } catch (e: Exception) {
                 throw TypeMappingException(
                     TypeMappingExceptionMessage.COMPOSITE_MAPPER_FAILED,
-                    targetType = typeInfo.typeName,
+                    targetType = typeInfo.typeName.toString(),
                     rowData = constructorArgsMap,
                     cause = e
                 )
@@ -243,10 +272,6 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
             )
         }
     }
-
-// =================================================================
-    // --- POSTGRESQL STRUCTURE PARSER (ZERO-ALLOCATION STATE) ---
-    // =================================================================
 
     /**
      * Universal inline parser for nested structures (arrays and composites).

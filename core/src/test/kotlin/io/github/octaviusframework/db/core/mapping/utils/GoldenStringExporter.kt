@@ -84,7 +84,7 @@ class GoldenStringExporter {
         val sql = "SELECT $selectClause FROM complex_test_data WHERE id = 1"
 
         // Wynik trafia do mapy Map<String, String>
-        val goldenStringsMap = jdbcTemplate.query(PositionalQuery(sql, emptyList())) { rs, _ ->
+        val goldenStringsMap = jdbcTemplate.query(PositionalQuery(sql, emptyList())) { rs ->
             val data = mutableMapOf<String, String>()
             val metaData = rs.metaData as PgResultSetMetaData
             for (i in 1..metaData.columnCount) {

@@ -51,18 +51,17 @@ internal object PostgresSqlPreprocessor {
      */
     fun parse(sql: String): List<ParsedParameter> {
         val foundParameters = mutableListOf<ParsedParameter>()
-        val statement = sql.toCharArray()
         var i = 0
 
-        while (i < statement.size) {
-            val skipIndex = findConstructEnd(statement, i)
+        while (i < sql.length) {
+            val skipIndex = findConstructEnd(sql, i)
             if (skipIndex > i) {
                 i = skipIndex + 1
                 continue
             }
 
-            if (statement[i] == '@') {
-                i = processAt(statement, i, sql, foundParameters)
+            if (sql[i] == '@') {
+                i = processAt(sql, i, foundParameters)
             }
             i++
         }
@@ -79,19 +78,18 @@ internal object PostgresSqlPreprocessor {
      * question marks that are not inside strings or comments.
      */
     fun escapeQuestionMarks(sql: String): String {
-        val statement = sql.toCharArray()
         val result = StringBuilder(sql.length + 10)
         var i = 0
 
-        while (i < statement.size) {
-            val skipIndex = findConstructEnd(statement, i)
+        while (i < sql.length) {
+            val skipIndex = findConstructEnd(sql, i)
             if (skipIndex > i) {
                 result.append(sql, i, skipIndex + 1)
                 i = skipIndex + 1
                 continue
             }
 
-            val currentChar = statement[i]
+            val currentChar = sql[i]
             if (currentChar == '?') {
                 result.append("??")
             } else {
@@ -107,14 +105,14 @@ internal object PostgresSqlPreprocessor {
      * (string literal, comment, dollar-quote) and returns the index of its last character.
      * If not a construct start, returns the original index.
      */
-    private fun findConstructEnd(statement: CharArray, i: Int): Int {
-        return when (statement[i]) {
-            '\'' -> processSingleQuote(statement, i)
-            '"' -> skipUntil(statement, i, '"')
-            '-' -> if (i + 1 < statement.size && statement[i + 1] == '-') skipUntil(statement, i, '\n') else i
-            '/' -> if (i + 1 < statement.size && statement[i + 1] == '*') skipComment(statement, i) else i
+    private fun findConstructEnd(sql: String, i: Int): Int {
+        return when (sql[i]) {
+            '\'' -> processSingleQuote(sql, i)
+            '"' -> skipUntil(sql, i, '"')
+            '-' -> if (i + 1 < sql.length && sql[i + 1] == '-') skipUntil(sql, i, '\n') else i
+            '/' -> if (i + 1 < sql.length && sql[i + 1] == '*') skipComment(sql, i) else i
             '$' -> {
-                val end = findDollarQuoteEnd(statement, i)
+                val end = findDollarQuoteEnd(sql, i)
                 if (end != -1) end else i
             }
             else -> i
@@ -125,14 +123,13 @@ internal object PostgresSqlPreprocessor {
      * Handles string literals, including PostgreSQL Escape strings (E'...')
      * Returns the index of the closing quote.
      */
-    private fun processSingleQuote(statement: CharArray, index: Int): Int {
+    private fun processSingleQuote(sql: String, index: Int): Int {
         // Check if this is an E'...' escape string literal
         // We look behind to see if the previous char was 'E' or 'e'
-        return if (index > 0 && (statement[index - 1] == 'E' || statement[index - 1] == 'e')) {
-            skipBackslashEscapedLiteral(statement, index)
+        return if (index > 0 && (sql[index - 1] == 'E' || sql[index - 1] == 'e')) {
+            skipBackslashEscapedLiteral(sql, index)
         } else {
-            // Regular literal ('...' or U&'...')
-            skipUntil(statement, index, '\'')
+            skipUntil(sql, index, '\'')
         }
     }
 
@@ -142,14 +139,13 @@ internal object PostgresSqlPreprocessor {
      * Returns the index of the last character of the processed token.
      */
     private fun processAt(
-        statement: CharArray,
-        index: Int,
         sql: String,
+        index: Int,
         foundParameters: MutableList<ParsedParameter>
     ): Int {
         // Parse named parameter
         var j = index + 1
-        while (j < statement.size && !isParameterSeparator(statement[j])) {
+        while (j < sql.length && !isParameterSeparator(sql[j])) {
             j++
         }
 
@@ -163,15 +159,14 @@ internal object PostgresSqlPreprocessor {
     }
 
     /** Skips to the end of a dollar-quoted block. Returns the index of the last character. */
-    private fun findDollarQuoteEnd(statement: CharArray, start: Int): Int {
-        if (start + 1 >= statement.size) return -1
+    private fun findDollarQuoteEnd(sql: String, start: Int): Int {
+        if (start + 1 >= sql.length) return -1
 
         // 1. Find the opening tag (e.g., $tag$)
         // Tag must follow unquoted identifier rules: [a-zA-Z_][a-zA-Z0-9_]* (no dollar signs)
         var tagEnd = start
-        while (tagEnd + 1 < statement.size && statement[tagEnd + 1] != '$') {
-            val char = statement[tagEnd + 1]
-
+        while (tagEnd + 1 < sql.length && sql[tagEnd + 1] != '$') {
+            val char = sql[tagEnd + 1]
             // Validate tag character according to PostgreSQL unquoted identifier rules
             if (!isValidTagCharacter(char, isFirstChar = tagEnd == start)) {
                 return -1 // Invalid tag character, not a valid dollar-quote
@@ -180,7 +175,7 @@ internal object PostgresSqlPreprocessor {
             tagEnd++
         }
 
-        if (tagEnd + 1 >= statement.size || statement[tagEnd + 1] != '$') {
+        if (tagEnd + 1 >= sql.length || sql[tagEnd + 1] != '$') {
             return -1 // Complete opening tag not found
         }
 
@@ -188,8 +183,8 @@ internal object PostgresSqlPreprocessor {
 
         // 2. Search for the closing tag
         var searchPos = tagEnd + 2
-        while (searchPos + tagLength <= statement.size) {
-            if (regionMatches(statement, searchPos, statement, start, tagLength)) {
+        while (searchPos + tagLength <= sql.length) {
+            if (sql.regionMatches(searchPos, sql, start, tagLength)) {
                 return searchPos + tagLength - 1
             }
             searchPos++
@@ -213,13 +208,13 @@ internal object PostgresSqlPreprocessor {
         }
     }
 
-    private fun skipBackslashEscapedLiteral(statement: CharArray, start: Int): Int {
+    private fun skipBackslashEscapedLiteral(sql: String, start: Int): Int {
         var i = start + 1
-        while (i < statement.size) {
-            if (statement[i] == '\\') {
-                // This is an escape character, ignore the next character
+        while (i < sql.length) {
+            // This is an escape character, ignore the next character
+            if (sql[i] == '\\') {
                 i++
-            } else if (statement[i] == '\'') {
+            } else if (sql[i] == '\'') {
                 // This is the end of the literal
                 return i
             }
@@ -229,27 +224,21 @@ internal object PostgresSqlPreprocessor {
     }
 
     /** Skips to the next occurrence of the specified character. Returns its index. */
-    private fun skipUntil(statement: CharArray, start: Int, endChar: Char): Int {
-        var i = start + 1
-        while (i < statement.size) {
-            if (statement[i] == endChar) {
-                return i
-            }
-            i++
-        }
-        return i
+    private fun skipUntil(sql: String, start: Int, endChar: Char): Int {
+        val index = sql.indexOf(endChar, start + 1)
+        return if (index == -1) sql.length else index
     }
 
     /** Skips comment. */
-    private fun skipComment(statement: CharArray, start: Int): Int {
+    private fun skipComment(sql: String, start: Int): Int {
         var i = start + 2 // skip initial /*
         var depth = 1
-        while (i < statement.size && depth > 0) {
-            if (i + 1 < statement.size) {
-                if (statement[i] == '/' && statement[i + 1] == '*') {
+        while (i < sql.length && depth > 0) {
+            if (i + 1 < sql.length) {
+                if (sql[i] == '/' && sql[i + 1] == '*') {
                     depth++
                     i++
-                } else if (statement[i] == '*' && statement[i + 1] == '/') {
+                } else if (sql[i] == '*' && sql[i + 1] == '/') {
                     depth--
                     i++
                 }
@@ -257,20 +246,5 @@ internal object PostgresSqlPreprocessor {
             i++
         }
         return i - 1
-    }
-
-    /**
-     * Checks whether a region in the `source` array matches a region in the `target` array.
-     */
-    private fun regionMatches(source: CharArray, sourceOffset: Int, target: CharArray, targetOffset: Int, len: Int): Boolean {
-        if (sourceOffset < 0 || targetOffset < 0 || sourceOffset + len > source.size || targetOffset + len > target.size) {
-            return false
-        }
-        for (i in 0 until len) {
-            if (source[sourceOffset + i] != target[targetOffset + i]) {
-                return false
-            }
-        }
-        return true
     }
 }

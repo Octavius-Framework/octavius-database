@@ -4,6 +4,7 @@ import io.github.octaviusframework.db.api.exception.TypeMappingException
 import io.github.octaviusframework.db.api.exception.TypeMappingExceptionMessage
 import io.github.octaviusframework.db.api.toDataObject
 import io.github.octaviusframework.db.api.validateValue
+import io.github.octaviusframework.db.core.type.InternalQueryOptions
 import io.github.octaviusframework.db.core.type.ResultSetValueExtractor
 import io.github.octaviusframework.db.core.type.registry.TypeRegistry
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -39,16 +40,18 @@ internal class RowMappers(
      * - Reporting and ad-hoc data analysis.
      * - Simple queries where defining a data class is unnecessary.
      */
-    fun ColumnNameMapper(): RowMapper<Map<String, Any?>> = RowMapper { rs, _ ->
-        val data = mutableMapOf<String, Any?>()
-        val metaData = rs.metaData
+    fun ColumnNameMapper(options: InternalQueryOptions): RowMapper<Map<String, Any?>> {
+        return RowMapper { rs ->
+            val data = mutableMapOf<String, Any?>()
+            val metaData = rs.metaData
 
-        logger.trace { "Mapping row with ${metaData.columnCount} columns using ColumnNameMapper" }
-        for (i in 1..metaData.columnCount) {
-            val columnName = metaData.getColumnLabel(i)
-            data[columnName] = valueExtractor.extract(rs, i)
+            logger.trace { "Mapping row with ${metaData.columnCount} columns using ColumnNameMapper" }
+            for (i in 1..metaData.columnCount) {
+                val columnName = metaData.getColumnLabel(i)
+                data[columnName] = valueExtractor.extract(rs, i, options)
+            }
+            data
         }
-        data
     }
 
     /**
@@ -59,20 +62,22 @@ internal class RowMappers(
      * @param kType The expected Kotlin type of the field, used for validation and nullability checks.
      * @return A mapper returning a single value or throwing [io.github.octaviusframework.db.api.exception.TypeMappingException] on type mismatch or unexpected null.
      */
-    fun SingleValueMapper(kType: KType): RowMapper<Any?> = RowMapper { rs, _ ->
-        val value = valueExtractor.extract(rs, 1)
-        if (value == null) {
-            if (!kType.isMarkedNullable) {
-                throw TypeMappingException(
-                    messageEnum = TypeMappingExceptionMessage.UNEXPECTED_NULL_VALUE,
-                    value = null,
-                    targetType = kType.toString()
-                )
+    fun SingleValueMapper(kType: KType, options: InternalQueryOptions): RowMapper<Any?> {
+        return RowMapper { rs ->
+            val value = valueExtractor.extract(rs, 1, options)
+            if (value == null) {
+                if (!kType.isMarkedNullable) {
+                    throw TypeMappingException(
+                        messageEnum = TypeMappingExceptionMessage.UNEXPECTED_NULL_VALUE,
+                        value = null,
+                        targetType = kType.toString()
+                    )
+                }
+                return@RowMapper null
             }
-            return@RowMapper null
-        }
 
-        validateValue(value, kType)
+            validateValue(value, kType)
+        }
     }
 
     /**
@@ -90,11 +95,11 @@ internal class RowMappers(
      * @param T The target type.
      * @param kClass The Kotlin class to map into.
      */
-    fun <T : Any> DataObjectMapper(kClass: KClass<T>): RowMapper<T> {
-        val baseMapper = ColumnNameMapper()
-        return RowMapper { rs, rowNum ->
+    fun <T : Any> DataObjectMapper(kClass: KClass<T>, options: InternalQueryOptions): RowMapper<T> {
+        val baseMapper = ColumnNameMapper(options)
+        return RowMapper { rs ->
             logger.trace { "Mapping row to ${kClass.simpleName} using DataObjectMapper" }
-            val map = baseMapper.mapRow(rs, rowNum)
+            val map = baseMapper.mapRow(rs)
 
             val result = map.toDataObject(kClass)
             logger.trace { "Successfully mapped row to ${kClass.simpleName}" }

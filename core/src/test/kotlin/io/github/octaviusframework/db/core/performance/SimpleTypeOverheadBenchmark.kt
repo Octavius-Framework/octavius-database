@@ -7,6 +7,7 @@ import io.github.octaviusframework.db.core.jdbc.DefaultJdbcTransactionProvider
 import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
 import io.github.octaviusframework.db.core.jdbc.RowMapper
 import io.github.octaviusframework.db.core.jdbc.RowMappers
+import io.github.octaviusframework.db.core.type.InternalQueryOptions
 import io.github.octaviusframework.db.core.type.PositionalQuery
 import io.github.octaviusframework.db.core.type.PostgresToKotlinConverter
 import io.github.octaviusframework.db.core.type.registry.TypeRegistry
@@ -30,7 +31,7 @@ import kotlin.system.measureTimeMillis
 class SimpleTypeOverheadBenchmark {
 
     // --- Konfiguracja ---
-    private val TOTAL_ROWS_TO_FETCH = 10000
+    private val TOTAL_ROWS_TO_FETCH = 100000
     private val ITERATIONS = 20
     private val WARMUP_ITERATIONS = 10
 
@@ -68,7 +69,7 @@ class SimpleTypeOverheadBenchmark {
         typeRegistry =
             TypeRegistryLoader(
                 jdbcTemplate,
-                databaseConfig.packagesToScan.filter { it != "io.github.octaviusframework.db.domain.test.dynamic" && it != "io.github.octaviusframework.db.domain.test.existing" },
+                listOf(),
                 databaseConfig.dbSchemas
             ).load()
         typesConverter = PostgresToKotlinConverter(typeRegistry)
@@ -94,7 +95,11 @@ class SimpleTypeOverheadBenchmark {
     fun `run full benchmark comparison`() {
         val sql = "SELECT * FROM simple_type_benchmark LIMIT $TOTAL_ROWS_TO_FETCH"
         val rawMapper = RawJdbcRowMapper()
-        val frameworkMapper = RowMappers(typeRegistry).ColumnNameMapper() // NOWY MAPPER
+        val frameworkMapper = RowMappers(typeRegistry).ColumnNameMapper(
+            InternalQueryOptions.empty(
+                typeRegistry
+            )
+        ) // NOWY MAPPER
 
         // --- WARM-UP ---
         println("\n--- ROZGRZEWKA (x$WARMUP_ITERATIONS iteracji, wyniki ignorowane) ---")
@@ -113,7 +118,12 @@ class SimpleTypeOverheadBenchmark {
             rawJdbcTimings.add(measureTimeMillis { jdbcTemplate.query(PositionalQuery(sql, listOf()), rawMapper) })
 
             // Mierz Framework
-            optimizedFrameworkTimings.add(measureTimeMillis { jdbcTemplate.query(PositionalQuery(sql, listOf()), frameworkMapper) })
+            optimizedFrameworkTimings.add(measureTimeMillis {
+                jdbcTemplate.query(
+                    PositionalQuery(sql, listOf()),
+                    frameworkMapper
+                )
+            })
         }
         println("\n--- POMIAR ZAKOŃCZONY ---\n")
     }
@@ -156,7 +166,7 @@ class SimpleTypeOverheadBenchmark {
  * Linia bazowa - najszybszy możliwy kod.
  */
 private class RawJdbcRowMapper : RowMapper<Map<String, Any?>> {
-    override fun mapRow(rs: ResultSet, rowNum: Int): Map<String, Any?> {
+    override fun mapRow(rs: ResultSet): Map<String, Any?> {
         val data = mutableMapOf<String, Any?>()
         data["id"] = rs.getInt(1)
         data["int_val"] = rs.getInt(2)

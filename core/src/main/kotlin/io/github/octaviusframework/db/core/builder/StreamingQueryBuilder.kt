@@ -2,12 +2,8 @@ package io.github.octaviusframework.db.core.builder
 
 import io.github.octaviusframework.db.api.DataResult
 import io.github.octaviusframework.db.api.builder.StreamingTerminalMethods
-import io.github.octaviusframework.db.api.exception.DatabaseException
-import io.github.octaviusframework.db.api.exception.QueryContext
-import io.github.octaviusframework.db.core.exception.ExceptionTranslator
 import io.github.octaviusframework.db.core.jdbc.RowMapper
-import io.github.octaviusframework.db.core.type.PositionalQuery
-import io.github.oshai.kotlinlogging.KotlinLogging
+import io.github.octaviusframework.db.core.type.InternalQueryOptions
 import kotlin.reflect.KClass
 
 internal class StreamingQueryBuilder(
@@ -15,57 +11,21 @@ internal class StreamingQueryBuilder(
     private val fetchSize: Int
 ) : StreamingTerminalMethods {
 
-    companion object {
-        private val logger = KotlinLogging.logger {}
-    }
-
     private fun <T> executeStream(
         params: Map<String, Any?>,
         rowMapper: RowMapper<T>,
+        options: InternalQueryOptions,
         action: (item: T) -> Unit
     ): DataResult<Unit> {
-        val originalSql = builder.buildSql() // Can throw FatalDatabaseException (BadStatementException)
-        var positionalQuery: PositionalQuery? = null
-
-        return try {
-            positionalQuery = builder.kotlinToPostgresConverter.toPositionalQuery(originalSql, params)
-
-            logger.debug {
-                """
-                Executing query (original): $originalSql with params: $params
-                  -> (database): ${positionalQuery.sql} with positional params: ${positionalQuery.params}
-                """.trimIndent()
-            }
-
-            builder.jdbcTemplate.query(positionalQuery, fetchSize) { rs ->
-                var rowNum = 0
-                while (rs.next()) {
-                    val mappedItem = rowMapper.mapRow(rs, rowNum++)
-                    action(mappedItem)
-                }
-            }
-
-            DataResult.Success(Unit)
-        } catch (e: Exception) {
-            // Translate all exceptions - it will be FatalDatabaseException (BadStatementException (from Converter), TypeMappingException or TypeRegistryException)
-            // or SQLException
-            val queryContext = QueryContext(
-                sql = originalSql,
-                parameters = params,
-                dbSql = positionalQuery?.sql,
-                dbParameters = positionalQuery?.params
-            )
-            val translatedException = ExceptionTranslator.translate(e, queryContext)
-            
-            logger.error(translatedException) { "Database error executing streaming query" }
-            DataResult.Failure(translatedException)
-        }
+        val sql = builder.buildSql() // Can throw FatalDatabaseException (BadStatementException)
+        return builder.queryExecutor.executeStream(sql, params, fetchSize, rowMapper, options, action)
     }
 
     // --- Public terminal methods that use the helper method ---
 
     override fun forEachRow(params: Map<String, Any?>, action: (row: Map<String, Any?>) -> Unit): DataResult<Unit> {
-        return executeStream(params, builder.rowMappers.ColumnNameMapper(), action)
+        val options = builder.internalOptions()
+        return executeStream(params, builder.rowMappers.ColumnNameMapper(options), options, action)
     }
 
     override fun <T : Any> forEachRowOf(
@@ -73,6 +33,7 @@ internal class StreamingQueryBuilder(
         params: Map<String, Any?>,
         action: (obj: T) -> Unit
     ): DataResult<Unit> {
-        return executeStream(params, builder.rowMappers.DataObjectMapper(kClass), action)
+        val options = builder.internalOptions()
+        return executeStream(params, builder.rowMappers.DataObjectMapper(kClass, options), options, action)
     }
 }

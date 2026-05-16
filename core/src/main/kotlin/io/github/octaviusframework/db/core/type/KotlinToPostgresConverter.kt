@@ -38,7 +38,11 @@ internal class KotlinToPostgresConverter(
     /**
      * Entry point for query transformation. Parses named parameters and converts values.
      */
-    fun toPositionalQuery(sql: String, params: Map<String, Any?>): PositionalQuery {
+    fun toPositionalQuery(
+        sql: String,
+        params: Map<String, Any?>,
+        options: InternalQueryOptions
+    ): PositionalQuery {
         logger.trace { "Converting named parameters to positional for query" }
         val parsedParameters = PostgresSqlPreprocessor.parse(sql)
         if (parsedParameters.isEmpty()) {
@@ -57,7 +61,7 @@ internal class KotlinToPostgresConverter(
                 val paramValue = params[paramName]
 
                 logger.trace { "Processing parameter: @$paramName" }
-                val conversion = convertParameter(paramValue, appendTypeCast = true)
+                val conversion = convertParameter(paramValue, appendTypeCast = true, options = options)
 
                 // Escape question marks in the literal SQL parts between parameters
                 val partBefore = sql.substring(lastIndex, parsedParam.startIndex)
@@ -80,7 +84,8 @@ internal class KotlinToPostgresConverter(
     private fun convertParameter(
         value: Any?,
         appendTypeCast: Boolean,
-        skipDynamicDto: Boolean = false
+        skipDynamicDto: Boolean = false,
+        options: InternalQueryOptions
     ): ParameterConversion {
         if (value == null) {
             logger.trace { "Converting null parameter" }
@@ -98,29 +103,34 @@ internal class KotlinToPostgresConverter(
 
         // 1. Try Dynamic DTO conversion
         if (!updatedSkipDynamicDto) {
-            tryConvertAsDynamicDto(unwrappedValue, appendTypeCast)?.let {
+            tryConvertAsDynamicDto(unwrappedValue, appendTypeCast, options)?.let {
                 logger.trace { "Converted parameter as Dynamic DTO" }
                 return it
             }
         }
 
-        // 2. Delegate standard types to registry
-        typeRegistry.getHandlerByClass(unwrappedValue::class)?.let { handler ->
+        // 2. Delegate to handlers (Priority: QueryOptions -> Registry)
+        val customHandler = options.customHandlersByClass[unwrappedValue::class]
+        val registryHandler = typeRegistry.getHandlerByClass(unwrappedValue::class)
+
+        val handler = customHandler ?: registryHandler
+
+        if (handler != null) {
             val finalType = pgType ?: QualifiedName(handler.pgSchema, handler.pgTypeName)
             val castSuffix = if (appendTypeCast) "::${finalType.quote()}" else ""
-            logger.trace { "Using standard handler [${handler.pgTypeName}] for parameter conversion" }
+            logger.trace { "Using handler [${handler.pgTypeName}] for parameter conversion (from ${if (customHandler != null) "QueryOptions" else "Registry"})" }
             @Suppress("UNCHECKED_CAST")
             val typedHandler = handler as TypeHandler<Any>
 
             val jdbcValue = typedHandler.toJdbc?.invoke(unwrappedValue)
-                ?: pgObject("text", typedHandler.toPgString(unwrappedValue))
+                ?: pgObject(typedHandler.toPgString(unwrappedValue))
 
             return ParameterConversion("?$castSuffix", jdbcValue)
         }
 
         // 3. Handle specialized types
         val resolvedType: QualifiedName =
-            pgType ?: if (appendTypeCast) resolveSqlType(unwrappedValue) else QualifiedName("pg_catalog", "text")
+            pgType ?: if (appendTypeCast) resolveSqlType(unwrappedValue, options) else QualifiedName("pg_catalog", "text")
         val jdbcValue = when (unwrappedValue) {
             is Array<*> -> {
                 logger.trace { "Handling parameter as Array" }
@@ -129,7 +139,7 @@ internal class KotlinToPostgresConverter(
 
             is List<*> -> {
                 logger.trace { "Handling parameter as List" }
-                handleList(unwrappedValue, updatedSkipDynamicDto)
+                handleList(unwrappedValue, updatedSkipDynamicDto, options)
             }
 
             is Enum<*> -> {
@@ -141,7 +151,7 @@ internal class KotlinToPostgresConverter(
                 when {
                     unwrappedValue::class.isData -> {
                         logger.trace { "Handling parameter as Composite (Data Class)" }
-                        pgObject("text", serializer.serializeComposite(unwrappedValue, updatedSkipDynamicDto))
+                        pgObject(serializer.serializeComposite(unwrappedValue, updatedSkipDynamicDto, options))
                     }
 
                     unwrappedValue::class.isValue -> throw TypeRegistryException(
@@ -175,7 +185,11 @@ internal class KotlinToPostgresConverter(
         return Triple(current, pgType, skipDynamicDto)
     }
 
-    private fun tryConvertAsDynamicDto(value: Any, appendTypeCast: Boolean): ParameterConversion? {
+    private fun tryConvertAsDynamicDto(
+        value: Any,
+        appendTypeCast: Boolean,
+        options: InternalQueryOptions
+    ): ParameterConversion? {
         if (dynamicDtoStrategy == DynamicDtoSerializationStrategy.EXPLICIT_ONLY && value !is DynamicDto) return null
         if (dynamicDtoStrategy == DynamicDtoSerializationStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS && typeRegistry.isPgType(
                 value::class
@@ -186,7 +200,7 @@ internal class KotlinToPostgresConverter(
         val dtSerializer = typeRegistry.getDynamicSerializer(dynamicTypeName)
 
         val dynamicDto = DynamicDto.from(value, dynamicTypeName, dtSerializer)
-        return convertParameter(dynamicDto, appendTypeCast)
+        return convertParameter(dynamicDto, appendTypeCast, options = options)
     }
 
     private fun handleArray(array: Array<*>): ParameterConversion {
@@ -201,8 +215,8 @@ internal class KotlinToPostgresConverter(
         return ParameterConversion("?", array)
     }
 
-    private fun handleList(list: List<*>, skipDynamicDto: Boolean): PGobject {
-        return pgObject("text", serializer.serializeList(list, skipDynamicDto))
+    private fun handleList(list: List<*>, skipDynamicDto: Boolean, options: InternalQueryOptions): PGobject {
+        return pgObject(serializer.serializeList(list, skipDynamicDto, options))
     }
 
     private fun handleEnum(enum: Enum<*>): PGobject {
@@ -210,23 +224,20 @@ internal class KotlinToPostgresConverter(
         val oid = typeRegistry.getOidForName(typeName)
         val typeInfo = typeRegistry.getEnumDefinition(oid)
         // Set type to "text" because we append explicit cast in SQL
-        return pgObject("text", typeInfo.enumToValueMap[enum] ?: enum.name)
+        return pgObject(typeInfo.enumToValueMap[enum] ?: enum.name)
     }
 
-    private fun pgObject(type: String, value: String?) = PGobject().apply {
-        this.type = type
+    private fun pgObject(value: String?) = PGobject().apply {
+        this.type = "text"
         this.value = value
     }
 
-    private fun resolveSqlType(value: Any): QualifiedName {
+    private fun resolveSqlType(value: Any, options: InternalQueryOptions): QualifiedName {
         return when (value) {
             is List<*> -> {
                 val firstNonNull = value.firstOrNull { it != null }
-                if (firstNonNull != null) resolveSqlType(firstNonNull).asArray() else QualifiedName(
-                    "",
-                    "text",
-                    isArray = true
-                )
+                if (firstNonNull != null) resolveSqlType(firstNonNull, options).asArray()
+                else QualifiedName("pg_catalog", "text", isArray = true)
             }
 
             else -> {
@@ -235,8 +246,12 @@ internal class KotlinToPostgresConverter(
                     shouldUseDynamicDto(kClass) -> typeRegistry.getPgTypeNameForClass(DynamicDto::class)
                     typeRegistry.isPgType(kClass) -> typeRegistry.getPgTypeNameForClass(kClass)
                     else -> {
-                        val standardName = typeRegistry.getHandlerByClass(kClass)?.pgTypeName ?: "text"
-                        QualifiedName("", standardName)
+                        val handler = options.customHandlersByClass[kClass] ?: typeRegistry.getHandlerByClass(kClass)
+                        if (handler != null) {
+                            QualifiedName(handler.pgSchema, handler.pgTypeName)
+                        } else {
+                            QualifiedName("pg_catalog", "text")
+                        }
                     }
                 }
             }

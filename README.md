@@ -28,8 +28,8 @@ Octavius was built to bring order to the chaotic republic of database interactio
 
 ## Features
 
-- **Fluent Query Builders** — SELECT, INSERT, UPDATE, DELETE with a clean API
-- **Automatic Type Mapping** — PostgreSQL `COMPOSITE`, `ENUM`, `ARRAY` and **Custom Type Handlers** ↔ Kotlin types
+- **Fluent Query Builders** — SELECT, INSERT, UPDATE, DELETE with named parameters, subqueries, and CTE support
+- **Automatic Type Mapping** — PostgreSQL `COMPOSITE`, `ENUM`, `ARRAY` and **Custom Type Handlers** (Global & Per-Query) ↔ Kotlin types
 - **Dynamic Type System** — Polymorphic storage & ad-hoc object mapping with `dynamic_dto`
 - **Transaction Plans** — Multi-step atomic operations with step dependencies
 - **Dynamic Filters** — Safe, composable `WHERE` clauses with `QueryFragment`
@@ -135,16 +135,29 @@ val senators = dataAccess.select("id", "rank", "home_province")
 
 ### Custom Type Handlers
 
-Extend the type system for any PostgreSQL type (e.g., `circle`, `ltree`) by implementing `TypeHandler<T>`. Handlers are automatically discovered via classpath scanning.
+Extend the type system for any PostgreSQL type (e.g., `circle`, `ltree`) by implementing `GlobalTypeHandler<T>`. Handlers are automatically discovered via classpath scanning.
 
 ```kotlin
-object PgCircleHandler : TypeHandler<PgCircle> {
+object PgCircleHandler : GlobalTypeHandler<PgCircle> {
     override val pgTypeName = "circle"
     override val kotlinClass = PgCircle::class
     override val fromPgString = { s: String -> /* parse <(x,y),r> */ }
     override val toPgString = { c: PgCircle -> "<(${c.x},${c.y}),${c.radius}>" }
 }
 ```
+
+### Per-Query Overrides
+Need to change a mapping, bypass reflection, or return a composite as a `Map` for just one specific query? Use the `.options()` block without affecting global state:
+
+```kotlin
+val results = dataAccess.select("*").from("classified_reports")
+    .options { 
+        registerTypeHandler(LegacyDateHandler) 
+        returnCompositeAsMap("metadata")
+    }
+    .toListOf<Report>()
+```
+*See [Type System: Per-Query Configuration](docs/type-system.md#per-query-configuration-via-options-) for full details.*
 
 ## Dynamic Type System (`dynamic_dto`)
 
@@ -426,7 +439,7 @@ For detailed guides and examples, see the [full documentation](docs/README.md):
 - [Configuration](docs/configuration.md) - Initialization, HikariCP pool, Flyway, core types, Type Registry scanning, DynamicDto strategy
 - [Multiplatform Support](docs/multiplatform.md) - Shared DTOs, Multiplatform BigDecimal, and JS serializers
 - [Lifecycle & Shutdown](docs/lifecycle-and-shutdown.md) - Proper cleanup, .use {} block, common integration patterns
-- [Query Builders](docs/query-builders.md) - SELECT (FOR UPDATE), INSERT (ON CONFLICT), UPDATE, DELETE, fragments
+- [Query Builders](docs/query-builders.md) - SELECT (FOR UPDATE), INSERT (ON CONFLICT), UPDATE, DELETE, fragments, `.options()` and builder modes
 - [Functions & Procedures](docs/functions-and-procedures.md) - CALL, SELECT, IN/OUT, PgTyped resolution
 - [Executing Queries](docs/executing-queries.md) - Terminal methods, DataResult matrix, async, streaming
 - [Parameter Handling](docs/parameter-handling.md) - Named parameters (@), JSONB operator escaping (?), collections & flattening, unnest and bulk operations
@@ -435,7 +448,7 @@ For detailed guides and examples, see the [full documentation](docs/README.md):
 - [Transactions](docs/transactions.md) - Transaction blocks, TransactionPlan, StepHandle, passing data between steps , propagation, isolation, read-only, timeouts, errors and Concurrency & Thread Safety
 - [Notifications](docs/notifications.md) - LISTEN/NOTIFY, PgChannelListener, Flow-based receiving
 - [Error Handling](docs/error-handling.md) - Exception hierarchy, debugging
-- [Type System](docs/type-system.md) - @PgEnum, @PgComposite, @DynamicallyMappable, dynamic data insertion, Custom Type Handlers, standard type mappings
+- [Type System](docs/type-system.md) - @PgEnum, @PgComposite, @DynamicallyMappable, dynamic data insertion, Custom Type Handlers, GlobalTypeHandler, .options() per-query configs, standard type mappings
 
 ## Architecture
 

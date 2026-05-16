@@ -3,6 +3,7 @@ package io.github.octaviusframework.db.core.core
 import com.zaxxer.hikari.HikariDataSource
 import io.github.octaviusframework.db.core.DatabaseAccess
 import io.github.octaviusframework.db.core.OctaviusDatabase
+import io.github.octaviusframework.db.core.builder.QueryExecutor
 import io.github.octaviusframework.db.core.config.DatabaseConfig
 import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
 import org.junit.jupiter.api.Assertions.*
@@ -27,10 +28,14 @@ class OctaviusDatabaseIntegrationTest {
             val databaseAccess = da as DatabaseAccess
 
             // Get datasource from JdbcTemplate
-            val dataSource = databaseAccess.javaClass.getDeclaredField("jdbcTemplate").let { field ->
-                field.isAccessible = true
-                val jdbcTemplate = field.get(databaseAccess) as JdbcTemplate
-                jdbcTemplate.dataSource as HikariDataSource
+            val dataSource = databaseAccess.javaClass.getDeclaredField("queryExecutor").let { executorField ->
+                executorField.isAccessible = true
+                val queryExecutor = executorField.get(databaseAccess) as QueryExecutor
+                queryExecutor.javaClass.getDeclaredField("jdbcTemplate").let { jdbcTemplateField ->
+                    jdbcTemplateField.isAccessible = true
+                    val jdbcTemplate = jdbcTemplateField.get(queryExecutor) as JdbcTemplate
+                    jdbcTemplate.dataSource as HikariDataSource
+                }
             }
 
             assertEquals(12, dataSource.maximumPoolSize)

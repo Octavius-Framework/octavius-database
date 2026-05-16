@@ -4,21 +4,20 @@ import io.github.octaviusframework.db.api.builder.LockWaitMode
 import io.github.octaviusframework.db.api.builder.SelectQueryBuilder
 import io.github.octaviusframework.db.api.exception.checkStatement
 import io.github.octaviusframework.db.api.exception.requireStatement
-import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
 import io.github.octaviusframework.db.core.jdbc.RowMappers
-import io.github.octaviusframework.db.core.type.KotlinToPostgresConverter
+import io.github.octaviusframework.db.core.type.registry.TypeRegistry
 
 /**
  * Internal implementation of [SelectQueryBuilder] for building SQL SELECT queries.
  * Inherits from [AbstractQueryBuilder] to reuse WITH clause logic and terminal methods.
  */
 internal class DatabaseSelectQueryBuilder(
-    jdbcTemplate: JdbcTemplate,
+    queryExecutor: QueryExecutor,
     rowMappers: RowMappers,
-    kotlinToPostgresConverter: KotlinToPostgresConverter,
+    typeRegistry: TypeRegistry,
     private val selectClause: String
-) : AbstractQueryBuilder<SelectQueryBuilder>(jdbcTemplate, kotlinToPostgresConverter, rowMappers, null),
-    SelectQueryBuilder {
+) : AbstractQueryBuilder<SelectQueryBuilder>(queryExecutor, rowMappers, typeRegistry), SelectQueryBuilder {
+
     override val canReturnResultsByDefault = true
     //------------------------------------------------------------------------------------------------------------------
     //                                    INTERNAL SELECT CLAUSE STATE
@@ -56,13 +55,8 @@ internal class DatabaseSelectQueryBuilder(
         this.fromClause = source
     }
 
-    override fun fromSubquery(subquery: String, alias: String?): SelectQueryBuilder {
-        val query = if (alias == null) {
-            "($subquery)"
-        } else {
-            "($subquery) AS $alias"
-        }
-        return this.from(query)
+    override fun fromSubquery(subquery: String, alias: String?): SelectQueryBuilder = apply {
+        this.fromClause = "($subquery)" + (alias?.let { " AS $it" } ?: "")
     }
 
     override fun where(condition: String?): SelectQueryBuilder = apply {
@@ -155,13 +149,7 @@ internal class DatabaseSelectQueryBuilder(
      */
     override fun copy(): DatabaseSelectQueryBuilder {
         // 1. Create a new, "clean" instance using the main constructor
-        val newBuilder = DatabaseSelectQueryBuilder(
-            this.jdbcTemplate,
-            this.rowMappers,
-            this.kotlinToPostgresConverter,
-            this.selectClause
-        )
-
+        val newBuilder = DatabaseSelectQueryBuilder(queryExecutor, rowMappers, typeRegistry, selectClause)
         // 2. Copy state from base class using helper method
         newBuilder.copyBaseStateFrom(this)
 

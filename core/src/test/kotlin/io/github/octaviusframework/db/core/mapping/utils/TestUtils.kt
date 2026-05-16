@@ -27,7 +27,7 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
     // --- Helpery do rejestracji (symulują działanie Loadera) ---
 
     fun registerStandard(pgType: PgStandardType) {
-        val qualifiedName = QualifiedName("", pgType.typeName)
+        val qualifiedName = QualifiedName("pg_catalog", pgType.typeName)
         oidCategoryMap[pgType.oid] = TypeCategory.STANDARD
         pgNameToOidMap[qualifiedName] = pgType.oid
     }
@@ -35,13 +35,13 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
     fun registerArray(elementTypeName: String, elementOid: Int, arrayOid: Int? = null) {
         val isStandard = elementTypeName in PgStandardType.entries.map { it.typeName }
         val qualifiedName = if (isStandard) {
-            QualifiedName("", elementTypeName, isArray = true)
+            QualifiedName("pg_catalog", elementTypeName, isArray = true)
         } else {
             QualifiedName("public", elementTypeName, isArray = true)
         }
         
         val finalArrayOid = arrayOid ?: nextOid++
-        arraysByOid[finalArrayOid] = PgArrayDefinition(finalArrayOid, qualifiedName.toString(), elementOid)
+        arraysByOid[finalArrayOid] = PgArrayDefinition(finalArrayOid, qualifiedName, elementOid)
         oidCategoryMap[finalArrayOid] = TypeCategory.ARRAY
         pgNameToOidMap[qualifiedName] = finalArrayOid
     }
@@ -65,7 +65,7 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
         val qualifiedName = QualifiedName("public", typeName)
         enumsByOid[oid] = PgEnumDefinition(
             oid = oid,
-            typeName = qualifiedName.toString(),
+            typeName = qualifiedName,
             valueToEnumMap = lookupMap,
             kClass = kClass
         )
@@ -84,7 +84,7 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
         val qualifiedName = QualifiedName("public", typeName)
         compositesByOid[oid] = PgCompositeDefinition(
             oid = oid,
-            typeName = qualifiedName.toString(),
+            typeName = qualifiedName,
             attributes = attributes,
             kClass = kClass
         )
@@ -97,6 +97,7 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
     // Helper for OID lookups in map
     fun oid(name: String, isArray: Boolean = false): Int {
         return pgNameToOidMap[QualifiedName("public", name, isArray)]
+            ?: pgNameToOidMap[QualifiedName("pg_catalog", name, isArray)]
             ?: pgNameToOidMap[QualifiedName("", name, isArray)]
             ?: throw IllegalArgumentException("Type $name not registered")
     }
@@ -183,6 +184,9 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
     }.toMap()
     val handlersByClass = standardHandlers.associateBy { it.kotlinClass }
 
+    val nameToSchemaOid = pgNameToOidMap.entries.groupBy({ it.key.name }, { it.key.schema to it.value })
+        .mapValues { it.value.toMap() }
+
     // Zwracamy gotowy obiekt
     return TypeRegistry(
         oidCategoryMap = oidCategoryMap,
@@ -196,5 +200,7 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
         classToDynamicNameMap = emptyMap(),
         pgNameToOidMap = pgNameToOidMap,
         oidToNameMap = emptyMap(),
+        searchPath = listOf("public", "pg_catalog"),
+        nameToSchemaOid = nameToSchemaOid
     )
 }

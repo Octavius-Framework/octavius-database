@@ -1,5 +1,6 @@
 package io.github.octaviusframework.db.core.type
 
+import io.github.octaviusframework.db.api.annotation.PgCompositeMapper
 import io.github.octaviusframework.db.api.exception.TypeMappingException
 import io.github.octaviusframework.db.api.exception.TypeMappingExceptionMessage
 import io.github.octaviusframework.db.api.exception.TypeRegistryException
@@ -29,28 +30,40 @@ internal class PgTextSerializer(
     /**
      * Serializes a list into a PostgreSQL array literal (e.g., `{val1,val2}`).
      */
-    fun serializeList(list: List<*>, skipDynamicDto: Boolean): String {
+    fun serializeList(list: List<*>, skipDynamicDto: Boolean, options: InternalQueryOptions): String {
         logger.trace { "Serializing list with ${list.size} elements" }
         if (list.isEmpty()) return "{}"
+
         return list.joinToString(prefix = "{", postfix = "}", separator = ",") { item ->
-            if (item == null) "NULL" else {
-                val literal = serializeValue(item, skipDynamicDto, useNullLiteral = true)
-                if (shouldQuote(item)) escapeAndQuote(literal) else literal
-            }
+            if (item == null) "NULL" else serializeValue(item, skipDynamicDto, useNullLiteral = true, options)
         }
     }
 
     /**
      * Serializes a data class into a PostgreSQL composite literal (e.g., `(val1,val2)`).
      */
-    fun serializeComposite(obj: Any, skipDynamicDto: Boolean): String {
+    fun serializeComposite(obj: Any, skipDynamicDto: Boolean, options: InternalQueryOptions): String {
         val typeName = typeRegistry.getPgTypeNameForClass(obj::class)
         val oid = typeRegistry.getOidForName(typeName)
         logger.trace { "Serializing composite type $typeName (OID: $oid) from class: ${obj::class.qualifiedName}" }
         val typeInfo = typeRegistry.getCompositeDefinition(oid)
 
-        val valueMap = if (typeInfo.mapper != null) {
-            logger.trace { "Using manual mapper for serialization of $typeName" }
+        val customMapper = options.options.customCompositeMappers[typeName]
+
+        val valueMap = if (customMapper != null) {
+            logger.trace { "Using query-specific custom mapper for serialization of $typeName" }
+            try {
+                @Suppress("UNCHECKED_CAST")
+                (customMapper as PgCompositeMapper<Any>).toDataMap(obj)
+            } catch (e: Exception) {
+                throw TypeMappingException(
+                    TypeMappingExceptionMessage.COMPOSITE_MAPPER_FAILED,
+                    targetType = typeName.toString(),
+                    cause = e
+                )
+            }
+        } else if (typeInfo.mapper != null) {
+            logger.trace { "Using default mapper for serialization of $typeName" }
             try {
                 typeInfo.mapper.toDataMap(obj)
             } catch (e: Exception) {
@@ -61,19 +74,17 @@ internal class PgTextSerializer(
                 )
             }
         } else {
+            logger.trace { "Falling back to reflection (toDataMap) for serialization of $typeName" }
             obj.toDataMap()
         }
 
         return typeInfo.attributes.keys.joinToString(prefix = "(", postfix = ")", separator = ",") { key ->
             val value = valueMap[key]
-            if (value == null) "" else {
-                val literal = serializeValue(value, skipDynamicDto, useNullLiteral = false)
-                if (shouldQuote(value)) escapeAndQuote(literal) else literal
-            }
+            if (value == null) "" else serializeValue(value, skipDynamicDto, useNullLiteral = false, options)
         }
     }
 
-    private fun serializeValue(value: Any, skipDynamicDto: Boolean, useNullLiteral: Boolean): String {
+    private fun serializeValue(value: Any, skipDynamicDto: Boolean, useNullLiteral: Boolean, options: InternalQueryOptions): String {
         var current = value
         var wasPgTyped = false
 
@@ -85,11 +96,18 @@ internal class PgTextSerializer(
 
         logger.trace { "Serializing value of type ${current::class.qualifiedName ?: current::class.simpleName}" }
 
-        // 1. Try standard handlers first
-        typeRegistry.getHandlerByClass(current::class)?.let {
-            logger.trace { "Using standard handler for type ${it.pgTypeName}" }
+        // 1. Try standard handlers first (Priority: QueryOptions -> Registry)
+        val customHandler = options.customHandlersByClass[current::class]
+        val registryHandler = typeRegistry.getHandlerByClass(current::class)
+        val handler = customHandler ?: registryHandler
+
+        handler?.let { h ->
+            logger.trace { "Using handler for type ${h.pgTypeName} (from ${if (customHandler != null) "QueryOptions" else "Registry"})" }
             @Suppress("UNCHECKED_CAST")
-            return (it as TypeHandler<Any>).toPgString(current)
+            val literal = (h as TypeHandler<Any>).toPgString(current)
+
+            val shouldQuote = h.pgSchema != "pg_catalog" || h.pgTypeName !in NUMERIC_BOOLEAN_TYPES
+            return if (shouldQuote) escapeAndQuote(literal) else literal
         }
 
         // 2. Try Dynamic DTO automatic conversion
@@ -104,7 +122,7 @@ internal class PgTextSerializer(
         }
 
         // 3. Handle recursive/complex types
-        return when (current) {
+        val literal = when (current) {
             is Enum<*> -> {
                 val typeName = typeRegistry.getPgTypeNameForClass(current::class)
                 val oid = typeRegistry.getOidForName(typeName)
@@ -112,12 +130,12 @@ internal class PgTextSerializer(
                 typeRegistry.getEnumDefinition(oid).enumToValueMap[current] ?: current.name
             }
             is List<*> -> {
-                serializeList(current, skipDynamicDto || wasPgTyped)
+                serializeList(current, skipDynamicDto || wasPgTyped, options)
             }
             else -> {
                 val kClass = current::class
                 when {
-                    kClass.isData -> serializeComposite(current, skipDynamicDto || wasPgTyped)
+                    kClass.isData -> serializeComposite(current, skipDynamicDto || wasPgTyped, options)
                     kClass.isValue -> throw TypeRegistryException(TypeRegistryExceptionMessage.KOTLIN_CLASS_NOT_MAPPED, kClass.qualifiedName ?: kClass.simpleName ?: "unknown", expectedCategory = "DYNAMIC")
                     else -> {
                         logger.trace { "Falling back to toString() for value: $current" }
@@ -126,16 +144,8 @@ internal class PgTextSerializer(
                 }
             }
         }
-    }
 
-    private fun shouldQuote(item: Any): Boolean {
-        var curr = item
-        while (curr is PgTyped) curr = curr.value ?: return false
-
-        typeRegistry.getHandlerByClass(curr::class)?.let { handler ->
-            return handler.pgTypeName !in NUMERIC_BOOLEAN_TYPES
-        }
-        return true
+        return escapeAndQuote(literal)
     }
 
     private fun escapeAndQuote(s: String): String = buildString(s.length + 2) {

@@ -9,11 +9,7 @@ import io.github.octaviusframework.db.api.exception.FatalDatabaseException
 import io.github.octaviusframework.db.api.exception.OctaviusException
 import io.github.octaviusframework.db.api.exception.QueryContext
 import io.github.octaviusframework.db.api.notification.PgChannelListener
-import io.github.octaviusframework.db.api.transaction.IsolationLevel
-import io.github.octaviusframework.db.api.transaction.TransactionPlan
-import io.github.octaviusframework.db.api.transaction.TransactionPlanResult
-import io.github.octaviusframework.db.api.transaction.TransactionPropagation
-import io.github.octaviusframework.db.api.transaction.TransactionStep
+import io.github.octaviusframework.db.api.transaction.*
 import io.github.octaviusframework.db.core.builder.*
 import io.github.octaviusframework.db.core.exception.ExceptionTranslator
 import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
@@ -27,40 +23,41 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import java.sql.Connection
 
 internal class DatabaseAccess(
-    private val jdbcTemplate: JdbcTemplate,
+    jdbcTemplate: JdbcTemplate,
     private val transactionProvider: JdbcTransactionProvider,
-    typeRegistry: TypeRegistry,
-    private val kotlinToPostgresConverter: KotlinToPostgresConverter,
+    private val typeRegistry: TypeRegistry,
+    kotlinToPostgresConverter: KotlinToPostgresConverter,
     private val listenerConnectionFactory: () -> Connection,
     private val onClose: (() -> Unit)? = null
 ) : DataAccess {
     private val rowMappers = RowMappers(typeRegistry)
+    private val queryExecutor = QueryExecutor(jdbcTemplate, kotlinToPostgresConverter)
     val transactionPlanExecutor = TransactionPlanExecutor(transactionProvider)
     // --- QueryOperations implementation (for single queries and transaction usage) ---
 
     override fun select(vararg columns: String): SelectQueryBuilder {
         return DatabaseSelectQueryBuilder(
-            jdbcTemplate,
+            queryExecutor,
             rowMappers,
-            kotlinToPostgresConverter,
+            typeRegistry,
             columns.joinToString(",\n")
         )
     }
 
     override fun update(table: String): UpdateQueryBuilder {
-        return DatabaseUpdateQueryBuilder(jdbcTemplate, kotlinToPostgresConverter, rowMappers, table)
+        return DatabaseUpdateQueryBuilder(queryExecutor, rowMappers, typeRegistry, table)
     }
 
     override fun insertInto(table: String): InsertQueryBuilder {
-        return DatabaseInsertQueryBuilder(jdbcTemplate, kotlinToPostgresConverter, rowMappers, table)
+        return DatabaseInsertQueryBuilder(queryExecutor, rowMappers, typeRegistry, table)
     }
 
     override fun deleteFrom(table: String): DeleteQueryBuilder {
-        return DatabaseDeleteQueryBuilder(jdbcTemplate, kotlinToPostgresConverter, rowMappers, table)
+        return DatabaseDeleteQueryBuilder(queryExecutor, rowMappers, typeRegistry, table)
     }
 
     override fun rawQuery(sql: String): RawQueryBuilder {
-        return DatabaseRawQueryBuilder(jdbcTemplate, kotlinToPostgresConverter, rowMappers, sql)
+        return DatabaseRawQueryBuilder(queryExecutor, rowMappers, typeRegistry, sql)
     }
 
     //--- Transaction management implementation ---

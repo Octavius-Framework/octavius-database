@@ -1,7 +1,9 @@
 package io.github.octaviusframework.db.core.mapping.pgnative
 
+import io.github.octaviusframework.db.api.builder.QueryOptions
 import io.github.octaviusframework.db.api.type.QualifiedName
 import io.github.octaviusframework.db.core.mapping.utils.createFakeTypeRegistry
+import io.github.octaviusframework.db.core.type.InternalQueryOptions
 import io.github.octaviusframework.db.core.type.PostgresToKotlinConverter
 import io.github.octaviusframework.db.domain.test.pgtype.*
 import kotlinx.datetime.LocalDate
@@ -52,54 +54,55 @@ class PostgresToKotlinConverterUnitTest {
     }
     private val fakeTypeRegistry = createFakeTypeRegistry()
     private val converter = PostgresToKotlinConverter(fakeTypeRegistry)
+    private val options = InternalQueryOptions(QueryOptions(), fakeTypeRegistry)
 
     private fun getOid(name: QualifiedName) = fakeTypeRegistry.getOidForName(name)
 
     @Test
     fun `should convert all standard types correctly`() {
-        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_TEXT, getOid(QualifiedName("","text")))).isEqualTo("Test \"quoted\" text with special chars: ąćęłńóśźż")
-        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_NUMBER, getOid(QualifiedName("","int4")))).isEqualTo(42)
-        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_BOOL, getOid(QualifiedName("","bool")))).isEqualTo(true)
-        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_JSON, getOid(QualifiedName("","jsonb")))).isEqualTo(Json.parseToJsonElement(GOLDEN_STRING_SIMPLE_JSON) as JsonObject)
-        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_UUID, getOid(QualifiedName("","uuid")))).isEqualTo(UUID.fromString("7b14b7bb-625c-408c-b5ff-ccd2233747dc"))
-        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_DATE, getOid(QualifiedName("","date")))).isEqualTo(LocalDate.parse("2024-01-15"))
+        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_TEXT, getOid(QualifiedName("pg_catalog","text")), options)).isEqualTo("Test \"quoted\" text with special chars: ąćęłńóśźż")
+        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_NUMBER, getOid(QualifiedName("pg_catalog","int4")), options)).isEqualTo(42)
+        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_BOOL, getOid(QualifiedName("pg_catalog","bool")), options)).isEqualTo(true)
+        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_JSON, getOid(QualifiedName("pg_catalog","jsonb")), options)).isEqualTo(Json.parseToJsonElement(GOLDEN_STRING_SIMPLE_JSON) as JsonObject)
+        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_UUID, getOid(QualifiedName("pg_catalog","uuid")), options)).isEqualTo(UUID.fromString("7b14b7bb-625c-408c-b5ff-ccd2233747dc"))
+        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_DATE, getOid(QualifiedName("pg_catalog","date")), options)).isEqualTo(LocalDate.parse("2024-01-15"))
     }
 
     @OptIn(ExperimentalTime::class)
     @Test
     fun `should convert time standard types correctly`() {
-        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_TIMESTAMP, getOid(QualifiedName("","timestamp")))).isEqualTo(LocalDateTime.parse("2024-01-15T14:30:00"))
-        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_TIMESTAMPTZ, getOid(QualifiedName("","timestamptz"))))
+        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_TIMESTAMP, getOid(QualifiedName("pg_catalog","timestamp")), options)).isEqualTo(LocalDateTime.parse("2024-01-15T14:30:00"))
+        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_TIMESTAMPTZ, getOid(QualifiedName("pg_catalog","timestamptz")), options))
             .isEqualTo(Instant.parse("2024-01-15T13:30:00Z"))
-        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_NUMERIC, getOid(QualifiedName("","numeric"))))
+        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_NUMERIC, getOid(QualifiedName("pg_catalog","numeric")), options))
             .isEqualTo(BigDecimal("98765.4321"))
-        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_INTERVAL, getOid(QualifiedName("","interval"))))
+        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_INTERVAL, getOid(QualifiedName("pg_catalog","interval")), options))
             .isEqualTo(Duration.parse("PT3H25M10S"))
     }
 
     @Test
     fun `should convert all enum types correctly`() {
-        assertThat(converter.convert(GOLDEN_STRING_SINGLE_STATUS, getOid(QualifiedName("public","test_status")))).isEqualTo(
+        assertThat(converter.convert(GOLDEN_STRING_SINGLE_STATUS, getOid(QualifiedName("public","test_status")), options)).isEqualTo(
             TestStatus.Active)
-        assertThat(converter.convert(GOLDEN_STRING_STATUS_ARRAY, getOid(QualifiedName("public","test_status", isArray = true)))).isEqualTo(listOf(
+        assertThat(converter.convert(GOLDEN_STRING_STATUS_ARRAY, getOid(QualifiedName("public","test_status", isArray = true)), options)).isEqualTo(listOf(
             TestStatus.Active, TestStatus.Pending, TestStatus.NotStarted))
     }
 
     @Test
     fun `should convert all simple array types correctly`() {
-        assertThat(converter.convert(GOLDEN_STRING_TEXT_ARRAY, getOid(QualifiedName("","text", isArray = true)))).isEqualTo(listOf("first", "second", "third with \"quotes\"", "fourth with ąćę"))
-        assertThat(converter.convert(GOLDEN_STRING_NUMBER_ARRAY, getOid(QualifiedName("","int4", isArray = true)))).isEqualTo(listOf(1, 2, 3, 4, 5))
-        assertThat(converter.convert(GOLDEN_STRING_NESTED_TEXT_ARRAY, getOid(QualifiedName("","text", isArray = true)))).isEqualTo(listOf(listOf("a", "b"), listOf("c", "d"), listOf("e with \"quotes\"", "f")))
+        assertThat(converter.convert(GOLDEN_STRING_TEXT_ARRAY, getOid(QualifiedName("pg_catalog","text", isArray = true)), options)).isEqualTo(listOf("first", "second", "third with \"quotes\"", "fourth with ąćę"))
+        assertThat(converter.convert(GOLDEN_STRING_NUMBER_ARRAY, getOid(QualifiedName("pg_catalog","int4", isArray = true)), options)).isEqualTo(listOf(1, 2, 3, 4, 5))
+        assertThat(converter.convert(GOLDEN_STRING_NESTED_TEXT_ARRAY, getOid(QualifiedName("pg_catalog","text", isArray = true)), options)).isEqualTo(listOf(listOf("a", "b"), listOf("c", "d"), listOf("e with \"quotes\"", "f")))
 
         // JSON array
         val expectedJsonArray = listOf(
             Json.parseToJsonElement("{\"id\": 1}"),
             Json.parseToJsonElement("{\"id\": 2}")
         )
-        assertThat(converter.convert(GOLDEN_STRING_JSON_ARRAY, getOid(QualifiedName("","jsonb", isArray = true)))).isEqualTo(expectedJsonArray)
+        assertThat(converter.convert(GOLDEN_STRING_JSON_ARRAY, getOid(QualifiedName("pg_catalog","jsonb", isArray = true)), options)).isEqualTo(expectedJsonArray)
 
         // Special text array (starts with {)
-        assertThat(converter.convert(GOLDEN_STRING_TEXT_ARRAY_SPECIAL, getOid(QualifiedName("","text", isArray = true)))).isEqualTo(listOf("{starts with brace", "normal text"))
+        assertThat(converter.convert(GOLDEN_STRING_TEXT_ARRAY_SPECIAL, getOid(QualifiedName("pg_catalog","text", isArray = true)), options)).isEqualTo(listOf("{starts with brace", "normal text"))
     }
 
     @Test
@@ -111,7 +114,7 @@ class PostgresToKotlinConverterUnitTest {
             active = true,
             roles = listOf("admin", "developer", "team-lead")
         )
-        val result = converter.convert(GOLDEN_STRING_SINGLE_PERSON, getOid(QualifiedName("public","test_person")))
+        val result = converter.convert(GOLDEN_STRING_SINGLE_PERSON, getOid(QualifiedName("public","test_person")), options)
         assertThat(result).isEqualTo(expected)
     }
 
@@ -122,7 +125,7 @@ class PostgresToKotlinConverterUnitTest {
             TestPerson("Bob \"Database\" Johnson", 35, "bob@example.com", false, listOf("dba", "backend")),
             TestPerson("Carol \"The Tester\" Williams", 28, "carol@example.com", true, listOf("qa", "automation"))
         )
-        val result = converter.convert(GOLDEN_STRING_PERSON_ARRAY, getOid(QualifiedName("public","test_person", isArray = true)))
+        val result = converter.convert(GOLDEN_STRING_PERSON_ARRAY, getOid(QualifiedName("public","test_person", isArray = true)), options)
         assertThat(result).isEqualTo(expected)
     }
 
@@ -199,7 +202,7 @@ class PostgresToKotlinConverterUnitTest {
             ),
             budget = BigDecimal("150000.50")
         )
-        val result = converter.convert(GOLDEN_STRING_PROJECT_DATA, getOid(QualifiedName("public","test_project")))
+        val result = converter.convert(GOLDEN_STRING_PROJECT_DATA, getOid(QualifiedName("public","test_project")), options)
         assertThat(result).isEqualTo(expected)
     }
 
@@ -208,7 +211,7 @@ class PostgresToKotlinConverterUnitTest {
         // Obiekt expected dla tego testu byłby gigantyczny, więc dla czytelności
         // sprawdzimy tylko kilka kluczowych pól, ale nadal porównując całe obiekty.
         @Suppress("UNCHECKED_CAST")
-        val result = converter.convert(GOLDEN_STRING_PROJECT_ARRAY, getOid(QualifiedName("public","test_project", isArray = true))) as List<TestProject>
+        val result = converter.convert(GOLDEN_STRING_PROJECT_ARRAY, getOid(QualifiedName("public","test_project", isArray = true)), options) as List<TestProject>
 
         assertThat(result).hasSize(2)
         // Porównajmy pierwszego całego taska w pierwszym projekcie

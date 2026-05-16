@@ -47,9 +47,8 @@ internal class JdbcTemplate(private val transactionProvider: JdbcTransactionProv
                 setParameters(ps, query.params)
                 ps.executeQuery().use { rs ->
                     val results = mutableListOf<T>()
-                    var rowNum = 0
                     while (rs.next()) {
-                        results.add(rowMapper.mapRow(rs, rowNum++))
+                        results.add(rowMapper.mapRow(rs))
                     }
                     results
                 }

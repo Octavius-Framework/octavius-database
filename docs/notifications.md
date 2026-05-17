@@ -167,12 +167,12 @@ The listener can be reused — call `listen()` again to subscribe to new channel
 
 ```kotlin
 // Notification is delivered only if the transaction commits
-dataAccess.transaction { tx ->
-    tx.insertInto("edicts").values(listOf("issuer_id", "text"))
+dataAccess.transaction {
+    insertInto("edicts").values(listOf("issuer_id", "text"))
         .execute("issuer_id" to 1, "text" to "Let it be known throughout the provinces...")
         .getOrElse { return@transaction DataResult.Failure(it) }
 
-    dataAccess.notify("senate_decrees", "new_edict")  // delivered on commit
+    notify("senate_decrees", "new_edict")  // delivered on commit
     DataResult.Success(Unit)
 }
 ```

@@ -33,15 +33,15 @@ The simplest way to execute multiple operations atomically.
 ### Basic Usage
 
 ```kotlin
-val result = dataAccess.transaction { tx ->
-    // All operations use 'tx' context
-    val citizenId = tx.insertInto("citizens")
+val result = dataAccess.transaction {
+    // Operations use implicit 'this' (QueryOperations) context
+    val citizenId = insertInto("citizens")
         .values(listOf("name", "tribe"))
         .returning("id")
         .toField<Int>("name" to "Marcus Tullius", "tribe" to "Cornelia")
         .getOrElse { return@transaction DataResult.Failure(it) }
 
-    tx.insertInto("citizen_profiles")
+    insertInto("citizen_profiles")
         .values(listOf("citizen_id", "biography"))
         .execute("citizen_id" to citizenId, "biography" to "Born in Arpinum.")
         .getOrElse { return@transaction DataResult.Failure(it) }
@@ -65,11 +65,7 @@ val result = dataAccess.transaction { tx ->
 
 Octavius Database (on JVM) uses a **Thread-Bound Transaction Model**. When you start a transaction, the transaction state and the underlying database connection are bound to the **current thread** using `ThreadLocal`.
 
-The `tx` object provided in the block:
-```kotlin
-dataAccess.transaction { tx -> ... }
-```
-is effectively a handle to the `DataAccess` instance. It does not carry the transaction state itself; instead, any query executed on the **same thread** will automatically pick up the active transaction from the provider.
+Any query executed on the **same thread** (including those called on the `DataAccess` instance or within the `transaction { }` block receiver) will automatically pick up the active transaction from the provider.
 
 ### Critical Constraints
 
@@ -460,10 +456,10 @@ Control how transactions behave when nested:
 - If not, create a new one
 
 ```kotlin
-dataAccess.transaction { tx ->
+dataAccess.transaction {
     // Outer transaction
 
-    dataAccess.transaction(TransactionPropagation.REQUIRED) { innerTx ->
+    dataAccess.transaction(TransactionPropagation.REQUIRED) {
         // Joins the outer transaction
         // Rollback here rolls back everything
     }
@@ -476,10 +472,10 @@ dataAccess.transaction { tx ->
 - Outer transaction is suspended during execution
 
 ```kotlin
-dataAccess.transaction { tx ->
+dataAccess.transaction {
     // Main transaction
 
-    dataAccess.transaction(TransactionPropagation.REQUIRES_NEW) { innerTx ->
+    dataAccess.transaction(TransactionPropagation.REQUIRES_NEW) {
         // Independent transaction
         // Commit/rollback here doesn't affect outer transaction
     }
@@ -491,15 +487,15 @@ dataAccess.transaction { tx ->
 **Use case**: Senate audit logging that must succeed even if the main operation fails:
 
 ```kotlin
-dataAccess.transaction { tx ->
-    val result = tx.update("aerarium")
+dataAccess.transaction {
+    val result = update("aerarium")
         .setExpression("balance", "balance - @amount")
         .where("province = @province")
         .execute("amount" to amount, "province" to province)
 
     // Log in separate transaction — persists even if main transaction fails
-    dataAccess.transaction(TransactionPropagation.REQUIRES_NEW) { auditTx ->
-        auditTx.insertInto("aerarium_audit")
+    dataAccess.transaction(TransactionPropagation.REQUIRES_NEW) {
+        insertInto("aerarium_audit")
             .values(auditData)
             .execute(auditData)
     }
@@ -515,12 +511,12 @@ dataAccess.transaction { tx ->
 - If no outer transaction exists, behaves like REQUIRED
 
 ```kotlin
-dataAccess.transaction { tx ->
-    tx.insertInto("campaigns").values(campaignData).execute(campaignData)
+dataAccess.transaction {
+    insertInto("campaigns").values(campaignData).execute(campaignData)
 
     // Try optional operation with savepoint
-    val optionalResult = dataAccess.transaction(TransactionPropagation.NESTED) { nestedTx ->
-        nestedTx.insertInto("campaign_insignia")
+    val optionalResult = dataAccess.transaction(TransactionPropagation.NESTED) {
+        insertInto("campaign_insignia")
             .values(insigniaData)
             .execute(insigniaData)
     }
@@ -552,7 +548,7 @@ Octavius supports standard SQL isolation levels and a read-only flag for optimiz
 dataAccess.transaction(
     isolation = IsolationLevel.SERIALIZABLE,
     readOnly = true  // Optimized for read-only workloads
-) { tx ->
+) {
     // ...
 }
 ```
@@ -568,7 +564,7 @@ You can set a timeout for the entire transaction. If the transaction takes longe
 ### Usage
 
 ```kotlin
-dataAccess.transaction(timeoutSeconds = 5) { tx ->
+dataAccess.transaction(timeoutSeconds = 5) {
     // If operations take > 5s, the transaction fails
     // ...
 }

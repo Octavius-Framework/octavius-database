@@ -42,18 +42,18 @@ class TransactionIntegrationTest : AbstractIntegrationTest() {
 
         // TWO transactions locking rows in reverse order
         val deferred1 = async(Dispatchers.IO) {
-            dataAccess.transaction { tx ->
-                tx.rawQuery("UPDATE deadlock_test SET val = 'T1' WHERE id = 1").execute()
+            dataAccess.transaction {
+                rawQuery("UPDATE deadlock_test SET val = 'T1' WHERE id = 1").execute()
                 Thread.sleep(1000) // Give T2 time to lock row 2
-                tx.rawQuery("UPDATE deadlock_test SET val = 'T1' WHERE id = 2").execute()
+                rawQuery("UPDATE deadlock_test SET val = 'T1' WHERE id = 2").execute()
             }
         }
 
         val deferred2 = async(Dispatchers.IO) {
-            dataAccess.transaction { tx ->
-                tx.rawQuery("UPDATE deadlock_test SET val = 'T2' WHERE id = 2").execute()
+            dataAccess.transaction {
+                rawQuery("UPDATE deadlock_test SET val = 'T2' WHERE id = 2").execute()
                 Thread.sleep(1000) // Give T1 time to lock row 1
-                tx.rawQuery("UPDATE deadlock_test SET val = 'T2' WHERE id = 1").execute()
+                rawQuery("UPDATE deadlock_test SET val = 'T2' WHERE id = 1").execute()
             }
         }
 

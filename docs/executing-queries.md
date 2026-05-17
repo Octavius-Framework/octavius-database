@@ -173,9 +173,9 @@ Key patterns:
 ### In Transactions
 
 ```kotlin
-val result = dataAccess.transaction { tx ->
+val result = dataAccess.transaction {
     // Option 1: Early return on error
-    val citizen = tx.select("*")
+    val citizen = select("*")
         .from("citizens")
         .where("id = @id")
         .toSingleOf<Citizen>("id" to citizenId)
@@ -184,7 +184,7 @@ val result = dataAccess.transaction { tx ->
         }
 
     // Option 2: Check and handle
-    val insertResult = tx.insertInto("senate_audit")
+    val insertResult = insertInto("senate_audit")
         .values(auditData)
         .execute(auditData)
 

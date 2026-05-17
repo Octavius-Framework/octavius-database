@@ -32,8 +32,8 @@ class TransactionConfigurationIntegrationTest: AbstractIntegrationTest() {
     @Test
     fun `should enforce transaction timeout using SET LOCAL statement_timeout`() {
         assertThatThrownBy {
-            dataAccess.transaction(timeoutSeconds = 1) { tx ->
-                tx.rawQuery("SELECT pg_sleep(2)").execute()
+            dataAccess.transaction(timeoutSeconds = 1) {
+                rawQuery("SELECT pg_sleep(2)").execute()
             }.getOrThrow()
         }.isInstanceOf(TransactionException::class.java)
             .matches { (it as TransactionException).messageEnum == TransactionExceptionMessage.TIMEOUT }
@@ -42,8 +42,8 @@ class TransactionConfigurationIntegrationTest: AbstractIntegrationTest() {
     @Test
     fun `should enforce read-only mode`() {
         assertThatThrownBy {
-            dataAccess.transaction(readOnly = true) { tx ->
-                tx.insertInto("users")
+            dataAccess.transaction(readOnly = true) {
+                insertInto("users")
                     .values(listOf("name"))
                     .execute("name" to "Read Only User")
             }
@@ -53,8 +53,8 @@ class TransactionConfigurationIntegrationTest: AbstractIntegrationTest() {
 
     @Test
     fun `should correctly apply serializable isolation level to the session`() {
-        dataAccess.transaction(isolation = IsolationLevel.SERIALIZABLE) { tx ->
-            val level = tx.rawQuery("SHOW transaction_isolation").toFieldStrict<String>().getOrThrow()
+        dataAccess.transaction(isolation = IsolationLevel.SERIALIZABLE) {
+            val level = rawQuery("SHOW transaction_isolation").toFieldStrict<String>().getOrThrow()
             assertThat(level).isEqualTo("serializable")
             DataResult.Success(Unit)
         }.getOrThrow()
@@ -70,15 +70,15 @@ class TransactionConfigurationIntegrationTest: AbstractIntegrationTest() {
 
         val t1 = thread {
             try {
-                dataAccess.transaction(isolation = IsolationLevel.SERIALIZABLE) { tx ->
+                dataAccess.transaction(isolation = IsolationLevel.SERIALIZABLE) {
                     // Synchronize start to ensure both have connections and are in SERIALIZABLE mode
                     barrier.await(60, TimeUnit.SECONDS)
-                    val u1 = tx.rawQuery("SELECT name FROM users WHERE name = 'User1'").toField<String>().getOrThrow()
+                    val u1 = rawQuery("SELECT name FROM users WHERE name = 'User1'").toField<String>().getOrThrow()
                     
                     // Synchronize after read to ensure both have taken snapshots and SIREAD locks before any update
                     barrier.await(60, TimeUnit.SECONDS)
                     
-                    tx.update("users").setValue("name").where("name = 'User2'").execute("name" to "Modified by T1 ($u1)")
+                    update("users").setValue("name").where("name = 'User2'").execute("name" to "Modified by T1 ($u1)")
                 }.getOrThrow()
             } catch (e: Throwable) {
                 t1Error.set(e)
@@ -87,15 +87,15 @@ class TransactionConfigurationIntegrationTest: AbstractIntegrationTest() {
 
         val t2 = thread {
             try {
-                dataAccess.transaction(isolation = IsolationLevel.SERIALIZABLE) { tx ->
+                dataAccess.transaction(isolation = IsolationLevel.SERIALIZABLE) {
                     // Synchronize start
                     barrier.await(60, TimeUnit.SECONDS)
-                    val u2 = tx.rawQuery("SELECT name FROM users WHERE name = 'User2'").toField<String>().getOrThrow()
+                    val u2 = rawQuery("SELECT name FROM users WHERE name = 'User2'").toField<String>().getOrThrow()
                     
                     // Synchronize after read
                     barrier.await(60, TimeUnit.SECONDS)
                     
-                    tx.update("users").setValue("name").where("name = 'User1'").execute("name" to "Modified by T2 ($u2)")
+                    update("users").setValue("name").where("name = 'User1'").execute("name" to "Modified by T2 ($u2)")
                 }.getOrThrow()
             } catch (e: Throwable) {
                 t2Error.set(e)

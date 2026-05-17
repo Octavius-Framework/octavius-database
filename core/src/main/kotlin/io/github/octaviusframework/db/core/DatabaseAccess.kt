@@ -77,7 +77,7 @@ internal class DatabaseAccess(
         isolation: IsolationLevel,
         readOnly: Boolean,
         timeoutSeconds: Int?,
-        block: (tx: QueryOperations) -> DataResult<T>
+        block: QueryOperations.() -> DataResult<T>
     ): DataResult<T> {
         return try {
             transactionProvider.execute(propagation, isolation, readOnly, timeoutSeconds) { status ->

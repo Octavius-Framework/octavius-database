@@ -107,8 +107,8 @@ Controls what happens if another transaction already holds a lock on one of the 
 
 ```kotlin
 // Basic FOR UPDATE - lock the campaign, then update it
-dataAccess.transaction { tx ->
-    val result = tx.select("*")
+dataAccess.transaction {
+    val result = select("*")
         .from("campaigns")
         .where("id = @id")
         .forUpdate()
@@ -123,8 +123,8 @@ dataAccess.transaction { tx ->
 }
 
 // FOR UPDATE OF - lock only the specified table in a JOIN query
-dataAccess.transaction { tx ->
-    tx.select("c.id", "c.tribute_total", "a.balance")
+dataAccess.transaction {
+    select("c.id", "c.tribute_total", "a.balance")
         .from("campaigns c JOIN aerarium a ON c.province_id = a.province_id")
         .where("c.id = @id")
         .forUpdate(of = "c")  // only lock rows in 'campaigns', not 'aerarium'
@@ -132,8 +132,8 @@ dataAccess.transaction { tx ->
 }
 
 // FOR UPDATE NOWAIT - return Failure immediately if row is already locked
-dataAccess.transaction { tx ->
-    tx.select("*")
+dataAccess.transaction {
+    select("*")
         .from("grain_depots")
         .where("id = @id AND status = 'available'")
         .forUpdate(mode = LockWaitMode.NOWAIT)
@@ -143,8 +143,8 @@ dataAccess.transaction { tx ->
 }
 
 // FOR UPDATE SKIP LOCKED - levy queue / conscription processing pattern
-dataAccess.transaction { tx ->
-    tx.select("*")
+dataAccess.transaction {
+    select("*")
         .from("conscription_queue")
         .where("status = 'pending'")
         .orderBy("enrolled_at")

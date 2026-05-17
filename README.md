@@ -263,14 +263,14 @@ Octavius supports two powerful interaction patterns for atomic operations.
 The simplest way to execute multiple operations. Transactions follow a fail-fast policy: they are automatically rolled back if the block returns `DataResult.Failure` or throws an exception.
 
 ```kotlin
-val result = dataAccess.transaction { tx ->
-    val citizenId = tx.insertInto("citizens")
+val result = dataAccess.transaction {
+    val citizenId = insertInto("citizens")
         .value("name")
         .returning("id")
         .toField<Int>("name" to "Marcus Aurelius")
         .getOrElse { return@transaction DataResult.Failure(it) }
 
-    tx.insertInto("citizen_profiles")
+    insertInto("citizen_profiles")
         .values(listOf("citizen_id", "bio"))
         .execute("citizen_id" to citizenId, "bio" to "Stoic philosopher")
         .getOrElse { return@transaction DataResult.Failure(it) }

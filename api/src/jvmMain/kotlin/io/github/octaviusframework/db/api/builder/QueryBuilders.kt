@@ -410,8 +410,8 @@ interface QueryBuilder<T : QueryBuilder<T>> {
      * otherwise PostgreSQL will ignore [fetchSize] and load all rows into RAM.
      *
      * ```kotlin
-     * dataAccess.transaction { tx ->
-     *     tx.select("*").from("census_records")
+     * dataAccess.transaction {
+     *     select("*").from("census_records")
      *         .where("year = @year")
      *         .asStream(fetchSize = 500)
      *         .forEachRow<CensusRecord>("year" to 14) { record ->

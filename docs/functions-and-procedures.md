@@ -52,8 +52,8 @@ dataAccess.rawQuery("SELECT pg_notify(@channel, @payload)")
     .toField<Unit>("channel" to "senate_decrees", "payload" to "edict_99")
 
 // Also works inside transactions
-dataAccess.transaction { tx ->
-    tx.rawQuery("SELECT pg_advisory_lock(@key)")
+dataAccess.transaction {
+    rawQuery("SELECT pg_advisory_lock(@key)")
         .toField<Unit>("key" to lockKey)
         .getOrElse { return@transaction DataResult.Failure(it) }
 

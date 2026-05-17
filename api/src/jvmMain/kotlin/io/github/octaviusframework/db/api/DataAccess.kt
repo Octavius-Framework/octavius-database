@@ -107,19 +107,18 @@ interface DataAccess : QueryOperations, AutoCloseable {
      * - **Failure:** If the `block` returns [DataResult.Failure], the transaction is automatically rolled back.
      * - **Exception:** If the `block` throws any exception, the transaction is rolled back, and the exception is translated to [DataResult.Failure].
      *
+     * **Concurrency Note:**
+     * In the underlying implementation, the transaction state is bound to the current thread
+     * via `ThreadLocal`. All operations called on this [DataAccess] instance (or via the receiver
+     * in the block) on the same thread will participate in the transaction.
+     *
      * **Warning:**
-     * Since in the underlying implementation
-     * the transaction state is bound to the current thread via `ThreadLocal`.
-     * The `tx` object provided to the block is typically the same instance as the main [DataAccess]
-     * object. While you should prefer using `tx` for clarity, calling methods directly on
-     * the [DataAccess] instance inside the block will also participate in the same transaction,
-     * provided they are executed on the same thread. Conversely, launching new threads or
-     * coroutines with different dispatchers inside the block will NOT automatically
-     * participate in the transaction.
+     * Launching new threads or coroutines with different dispatchers inside the block will NOT
+     * automatically participate in the transaction.
      *
      * @param T The return type of the result encapsulated in [DataResult].
      * @param propagation Specifies how this transaction should behave if another transaction is already active.
-     * @param block A lambda providing [QueryOperations] context for performing database operations within the transaction.
+     * @param block A lambda providing [QueryOperations] as a receiver for performing database operations within the transaction.
      * @return The result of the block as [DataResult].
      */
     fun <T> transaction(
@@ -127,7 +126,7 @@ interface DataAccess : QueryOperations, AutoCloseable {
         isolation: IsolationLevel = IsolationLevel.DEFAULT,
         readOnly: Boolean = false,
         timeoutSeconds: Int? = null,
-        block: (tx: QueryOperations) -> DataResult<T>
+        block: QueryOperations.() -> DataResult<T>
     ): DataResult<T>
 
     /**

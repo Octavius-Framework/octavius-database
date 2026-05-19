@@ -1,7 +1,7 @@
 package io.github.octaviusframework.db.domain.test.reflvsmap
 
 import io.github.octaviusframework.db.api.annotation.PgComposite
-import io.github.octaviusframework.db.api.annotation.PgCompositeMapper
+import io.github.octaviusframework.db.api.mapper.PgCompositeMapper
 
 @PgComposite(name = "perf_stats_refl")
 data class StatsRefl(val strength: Int, val agility: Int, val intelligence: Int)

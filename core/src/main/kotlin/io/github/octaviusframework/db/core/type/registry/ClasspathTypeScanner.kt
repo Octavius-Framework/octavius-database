@@ -6,7 +6,7 @@ import io.github.classgraph.ClassGraph
 import io.github.classgraph.ScanResult
 import io.github.octaviusframework.db.api.annotation.DynamicallyMappable
 import io.github.octaviusframework.db.api.annotation.PgComposite
-import io.github.octaviusframework.db.api.annotation.PgCompositeMapper
+import io.github.octaviusframework.db.api.mapper.PgCompositeMapper
 import io.github.octaviusframework.db.api.annotation.PgEnum
 import io.github.octaviusframework.db.api.exception.InitializationException
 import io.github.octaviusframework.db.api.exception.InitializationExceptionMessage
@@ -131,7 +131,7 @@ internal class ClasspathTypeScanner(
             }
 
             val mapperClassInfo = annotation.parameterValues.getValue("mapper") as AnnotationClassRef
-            val mapperClass = if (mapperClassInfo.name != "io.github.octaviusframework.db.api.annotation.DefaultPgCompositeMapper") {
+            val mapperClass = if (mapperClassInfo.name != "io.github.octaviusframework.db.api.mapper.DefaultPgCompositeMapper") {
                 @Suppress("UNCHECKED_CAST")
                 mapperClassInfo.loadClass().kotlin as KClass<out PgCompositeMapper<*>>
             } else null

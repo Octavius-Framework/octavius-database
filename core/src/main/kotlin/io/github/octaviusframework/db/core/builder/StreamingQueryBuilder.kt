@@ -1,6 +1,7 @@
 package io.github.octaviusframework.db.core.builder
 
 import io.github.octaviusframework.db.api.DataResult
+import io.github.octaviusframework.db.api.mapper.DataMapper
 import io.github.octaviusframework.db.api.builder.StreamingTerminalMethods
 import io.github.octaviusframework.db.core.jdbc.RowMapper
 import io.github.octaviusframework.db.core.type.InternalQueryOptions
@@ -26,6 +27,15 @@ internal class StreamingQueryBuilder(
     override fun forEachRow(params: Map<String, Any?>, action: (row: Map<String, Any?>) -> Unit): DataResult<Unit> {
         val options = builder.internalOptions()
         return executeStream(params, builder.rowMappers.ColumnNameMapper(options), options, action)
+    }
+
+    override fun <T : Any> forEachRowOf(
+        mapper: DataMapper<T>,
+        params: Map<String, Any?>,
+        action: (obj: T) -> Unit
+    ): DataResult<Unit> {
+        val options = builder.internalOptions()
+        return executeStream(params, builder.rowMappers.CustomObjectMapper(mapper, options), options, action)
     }
 
     override fun <T : Any> forEachRowOf(

@@ -1,6 +1,6 @@
 package io.github.octaviusframework.db.core.type.registry
 
-import io.github.octaviusframework.db.api.annotation.PgCompositeMapper
+import io.github.octaviusframework.db.api.mapper.PgCompositeMapper
 import io.github.octaviusframework.db.api.exception.InitializationException
 import io.github.octaviusframework.db.api.exception.InitializationExceptionMessage
 import io.github.octaviusframework.db.api.exception.TypeRegistryException

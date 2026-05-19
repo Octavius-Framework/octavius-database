@@ -1,6 +1,6 @@
 package io.github.octaviusframework.db.core.builder
 
-import io.github.octaviusframework.db.api.annotation.PgCompositeMapper
+import io.github.octaviusframework.db.api.mapper.PgCompositeMapper
 import io.github.octaviusframework.db.api.builder.QueryOptions
 import io.github.octaviusframework.db.api.builder.QueryOptionsBuilder
 import io.github.octaviusframework.db.api.type.QualifiedName

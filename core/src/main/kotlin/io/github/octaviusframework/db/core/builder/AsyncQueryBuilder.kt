@@ -2,6 +2,7 @@ package io.github.octaviusframework.db.core.builder
 
 import io.github.octaviusframework.db.api.DataResult
 import io.github.octaviusframework.db.api.builder.AsyncTerminalMethods
+import io.github.octaviusframework.db.api.mapper.DataMapper
 import kotlinx.coroutines.*
 import kotlin.reflect.KType
 
@@ -50,12 +51,29 @@ internal class AsyncQueryBuilder(
         executeAndInvoke({ builder.toSingleStrict(params) }, onResult)
     }
 
-    override fun <T> toListOf(
+    override fun <T : Any> toListOf(
+        mapper: DataMapper<T>,
+        params: Map<String, Any?>,
+        onResult: (DataResult<List<T>>) -> Unit
+    ): Job = scope.launch {
+        executeAndInvoke({ builder.toListOf(params, mapper) }, onResult)
+    }
+
+    override fun <T : Any> toListOf(
         kType: KType,
         params: Map<String, Any?>,
         onResult: (DataResult<List<T>>) -> Unit
     ): Job = scope.launch {
         executeAndInvoke({ builder.toListOf(kType, params) }, onResult)
+    }
+
+    override fun <T> toSingleOf(
+        kType: KType,
+        mapper: DataMapper<T & Any>,
+        params: Map<String, Any?>,
+        onResult: (DataResult<T>) -> Unit
+    ): Job = scope.launch {
+        executeAndInvoke({ builder.toSingleOf(kType, params, mapper) }, onResult)
     }
 
     override fun <T> toSingleOf(

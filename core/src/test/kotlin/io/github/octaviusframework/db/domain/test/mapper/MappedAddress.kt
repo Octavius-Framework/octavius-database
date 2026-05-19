@@ -1,7 +1,7 @@
 package io.github.octaviusframework.db.domain.test.mapper
 
 import io.github.octaviusframework.db.api.annotation.PgComposite
-import io.github.octaviusframework.db.api.annotation.PgCompositeMapper
+import io.github.octaviusframework.db.api.mapper.PgCompositeMapper
 
 @PgComposite(name = "mapped_address", mapper = AddressMapper::class)
 data class MappedAddress(val street: String, val city: String)

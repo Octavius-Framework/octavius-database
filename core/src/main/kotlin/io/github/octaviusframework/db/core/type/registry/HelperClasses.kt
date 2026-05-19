@@ -1,6 +1,6 @@
 package io.github.octaviusframework.db.core.type.registry
 
-import io.github.octaviusframework.db.api.annotation.PgCompositeMapper
+import io.github.octaviusframework.db.api.mapper.PgCompositeMapper
 import io.github.octaviusframework.db.api.type.QualifiedName
 import kotlin.reflect.KClass
 

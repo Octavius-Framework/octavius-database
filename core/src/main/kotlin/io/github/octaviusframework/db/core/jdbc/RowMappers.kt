@@ -1,5 +1,6 @@
 package io.github.octaviusframework.db.core.jdbc
 
+import io.github.octaviusframework.db.api.mapper.DataMapper
 import io.github.octaviusframework.db.api.exception.TypeMappingException
 import io.github.octaviusframework.db.api.exception.TypeMappingExceptionMessage
 import io.github.octaviusframework.db.api.toDataObject
@@ -104,6 +105,27 @@ internal class RowMappers(
             val result = map.toDataObject(kClass)
             logger.trace { "Successfully mapped row to ${kClass.simpleName}" }
             result
+        }
+    }
+
+    /**
+     * Creates a mapper that converts each row using a provided manual [mapper].
+     *
+     * This is the most efficient way to map rows as it bypasses reflection entirely.
+     */
+    fun <T : Any> CustomObjectMapper(mapper: DataMapper<T>, options: InternalQueryOptions): RowMapper<T> {
+        val baseMapper = ColumnNameMapper(options)
+        return RowMapper { rs ->
+            val map = baseMapper.mapRow(rs)
+            try {
+                mapper.toDataObject(map)
+            } catch (e: Exception) {
+                throw TypeMappingException(
+                    messageEnum = TypeMappingExceptionMessage.OBJECT_MAPPING_FAILED,
+                    rowData = map,
+                    cause = e
+                )
+            }
         }
     }
 }

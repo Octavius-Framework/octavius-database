@@ -1,35 +1,8 @@
 package io.github.octaviusframework.db.api.annotation
 
+import io.github.octaviusframework.db.api.mapper.DefaultPgCompositeMapper
+import io.github.octaviusframework.db.api.mapper.PgCompositeMapper
 import kotlin.reflect.KClass
-
-/**
- * Interface for manual (non-reflective) mapping of a data class to/from a Map.
- * Used by [PgComposite] to bypass reflection-based mapping and improve performance.
- *
- * This is an alternative to reflection that can be manually implemented or generated
- * by external tools.
- */
-interface PgCompositeMapper<T : Any> {
-    /**
-     * Creates an instance of [T] from the provided [map].
-     * The map keys are the attribute names (typically in snake_case as they come from DB).
-     */
-    fun toDataObject(map: Map<String, Any?>): T
-
-    /**
-     * Converts the provided object [obj] to a Map.
-     * The map keys should match the PostgreSQL composite attribute names.
-     */
-    fun toDataMap(obj: T): Map<String, Any?>
-}
-
-/**
- * Internal marker to indicate that no explicit mapper is provided.
- */
-object DefaultPgCompositeMapper : PgCompositeMapper<Any> {
-    override fun toDataObject(map: Map<String, Any?>): Any = throw UnsupportedOperationException()
-    override fun toDataMap(obj: Any): Map<String, Any?> = throw UnsupportedOperationException()
-}
 
 /**
  * Marks a `data class` as a data type that can be mapped

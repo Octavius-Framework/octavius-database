@@ -406,22 +406,30 @@ interface QueryBuilder<T : QueryBuilder<T>> {
     /**
      * Switches the builder to streaming mode, optimal for large datasets.
      *
-     * **Requires an active transaction.** Must be called inside a `DataAccess.transaction { }` block —
-     * otherwise PostgreSQL will ignore [fetchSize] and load all rows into RAM.
+     * **Transaction Requirement:**
+     * When [fetchSize] is greater than 0, this method **must** be called inside a `DataAccess.transaction { }` block.
+     * Otherwise, a [BadStatementException][io.github.octaviusframework.db.api.exception.BadStatementException] will be thrown.
+     * This enforcement prevents the PostgreSQL driver from silently ignoring the fetch size and loading
+     * all rows into RAM (which happens when `autoCommit` is true).
+     *
+     * **Backdoor (In-memory processing):**
+     * If you want to use the streaming API for convenience (e.g., deduplication or grouping) on small datasets
+     * and you are okay with loading all rows into RAM, set [fetchSize] to `0`. In this case,
+     * an active transaction is not required.
      *
      * ```kotlin
      * dataAccess.transaction {
      *     select("*").from("census_records")
-     *         .where("year = @year")
      *         .asStream(fetchSize = 500)
-     *         .forEachRow<CensusRecord>("year" to 14) { record ->
+     *         .forEachRowOf<CensusRecord> { record ->
      *             processCensusEntry(record)
      *         }
      * }
      * ```
      *
-     * @param fetchSize Number of rows fetched from the database in one batch.
+     * @param fetchSize Number of rows fetched from the database in one batch. Set to 0 to disable cursor-based fetching.
      * @return New builder instance with streaming terminal methods.
+     * @throws io.github.octaviusframework.db.api.exception.BadStatementException if fetchSize > 0 and no transaction is active.
      */
     fun asStream(fetchSize: Int = 100): StreamingTerminalMethods
 

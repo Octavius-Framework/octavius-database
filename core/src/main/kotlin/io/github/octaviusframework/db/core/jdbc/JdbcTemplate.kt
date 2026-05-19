@@ -1,5 +1,8 @@
 package io.github.octaviusframework.db.core.jdbc
 
+import io.github.octaviusframework.db.api.exception.BadStatementException
+import io.github.octaviusframework.db.api.exception.BadStatementExceptionMessage
+import io.github.octaviusframework.db.api.exception.QueryContext
 import io.github.octaviusframework.db.core.type.PositionalQuery
 import io.github.oshai.kotlinlogging.KotlinLogging
 import java.sql.Connection
@@ -76,12 +79,12 @@ internal class JdbcTemplate(private val transactionProvider: JdbcTransactionProv
             conn.prepareWrappedStatement(query.sql).use { ps ->
                 setParameters(ps, query.params)
 
-                if (conn.autoCommit) {
-                    logger.warn {
-                        "POTENTIAL PERFORMANCE ISSUE: Streaming query executed with autoCommit=true. " +
-                                "PostgreSQL driver will ignore fetchSize=$fetchSize and load all rows into RAM. " +
-                                "Wrap this call in DataAccess.transaction { ... }."
-                    }
+                if (conn.autoCommit && fetchSize > 0) {
+                    throw BadStatementException(
+                        messageEnum = BadStatementExceptionMessage.STREAMING_REQUIRES_TRANSACTION,
+                        queryContext = QueryContext(query.sql, emptyMap(), query.sql, query.params),
+                        cause = IllegalStateException("PostgreSQL driver ignores fetchSize when autoCommit is true.")
+                    )
                 }
                 ps.fetchSize = fetchSize
 

@@ -150,7 +150,7 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
 
         val results = mutableListOf<Any?>()
 
-        parseNestedStructure(value) { elementValue, isQuoted ->
+        parseNestedStructure(value, mapNullLiteralToNull = true) { elementValue, isQuoted ->
             // Check if the string representing the element ITSELF is an array.
             val isNestedArray = !isQuoted && elementValue?.startsWith('{') == true
             // If it's a nested array, recursively invoke conversion
@@ -171,7 +171,7 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
         val constructorArgsMap = mutableMapOf<String, Any?>()
         var index = 0
 
-        parseNestedStructure(value) { elementValue, _ ->
+        parseNestedStructure(value, mapNullLiteralToNull = false) { elementValue, _ ->
             val (dbAttributeName, dbAttributeOid) = dbAttributes[index]
             constructorArgsMap[dbAttributeName] = convert(elementValue, dbAttributeOid, options)
             index++
@@ -247,7 +247,7 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
         var jsonDataString: String? = null
         var count = 0
 
-        parseNestedStructure(value) { elementValue, _ ->
+        parseNestedStructure(value, mapNullLiteralToNull = false) { elementValue, _ ->
             if (count == 0) typeName = elementValue
             else if (count == 1) jsonDataString = elementValue
             count++
@@ -286,6 +286,7 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
      */
     private inline fun parseNestedStructure(
         input: String,
+        mapNullLiteralToNull: Boolean,
         onElement: (value: String?, isQuoted: Boolean) -> Unit
     ) {
         // Minimum length is 2 for empty array "{}" or composite "()"
@@ -316,7 +317,7 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
                     '}', ')' -> nestingLevel--
                     ',' -> {
                         if (nestingLevel == 0) {
-                            onElement(unescapeValue(input, currentElementStart, i),
+                            onElement(unescapeValue(input, currentElementStart, i, mapNullLiteralToNull),
                                 currentElementStart < i && input[currentElementStart] == '"')
                             currentElementStart = i + 1
                         }
@@ -329,11 +330,12 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
         // Emit the last element
         if (currentElementStart <= endIndex) {
             val isQuoted = currentElementStart < endIndex && input[currentElementStart] == '"'
-            onElement(unescapeValue(input, currentElementStart, endIndex), isQuoted)
+            onElement(unescapeValue(input, currentElementStart, endIndex, mapNullLiteralToNull), isQuoted)
         }
     }
 
-    private fun unescapeValue(source: String, start: Int, end: Int): String? {
+    private fun unescapeValue(source: String, start: Int, end: Int, mapNullLiteralToNull: Boolean): String? {
+        // NULL in COMPOSITE
         if (start >= end) return null
 
         return if (source[start] == '"') {
@@ -353,8 +355,16 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
             }
         } else {
             // Field without quotes
-            val rawValue = source.substring(start, end)
-            if (rawValue == "NULL") null else rawValue
+            val len = end - start
+            // NULL in ARRAY
+            if (mapNullLiteralToNull && len == 4 &&
+                    source[start] == 'N' && source[start+1] == 'U' &&
+                    source[start+2] == 'L' && source[start+3] == 'L'
+            ) {
+                null
+            } else {
+                source.substring(start, end)
+            }
         }
     }
 }

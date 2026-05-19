@@ -21,14 +21,13 @@ data class TestMetadata(
 )
 
 // W Postgresie wszystkie pola są nullable
-// Jednakże tutaj ? dodane jest tylko dla pola które faktycznie będzie nullem
 @PgComposite
 data class TestPerson(
     val name: String?,
-    val age: Int,
-    val email: String,
-    val active: Boolean,
-    val roles: List<String>
+    val age: Int?,
+    val email: String?,
+    val active: Boolean?,
+    val roles: List<String>?
 )
 
 @PgComposite

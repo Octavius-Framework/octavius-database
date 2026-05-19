@@ -271,10 +271,7 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
     ): DataResult<R> {
         checkStatement(canReturnResultsByDefault || returningClause != null) { "Cannot call toList(), toSingle(), etc. on a modifying query without RETURNING clause. Use .returning()." }
         val sql = buildSql() // Can throw FatalDatabaseException (BadStatementException)
-        return when (val result = queryExecutor.executeQuery(sql, params, rowMapper, options)) {
-            is DataResult.Success -> transform(result.value)
-            is DataResult.Failure -> result
-        }
+        return queryExecutor.executeQuery(sql, params, rowMapper, options, transform)
     }
 
     //------------------------------------------------------------------------------------------------------------------

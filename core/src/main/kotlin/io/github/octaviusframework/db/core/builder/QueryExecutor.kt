@@ -28,17 +28,18 @@ internal class QueryExecutor(
     }
 
     /**
-     * Executes a query that returns a list of results.
+     * Executes a query that returns a list of results and transforms them.
      */
-    fun <M> executeQuery(
+    fun <M, R> executeQuery(
         sql: String,
         params: Map<String, Any?>,
         rowMapper: RowMapper<M>,
-        options: InternalQueryOptions
-    ): DataResult<List<M>> {
+        options: InternalQueryOptions,
+        transform: (List<M>) -> DataResult<R>
+    ): DataResult<R> {
         return execute(sql, params, options) { positionalQuery ->
             val results: List<M> = jdbcTemplate.query(positionalQuery, rowMapper)
-            DataResult.Success(results)
+            transform(results)
         }
     }
 

@@ -1,6 +1,7 @@
 package io.github.octaviusframework.db.core.exception.integration
 
 import io.github.octaviusframework.db.api.DataResult
+import io.github.octaviusframework.db.api.builder.toField
 import io.github.octaviusframework.db.api.exception.DataOperationException
 import io.github.octaviusframework.db.api.exception.DataOperationExceptionMessage
 import io.github.octaviusframework.db.core.AbstractIntegrationTest
@@ -35,5 +36,14 @@ class DataOperationIntegrationTest : AbstractIntegrationTest() {
         assertThat(result).isInstanceOf(DataResult.Failure::class.java)
         val error = (result as DataResult.Failure).error as DataOperationException
         assertThat(error.messageEnum).isEqualTo(DataOperationExceptionMessage.INVALID_DATA_FORMAT)
+    }
+
+    @Test
+    fun `should return EMPTY_RESULT for empty non nullable value`() {
+        val result = dataAccess.rawQuery("SELECT 1 WHERE 1=0").toField<Int>()
+
+        assertThat(result).isInstanceOf(DataResult.Failure::class.java)
+        val error = (result as DataResult.Failure).error as DataOperationException
+        assertThat(error.messageEnum).isEqualTo(DataOperationExceptionMessage.EMPTY_RESULT)
     }
 }

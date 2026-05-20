@@ -436,12 +436,12 @@ See [Flyway Migrations](docs/configuration.md#flyway-migrations) in the configur
 
 For detailed guides and examples, see the [full documentation](docs/README.md):
 
-- [Configuration](docs/configuration.md) - Initialization, HikariCP pool, Flyway, core types, Type Registry scanning, DynamicDto strategy
+- [Configuration](docs/configuration.md) - Initialization, DatabaseConfig, Flyway (optional), core types, Type Registry scanning, JSON Configuration, DynamicDto strategy
 - [Multiplatform Support](docs/multiplatform.md) - Shared DTOs, Multiplatform BigDecimal, and JS serializers
 - [Lifecycle & Shutdown](docs/lifecycle-and-shutdown.md) - Proper cleanup, .use {} block, common integration patterns
 - [Query Builders](docs/query-builders.md) - SELECT (FOR UPDATE), INSERT (ON CONFLICT), UPDATE, DELETE, fragments, `.options()` and builder modes
 - [Functions & Procedures](docs/functions-and-procedures.md) - CALL, SELECT, IN/OUT, PgTyped resolution
-- [Executing Queries](docs/executing-queries.md) - Terminal methods, DataResult matrix, async, streaming
+- [Executing Queries](docs/executing-queries.md) - Terminal methods, DataResult matrix, async, iterative execution
 - [Parameter Handling](docs/parameter-handling.md) - Named parameters (@), JSONB operator escaping (?), collections & flattening, unnest and bulk operations
 - [Data Mapping](docs/data-mapping.md) - toDataMap(), toDataObject(), @MapKey, nested structures
 - [ORM-Like Patterns](docs/orm-patterns.md) - CRUD patterns, real-world examples

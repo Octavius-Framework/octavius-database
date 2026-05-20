@@ -59,7 +59,7 @@ interface QueryOptionsBuilder {
 
     /**
      * Sets a custom [Json] instance for use within this query.
-     * Overrides the default JSON configuration provided in [DataAccess].
+     * Overrides the default JSON configuration provided in [DataAccess][io.github.octaviusframework.db.api.DataAccess].
      * 
      * @param json The custom JSON configuration to use for this query.
      */

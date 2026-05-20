@@ -7,7 +7,7 @@ Octavius Database provides first-class support for PostgreSQL's asynchronous not
 ## Table of Contents
 
 - [Overview](#overview)
-- [Sending Notifications — notify()](#sending-notifications--notify)
+- [Sending Notifications](#sending-notifications)
 - [Receiving Notifications — createChannelListener()](#receiving-notifications--createchannellistener)
 - [Multiple Channels](#multiple-channels)
 - [Unsubscribing](#unsubscribing)

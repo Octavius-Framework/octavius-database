@@ -8,15 +8,16 @@ import kotlinx.serialization.modules.SerializersModule
 import kotlin.time.Instant
 
 /**
- * Creates [SerializersModule] required for Octavius features,
- * particularly for `dynamic_dto` serialization.
+ * A pre-configured [SerializersModule] required for Octavius Database features,
+ * particularly ensuring correct serialization behavior for `dynamic_dto`.
  *
- * This module includes serializers for:
- * - [BigDecimal] (preserving precision in JSON)
- * - [LocalDate], [LocalDateTime], [Instant] (with PostgreSQL infinity support)
+ * This module provides specific contextual serializers for types that require
+ * special handling when mapped to PostgreSQL via JSON:
+ * - [BigDecimal]: Preserves exact numeric precision during JSON serialization.
+ * - [LocalDate], [LocalDateTime], [Instant]: Support for PostgreSQL's special `infinity` and `-infinity` date/time values.
  *
- * This function should be used to configure the [Json] instance
- * when working with Octavius-managed data types.
+ * This module should be registered in your [Json] configuration when creating
+ * custom JSON formats in the application layer that interact with Octavius-managed data types.
  */
 val octaviusSerializersModule = SerializersModule {
     contextual(BigDecimal::class, BigDecimalAsNumberSerializer)

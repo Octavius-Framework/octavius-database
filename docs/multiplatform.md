@@ -78,24 +78,30 @@ data class Citizen(
 )
 ```
 
-### Using OctaviusJson
-The easiest way to work with these types on both the backend (JVM) and frontend (JS) is to use the provided `OctaviusJson` instance. It is a pre-configured `Json` object that includes all necessary contextual mappings.
+### Configuring JSON
+To work with these types on both the backend (JVM) and frontend (JS), you need to configure your `Json` instance with `octaviusSerializersModule`. This module includes all necessary contextual mappings.
 
 ```kotlin
-import io.github.octaviusframework.db.api.serializer.OctaviusJson
+import io.github.octaviusframework.db.api.serializer.octaviusSerializersModule
+import kotlinx.serialization.json.Json
 
 // On the frontend (JS) or backend (JVM)
-val json = OctaviusJson.encodeToString(citizen)
-val decoded = OctaviusJson.decodeFromString<Citizen>(json)
+val octaviusJson = Json {
+    serializersModule = octaviusSerializersModule
+}
+
+val json = octaviusJson.encodeToString(citizen)
+val decoded = octaviusJson.decodeFromString<Citizen>(json)
 ```
 
 ### Custom JSON Configuration
-If you need to merge Octavius serializers with your own configuration (e.g., to add your own `SerializersModule` or change formatting), use `createOctaviusSerializersModule()`:
+If you need to merge Octavius serializers with your own configuration (e.g., to add your own `SerializersModule` or change formatting), you can combine them.
+**Note for JVM Backend:** If you want your custom JSON instance to support serialization of dynamically discovered PostgreSQL enums without manual registration, you should also append `dataAccess.enumSerializers`.
 
 ```kotlin
 val myCustomJson = Json {
     // Add Octavius support to your custom module
-    serializersModule = createOctaviusSerializersModule() + myAppModule
+    serializersModule = octaviusSerializersModule + dataAccess.enumSerializers + myAppModule
     
     ignoreUnknownKeys = true
     prettyPrint = true

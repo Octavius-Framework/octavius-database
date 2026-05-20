@@ -2,7 +2,7 @@
 
 *A legatus does not merely issue commands — he awaits dispatches confirming their execution, and must know how to respond when a messenger returns with ill tidings. Handle every result. Acknowledge every failure. The Republic depends on it.*
 
-Once you've built a query using the [Query Builders](query-builders.md), you need to execute it and handle the results. This guide covers terminal methods, the `DataResult` pattern, async execution, and streaming.
+Once you've built a query using the [Query Builders](query-builders.md), you need to execute it and handle the results. This guide covers terminal methods, the `DataResult` pattern, async execution, and iterative execution.
 
 ## Table of Contents
 
@@ -10,7 +10,7 @@ Once you've built a query using the [Query Builders](query-builders.md), you nee
 - [DataResult](#dataresult)
 - [Working with DataResult](#working-with-dataresult)
 - [Async Execution](#async-execution)
-- [Streaming](#streaming)
+- [Iterative Execution](#iterative-execution)
 
 ---
 
@@ -20,17 +20,19 @@ All query builders share common terminal methods that execute the query and retu
 
 ### Returning Methods (`TerminalReturningMethods`)
 
-| Method                     | Returns                               | Description                             |
-|----------------------------|---------------------------------------|-----------------------------------------|
-| `toList(params)`           | `DataResult<List<Map<String, Any?>>>` | All rows as list of maps                |
-| `toSingle(params)`         | `DataResult<Map<String, Any?>?>`      | Single row as map (or null)             |
-| `toSingleStrict(params)`   | `DataResult<Map<String, Any?>>`       | Single row as map (Failure if no rows)  |
-| `toListOf<T>(params)`      | `DataResult<List<T>>`                 | All rows mapped to data class           |
-| `toSingleOf<T>(params)`    | `DataResult<T>`                       | Single row mapped to data class         |
-| `toField<T>(params)`       | `DataResult<T>`                       | Single value from first column/row      |
-| `toFieldStrict<T>(params)` | `DataResult<T>`                       | Single value, always Failure if no rows |
-| `toColumn<T>(params)`      | `DataResult<List<T>>`                 | All values from first column            |
-| `toSql()`                  | `String`                              | Generated SQL (no execution)            |
+| Method                          | Returns                               | Description                               |
+|---------------------------------|---------------------------------------|-------------------------------------------|
+| `toList(params)`                | `DataResult<List<Map<String, Any?>>>` | All rows as list of maps                  |
+| `toSingle(params)`              | `DataResult<Map<String, Any?>?>`      | Single row as map (or null)               |
+| `toSingleStrict(params)`        | `DataResult<Map<String, Any?>>`       | Single row as map (Failure if no rows)    |
+| `toListOf<T>(params)`           | `DataResult<List<T>>`                 | All rows mapped to data class             |
+| `toListOf<T>(params, mapper)`   | `DataResult<List<T>>`                 | All rows mapped via custom `DataMapper`   |
+| `toSingleOf<T>(params)`         | `DataResult<T>`                       | Single row mapped to data class           |
+| `toSingleOf<T>(params, mapper)` | `DataResult<T>`                       | Single row mapped via custom `DataMapper` |
+| `toField<T>(params)`            | `DataResult<T>`                       | Single value from first column/row        |
+| `toFieldStrict<T>(params)`      | `DataResult<T>`                       | Single value, always Failure if no rows   |
+| `toColumn<T>(params)`           | `DataResult<List<T>>`                 | All values from first column              |
+| `toSql()`                       | `String`                              | Generated SQL (no execution)              |
 
 > **Single-row guard**: All single-row methods (`toSingle`, `toSingleStrict`, `toSingleOf`, `toField`, `toFieldStrict`) return `Failure(TOO_MANY_ROWS)` if the query returns more than one row. Use `toList`/`toColumn` for multi-row results, or add `LIMIT 1` to your query.
 
@@ -55,6 +57,24 @@ dataAccess.select("*").from("citizens")
     .where("id = @id")
     .toSingleOf<Citizen>("id" to 123)
 ```
+
+### Custom DataMappers
+
+While `toListOf` and `toSingleOf` use reflection by default (which is cached and optimized), you might want to map rows manually for maximum performance or custom logic. For this, you can pass a `DataMapper` to the terminal methods.
+
+```kotlin
+val citizens = dataAccess.select("*")
+    .from("citizens")
+    .toListOf { map ->
+        Citizen(
+            citizenId = map["citizen_id"] as Int,
+            firstName = map["first_name"] as String,
+            enrolledAt = map["enrolled_at"] as Instant
+        )
+    }
+```
+
+Data mappers bypass reflection entirely, making them the fastest way to construct objects from query results.
 
 ---
 
@@ -300,7 +320,9 @@ interface AsyncTerminalMethods {
     fun toSingle(params, onResult: (DataResult<Map<String, Any?>?>) -> Unit): Job
     fun toSingleStrict(params, onResult: (DataResult<Map<String, Any?>>) -> Unit): Job
     fun <T> toListOf(kType, params, onResult: (DataResult<List<T>>) -> Unit): Job
+    fun <T> toListOf(kType, mapper, params, onResult: (DataResult<List<T>>) -> Unit): Job
     fun <T> toSingleOf(kType, params, onResult: (DataResult<T>) -> Unit): Job
+    fun <T> toSingleOf(kType, mapper, params, onResult: (DataResult<T>) -> Unit): Job
     fun <T> toField(kType, params, onResult: (DataResult<T>) -> Unit): Job
     fun <T> toFieldStrict(kType, params, onResult: (DataResult<T>) -> Unit): Job
     fun <T> toColumn(kType, params, onResult: (DataResult<List<T>>) -> Unit): Job
@@ -319,13 +341,13 @@ dataAccess.select("*")
 
 ---
 
-## Streaming
+## Iterative Execution
 
 Process large datasets without loading everything into memory.
 
-### Important
+> **Note:** Iterative execution must be called inside a `dataAccess.transaction { }` block. If you call `.iterate(fetchSize > 0)` outside of a transaction, a `BadStatementException` (`ITERATIVE_REQUIRES_TRANSACTION`) will be thrown to prevent accidental memory leaks.
 
-> **REQUIRES ACTIVE TRANSACTION.** Streaming must be called inside a `dataAccess.transaction { }` block. Otherwise, PostgreSQL ignores `fetchSize` and loads everything into RAM.
+If you explicitly want to bypass this protection and allow PostgreSQL to load the entire result into memory before iterative execution, you can use `.iterate(fetchSize = 0)`.
 
 ### Usage
 
@@ -336,7 +358,7 @@ dataAccess.transaction {
     val result = dataAccess.select("*")
         .from("census_records")
         .where("recorded_at > @since")
-        .asStream(fetchSize = 500)
+        .iterate(fetchSize = 500)
         .forEachRow("since" to startDate) { row: Map<String, Any?> ->
             processCensusRow(row)
         }
@@ -350,7 +372,7 @@ dataAccess.transaction {
 dataAccess.transaction {
     dataAccess.select("*")
         .from("province_audit_log")
-        .asStream(fetchSize = 1000)
+        .iterate(fetchSize = 1000)
         .forEachRowOf<AuditEntry> { entry ->
             archiveProvinceRecord(entry)
         }

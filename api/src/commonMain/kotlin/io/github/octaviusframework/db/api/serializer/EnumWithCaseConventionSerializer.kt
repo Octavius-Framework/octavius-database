@@ -14,9 +14,6 @@ import kotlin.enums.EnumEntries
 /**
  * A specialized serializer for mapping Kotlin Enums to their PostgreSQL representations.
  *
- * This serializer is essential when your Enums use different naming conventions
- * in Kotlin (e.g., `PascalCase`) and PostgreSQL (e.g., `SNAKE_CASE_UPPER`).
- * It ensures that the value stored in the JSONB payload correctly correctly matches the database's expectations.
  *
  * ### Key Features
  * - **Bidirectional Mapping**: Automatically converts names during both serialization and deserialization.

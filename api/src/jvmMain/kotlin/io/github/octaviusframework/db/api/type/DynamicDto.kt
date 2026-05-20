@@ -16,7 +16,7 @@ import kotlinx.serialization.json.JsonElement
  * dedicated `COMPOSITE` types. Corresponds to the `dynamic_dto` type in the database.
  *
  * ### Asymmetric Data Flow
- * - **Writing (Kotlin -> DB)**: Wrap your domain object in a `DynamicDto` using [DynamicDto.from].
+ * - **Writing (Kotlin -> DB)**: Wrap your domain object in a `DynamicDto` using `dataAccess.toDynamicDto(obj)`.
  *   The framework converts this into the database's `dynamic_dto(text, jsonb)` structure.
  * - **Reading (DB -> Kotlin)**: The framework automatically unmarshals `dynamic_dto` values
  *   directly into your domain classes (annotated with [DynamicallyMappable]).
@@ -26,7 +26,7 @@ import kotlinx.serialization.json.JsonElement
  * // A legionnaire's benefit can be either a land grant or a military pension —
  * // both stored in the same 'veteran_benefit' column.
  * val grant = LandGrant(province = "Gallia Narbonensis", areraActa = BigDecimal("120.5"))
- * val dto = DynamicDto.from(grant)
+ * val dto = dataAccess.toDynamicDto(grant)
  * dataAccess.insertInto("veterans").values("id" to 1, "benefit" to dto).execute()
  * ```
  *
@@ -44,6 +44,8 @@ data class DynamicDto private constructor(
          * [FRAMEWORK PATH]
          * Creates DTO using an externally provided (cached) serializer and specific Json instance.
          * Zero reflection, maximum performance.
+         * 
+         * Application code should use `DataAccess.toDynamicDto` instead.
          */
         fun from(value: Any, typeName: String, serializer: KSerializer<Any>, json: Json): DynamicDto {
             try {

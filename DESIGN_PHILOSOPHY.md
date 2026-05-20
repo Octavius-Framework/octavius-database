@@ -153,7 +153,7 @@ This is more code than an invisible suspension point, but it's also unambiguous.
 
 The `.async()` builder exists for a specific, narrower use case: fire-and-forget operations initiated from UI code (particularly Compose), where you have a `CoroutineScope` and want to launch a query without awaiting the result inline. It is not a general-purpose coroutine integration.
 
-The `TransactionPlan` and the `transaction { }` block both run on the calling thread using `ThreadLocal` to propagate the connection. This is the same model as Spring's `@Transactional` and JDBC's native transaction management — well-understood, debuggable, and compatible with any thread pool. It does mean that streaming operations inside a transaction require the transaction to remain open for the duration, which is why wrapping an `asStream()` call in `transaction { }` is documented as a requirement, not a recommendation.
+The `TransactionPlan` and the `transaction { }` block both run on the calling thread using `ThreadLocal` to propagate the connection. This is the same model as Spring's `@Transactional` and JDBC's native transaction management — well-understood, debuggable, and compatible with any thread pool.
 
 ---
 

@@ -22,10 +22,10 @@ Octavius Database provides automatic bidirectional mapping between PostgreSQL an
     - [@PgEnum](#pgenum)
     - [@PgComposite](#pgcomposite)
 4. [Dynamic Types (dynamic_dto)](#dynamic-types-dynamic_dto)
-    - [@DynamicallyMappable](#dynamicallymappable)
+    - [Usage Patterns](#usage-patterns)
     - [Inserting Dynamic Data](#inserting-dynamic-data)
     - [Enum Serialization in dynamic_dto](#enum-serialization-in-dynamic_dto)
-    - [Helper Serializers](#helper-serializers)
+    - [Helper Serializers](#helper-serializers--multiplatform-types)
 5. [Custom Type Handlers](#custom-type-handlers)
 6. [Object Conversion Utilities](#object-conversion-utilities)
 
@@ -410,36 +410,40 @@ For maximum performance in high-volume scenarios (using **Parallel Lists**), see
 
 ### Enum Serialization in dynamic_dto
 
-When using enums inside `@DynamicallyMappable` classes, `kotlinx.serialization` defaults to outputting the exact Kotlin enum name. To match PostgreSQL conventions inside the JSON payload, you **must** use `EnumWithCaseConventionSerializer`.
+When using enums inside `@DynamicallyMappable` classes, `kotlinx.serialization` defaults to outputting the exact Kotlin enum name. To match PostgreSQL conventions inside the JSON payload, you must use contextual serialization.
+
+Octavius automatically generates serializers for all your `@PgEnum` annotated classes. You just need to:
+1. Mark the enum property with `@Contextual` in your DTO.
+2. Ensure your `Json` instance includes `dataAccess.enumSerializers`.
+
+If you are using Octavius internally (e.g. passing objects to query builders or using `toDynamicDto()`), the framework's internal `Json` instance already includes these serializers.
 
 ```kotlin
-import io.github.octaviusframework.db.api.serializer.EnumWithCaseConventionSerializer
-
-// 1. Create a serializer
-object MagistratureSerializer : EnumWithCaseConventionSerializer<Magistrature>(
-    enumName = "Magistrature",
-    entries = Magistrature.entries,
-    pgConvention = CaseConvention.SNAKE_CASE_LOWER,
-    kotlinConvention = CaseConvention.PASCAL_CASE
-)
-
-// 2. Attach it to your Enum
-@Serializable(with = MagistratureSerializer::class)
 @PgEnum(pgConvention = CaseConvention.SNAKE_CASE_LOWER)
 enum class Magistrature { Quaestor, Aedile, Praetor, Consul }
 
-// 3. Use in DTO
 @DynamicallyMappable(typeName = "appointment_record")
 @Serializable
-data class AppointmentRecord(val office: Magistrature)
-// JSON Output: {"office": "pro_consul"} (instead of "ProConsul")
+data class AppointmentRecord(
+    @Contextual val office: Magistrature // @Contextual is required!
+)
+
+// Just insert it - Octavius automatically handles the enum serialization!
+dataAccess.insertInto("appointments")
+    .value("record")
+    .execute("record" to AppointmentRecord(Magistrature.Consul))
+// JSON Output inside DB: {"office": "consul"} (instead of "Consul")
 ```
 
-#### Why Is This Necessary?
+#### Custom JSON Configuration
 
-This serializer is required because of how kotlinx.serialization works. When you have an enum property inside a `@Serializable` class, the compiler plugin generates a serializer for that class at compile time. For enum properties, **it uses the default enum serializer** which simply outputs the Kotlin enum name (e.g., `"ProConsul"`).
+If you need to manually construct your own `Json` instance (e.g. for external API layers) and want to retain this automatic enum serialization, you **must** include the generated `enumSerializers` from your `DataAccess` instance:
 
-The library cannot intercept or modify this behavior internally — the serializer is already baked into the generated code. The only way to change how the enum is serialized is to explicitly specify a custom serializer using `@Serializable(with = ...)` on the enum class itself.
+```kotlin
+val myCustomJson = Json {
+    serializersModule = octaviusSerializersModule + dataAccess.enumSerializers
+}
+```
 
 ### Helper Serializers & Multiplatform Types
 
@@ -448,7 +452,7 @@ For detailed information on sharing DTOs with frontend applications and using mu
 It covers:
 - **`BigDecimalAsNumberSerializer`** - Preserving precision in JSONB.
 - **Date/Time Serializers** - Support for PostgreSQL `infinity`.
-- **OctaviusJson** - Pre-configured JSON instance.
+- **octaviusSerializersModule** - Pre-configured SerializersModule instance.
 
 ---
 
@@ -622,6 +626,7 @@ Available configurations:
 - **`returnAllCompositesAsMaps()`**: Forces all composite types encountered in the query result to be returned as Maps. Perfect for dynamic reporting or exporting raw data.
 - **`registerCompositeMapper(name, schema, mapper)`**: Bypasses the default reflection-based mapper and uses your custom `PgCompositeMapper` just for this query. **This works symmetrically** — it is used both when reading the composite from the ResultSet and when serializing it as a query parameter.
 - **`registerTypeHandler(handler)`**: Registers a custom `TypeHandler` that takes precedence over global handlers during this query's execution.
+- **`json(json: Json)`**: Overrides the internal `Json` instance used for `dynamic_dto` serialization.
 
 ```kotlin
 dataAccess.select("*").from("legions")

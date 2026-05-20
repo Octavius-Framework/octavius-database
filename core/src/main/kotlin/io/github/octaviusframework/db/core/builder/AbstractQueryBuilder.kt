@@ -321,8 +321,8 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
         return AsyncQueryBuilder(this, scope, ioDispatcher)
     }
 
-    override fun asStream(fetchSize: Int): StreamingTerminalMethods {
-        return StreamingQueryBuilder(this, fetchSize)
+    override fun iterate(fetchSize: Int): IterativeTerminalMethods {
+        return IterativeQueryBuilder(this, fetchSize)
     }
 
     //------------------------------------------------------------------------------------------------------------------

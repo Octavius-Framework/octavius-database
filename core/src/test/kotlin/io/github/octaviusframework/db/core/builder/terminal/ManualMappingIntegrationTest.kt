@@ -76,7 +76,7 @@ class ManualMappingIntegrationTest : AbstractIntegrationTest() {
         
         dataAccess.transaction {
             select("*").from("manual_map_test").orderBy("id ASC")
-                .asStream().forEachRowOf({ map ->
+                .iterate().forEachRowOf({ map ->
                     Person(id = map["id"] as Int, name = map["name"] as String)
                 }) { person ->
                     people.add(person)

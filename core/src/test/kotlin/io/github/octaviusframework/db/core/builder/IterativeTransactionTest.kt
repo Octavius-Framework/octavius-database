@@ -8,33 +8,33 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
-class StreamingTransactionTest : AbstractIntegrationTest() {
+class IterativeTransactionTest : AbstractIntegrationTest() {
 
     override val sqlToExecuteOnSetup: String = """
-        CREATE TABLE streaming_test (id INT PRIMARY KEY);
-        INSERT INTO streaming_test VALUES (1), (2), (3);
+        CREATE TABLE iterative_test (id INT PRIMARY KEY);
+        INSERT INTO iterative_test VALUES (1), (2), (3);
     """.trimIndent()
 
     @Test
-    fun `should throw BadStatementException when asStream is used outside transaction with fetchSize gt 0`() {
+    fun `should throw BadStatementException when iterative is used outside transaction with fetchSize gt 0`() {
         // fetchSize defaults to 100
         val exception = assertThrows<BadStatementException> {
             dataAccess.select("*")
-                .from("streaming_test")
-                .asStream()
+                .from("iterative_test")
+                .iterate()
                 .forEachRow { /* do nothing */ }
         }
 
-        assertThat(exception.messageEnum).isEqualTo(BadStatementExceptionMessage.STREAMING_REQUIRES_TRANSACTION)
+        assertThat(exception.messageEnum).isEqualTo(BadStatementExceptionMessage.ITERATIVE_REQUIRES_TRANSACTION)
     }
 
     @Test
-    fun `should allow asStream outside transaction when fetchSize is 0`() {
+    fun `should allow iterative outside transaction when fetchSize is 0`() {
         val ids = mutableListOf<Int>()
-        
+
         val result = dataAccess.select("id")
-            .from("streaming_test")
-            .asStream(fetchSize = 0)
+            .from("iterative_test")
+            .iterate(fetchSize = 0)
             .forEachRow { row ->
                 ids.add(row["id"] as Int)
             }
@@ -44,13 +44,13 @@ class StreamingTransactionTest : AbstractIntegrationTest() {
     }
 
     @Test
-    fun `should work with asStream and fetchSize gt 0 inside transaction`() {
+    fun `should work with iterative and fetchSize gt 0 inside transaction`() {
         val ids = mutableListOf<Int>()
-        
+
         val result = dataAccess.transaction {
             select("id")
-                .from("streaming_test")
-                .asStream(fetchSize = 1)
+                .from("iterative_test")
+                .iterate(fetchSize = 1)
                 .forEachRow { row ->
                     ids.add(row["id"] as Int)
                 }

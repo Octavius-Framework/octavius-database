@@ -81,7 +81,7 @@ internal class JdbcTemplate(private val transactionProvider: JdbcTransactionProv
 
                 if (conn.autoCommit && fetchSize > 0) {
                     throw BadStatementException(
-                        messageEnum = BadStatementExceptionMessage.STREAMING_REQUIRES_TRANSACTION,
+                        messageEnum = BadStatementExceptionMessage.ITERATIVE_REQUIRES_TRANSACTION,
                         queryContext = QueryContext(query.sql, emptyMap(), query.sql, query.params),
                         cause = IllegalStateException("PostgreSQL driver ignores fetchSize when autoCommit is true.")
                     )

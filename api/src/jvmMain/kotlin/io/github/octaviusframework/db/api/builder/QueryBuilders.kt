@@ -404,7 +404,7 @@ interface QueryBuilder<T : QueryBuilder<T>> {
     fun async(scope: CoroutineScope, ioDispatcher: CoroutineDispatcher = Dispatchers.IO): AsyncTerminalMethods
 
     /**
-     * Switches the builder to streaming mode, optimal for large datasets.
+     * Switches the builder to iterative mode, optimal for large datasets.
      *
      * **Transaction Requirement:**
      * When [fetchSize] is greater than 0, this method **must** be called inside a `DataAccess.transaction { }` block.
@@ -413,25 +413,26 @@ interface QueryBuilder<T : QueryBuilder<T>> {
      * all rows into RAM (which happens when `autoCommit` is true).
      *
      * **Backdoor (In-memory processing):**
-     * If you want to use the streaming API for convenience (e.g., deduplication or grouping) on small datasets
+     * If you want to use the iterative API for convenience (e.g., deduplication or grouping) on small datasets
      * and you are okay with loading all rows into RAM, set [fetchSize] to `0`. In this case,
      * an active transaction is not required.
      *
      * ```kotlin
      * dataAccess.transaction {
      *     select("*").from("census_records")
-     *         .asStream(fetchSize = 500)
-     *         .forEachRowOf<CensusRecord> { record ->
+     *         .where("year = @year")
+     *         .iterate(fetchSize = 500)
+     *         .forEachRowOf<CensusRecord>("year" to 14) { record ->
      *             processCensusEntry(record)
      *         }
      * }
      * ```
      *
      * @param fetchSize Number of rows fetched from the database in one batch. Set to 0 to disable cursor-based fetching.
-     * @return New builder instance with streaming terminal methods.
+     * @return New builder instance with iterative terminal methods.
      * @throws io.github.octaviusframework.db.api.exception.BadStatementException if fetchSize > 0 and no transaction is active.
      */
-    fun asStream(fetchSize: Int = 100): StreamingTerminalMethods
+    fun iterate(fetchSize: Int = 100): IterativeTerminalMethods
 
     /**
      * Creates and returns a deep copy of this builder.

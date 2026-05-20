@@ -2,15 +2,15 @@ package io.github.octaviusframework.db.core.builder
 
 import io.github.octaviusframework.db.api.DataResult
 import io.github.octaviusframework.db.api.mapper.DataMapper
-import io.github.octaviusframework.db.api.builder.StreamingTerminalMethods
+import io.github.octaviusframework.db.api.builder.IterativeTerminalMethods
 import io.github.octaviusframework.db.core.jdbc.RowMapper
 import io.github.octaviusframework.db.core.type.InternalQueryOptions
 import kotlin.reflect.KClass
 
-internal class StreamingQueryBuilder(
+internal class IterativeQueryBuilder(
     private val builder: AbstractQueryBuilder<*>,
     private val fetchSize: Int
-) : StreamingTerminalMethods {
+) : IterativeTerminalMethods {
 
     private fun <T> executeStream(
         params: Map<String, Any?>,

@@ -4,7 +4,7 @@ import io.github.octaviusframework.db.api.DataResult
 import io.github.octaviusframework.db.api.mapper.DataMapper
 import kotlin.reflect.KClass
 
-interface StreamingTerminalMethods {
+interface IterativeTerminalMethods {
     /**
      * Executes the query and processes each row individually using the provided action,
      * without loading the entire result into memory. Ideal for large datasets.
@@ -42,26 +42,26 @@ interface StreamingTerminalMethods {
 
 }
 
-fun StreamingTerminalMethods.forEachRow(
+fun IterativeTerminalMethods.forEachRow(
     vararg params: Pair<String, Any?>,
     action: (row: Map<String, Any?>) -> Unit
 ): DataResult<Unit> =
     forEachRow(params.toMap(), action)
 
-fun <T : Any> StreamingTerminalMethods.forEachRowOf(
+fun <T : Any> IterativeTerminalMethods.forEachRowOf(
     mapper: DataMapper<T>,
     vararg params: Pair<String, Any?>,
     action: (obj: T) -> Unit
 ): DataResult<Unit> =
     forEachRowOf(mapper, params.toMap(), action)
 
-inline fun <reified T : Any> StreamingTerminalMethods.forEachRowOf(
+inline fun <reified T : Any> IterativeTerminalMethods.forEachRowOf(
     params: Map<String, Any?> = emptyMap(),
     noinline action: (obj: T) -> Unit
 ): DataResult<Unit> =
     forEachRowOf(T::class, params, action)
 
-inline fun <reified T : Any> StreamingTerminalMethods.forEachRowOf(
+inline fun <reified T : Any> IterativeTerminalMethods.forEachRowOf(
     vararg params: Pair<String, Any?>,
     noinline action: (obj: T) -> Unit
 ): DataResult<Unit> =

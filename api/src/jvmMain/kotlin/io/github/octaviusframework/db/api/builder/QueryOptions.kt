@@ -3,6 +3,7 @@ package io.github.octaviusframework.db.api.builder
 import io.github.octaviusframework.db.api.mapper.PgCompositeMapper
 import io.github.octaviusframework.db.api.type.QualifiedName
 import io.github.octaviusframework.db.api.type.TypeHandler
+import kotlinx.serialization.json.Json
 
 /**
  * Configuration options for a single database query.
@@ -14,7 +15,9 @@ data class QueryOptions(
     val typeHandlers: List<TypeHandler<*>> = emptyList(),
     val compositeAsMapTypes: Set<QualifiedName> = emptySet(),
     val customCompositeMappers: Map<QualifiedName, PgCompositeMapper<*>> = emptyMap(),
-    val returnAllCompositesAsMaps: Boolean = false
+    val returnAllCompositesAsMaps: Boolean = false,
+    /** Optional custom JSON configuration to use for this specific query. */
+    val json: Json? = null
 )
 
 /**
@@ -53,4 +56,12 @@ interface QueryOptionsBuilder {
      * Useful for dynamic reporting or handling arbitrary queries.
      */
     fun returnAllCompositesAsMaps(): QueryOptionsBuilder
+
+    /**
+     * Sets a custom [Json] instance for use within this query.
+     * Overrides the default JSON configuration provided in [DataAccess].
+     * 
+     * @param json The custom JSON configuration to use for this query.
+     */
+    fun json(json: Json): QueryOptionsBuilder
 }

@@ -2,7 +2,6 @@ package io.github.octaviusframework.db.core.type
 
 import io.github.octaviusframework.db.core.type.registry.TypeCategory
 import io.github.octaviusframework.db.core.type.registry.TypeRegistry
-import kotlinx.serialization.json.Json
 import org.postgresql.jdbc.PgResultSet
 import java.sql.ResultSet
 
@@ -12,10 +11,9 @@ import java.sql.ResultSet
  * and delegates to PostgresToKotlinConverter for complex types (enum, composite, array).
  */
 internal class ResultSetValueExtractor(
-    private val typeRegistry: TypeRegistry,
-    json: Json
+    private val typeRegistry: TypeRegistry
 ) {
-    private val stringConverter = PostgresToKotlinConverter(typeRegistry, json)
+    private val stringConverter = PostgresToKotlinConverter(typeRegistry)
 
     fun extract(rs: ResultSet, columnIndex: Int, options: InternalQueryOptions): Any? {
         // Unwrap to get PostgreSQL-specific OID directly from ResultSet

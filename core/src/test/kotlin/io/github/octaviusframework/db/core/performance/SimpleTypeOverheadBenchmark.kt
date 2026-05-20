@@ -73,7 +73,7 @@ class SimpleTypeOverheadBenchmark {
                 listOf(),
                 databaseConfig.dbSchemas
             ).load()
-        typesConverter = PostgresToKotlinConverter(typeRegistry, Json)
+        typesConverter = PostgresToKotlinConverter(typeRegistry)
 
 
         try {
@@ -98,7 +98,7 @@ class SimpleTypeOverheadBenchmark {
         val rawMapper = RawJdbcRowMapper()
         val frameworkMapper = RowMappers(typeRegistry, Json).ColumnNameMapper(
             InternalQueryOptions.empty(
-                typeRegistry
+                typeRegistry, Json
             )
         ) // NOWY MAPPER
 

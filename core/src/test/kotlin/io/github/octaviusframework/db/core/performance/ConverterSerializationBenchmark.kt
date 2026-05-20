@@ -50,8 +50,8 @@ class ConverterSerializationBenchmark {
     fun setup() {
         println("--- ROZPOCZYNANIE KONFIGURACJI BENCHMARKU SERIALIZACJI (Kotlin -> Postgres) ---")
         typeRegistry = createFakeTypeRegistry()
-        this.converter = KotlinToPostgresConverter(typeRegistry, json = Json)
-        this.options = InternalQueryOptions.empty(typeRegistry)
+        this.converter = KotlinToPostgresConverter(typeRegistry)
+        this.options = InternalQueryOptions.empty(typeRegistry, Json)
 
         println("\n--- WARM-UP RUN (500 wierszy, wyniki ignorowane) ---")
         val (warmupSql, warmupParams) = buildTestQueryAndParams(500)

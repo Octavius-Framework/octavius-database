@@ -5,6 +5,7 @@ import io.github.octaviusframework.db.api.exception.TypeRegistryException
 import io.github.octaviusframework.db.api.exception.TypeRegistryExceptionMessage
 import io.github.octaviusframework.db.api.type.TypeHandler
 import io.github.octaviusframework.db.core.type.registry.TypeRegistry
+import kotlinx.serialization.json.Json
 import kotlin.reflect.KClass
 
 /**
@@ -16,8 +17,10 @@ import kotlin.reflect.KClass
  */
 internal class InternalQueryOptions(
     val options: QueryOptions,
-    typeRegistry: TypeRegistry
+    typeRegistry: TypeRegistry,
+    val defaultJson: Json
 ) {
+    val json: Json get() = options.json ?: defaultJson
     /**
      * Maps PostgreSQL OID to a query-specific custom [TypeHandler].
      * Computed immediately upon creation.
@@ -79,6 +82,6 @@ internal class InternalQueryOptions(
         /**
          * Creates an empty [InternalQueryOptions] for tests or scenarios where no options are provided.
          */
-        fun empty(typeRegistry: TypeRegistry) = InternalQueryOptions(QueryOptions(), typeRegistry)
+        fun empty(typeRegistry: TypeRegistry, defaultJson: Json) = InternalQueryOptions(QueryOptions(), typeRegistry, defaultJson)
     }
 }

@@ -20,8 +20,8 @@ import java.math.BigDecimal
 class KotlinToPostgresConverterTest {
 
     private val typeRegistry = createFakeTypeRegistry()
-    private val converter = KotlinToPostgresConverter(typeRegistry, json = Json)
-    private val options = InternalQueryOptions.empty(typeRegistry)
+    private val converter = KotlinToPostgresConverter(typeRegistry)
+    private val options = InternalQueryOptions.empty(typeRegistry, Json)
 
     @Nested
     inner class SimpleTypeExpansion {
@@ -89,7 +89,7 @@ class KotlinToPostgresConverterTest {
             val customOptions = QueryOptions(
                 typeHandlers = listOf(customHandler)
             )
-            val internalCustomOptions = InternalQueryOptions(customOptions, typeRegistry)
+            val internalCustomOptions = InternalQueryOptions(customOptions, typeRegistry, Json)
 
             val result = converter.toPositionalQuery(sql, params, internalCustomOptions)
 

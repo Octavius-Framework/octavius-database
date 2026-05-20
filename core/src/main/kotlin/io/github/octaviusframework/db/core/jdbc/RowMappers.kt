@@ -25,9 +25,9 @@ import kotlin.reflect.KType
 @Suppress("FunctionName")
 internal class RowMappers(
     typeRegistry: TypeRegistry,
-    json: Json
+    val json: Json
 ) {
-    private val valueExtractor = ResultSetValueExtractor(typeRegistry, json)
+    private val valueExtractor = ResultSetValueExtractor(typeRegistry)
 
     companion object {
         private val logger = KotlinLogging.logger {}

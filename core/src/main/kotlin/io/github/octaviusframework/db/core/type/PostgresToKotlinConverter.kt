@@ -8,7 +8,6 @@ import io.github.octaviusframework.db.api.exception.TypeRegistryExceptionMessage
 import io.github.octaviusframework.db.api.toDataObject
 import io.github.octaviusframework.db.core.type.registry.*
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.serialization.json.Json
 
 /**
  * Converts values from PostgreSQL (as `String`) to appropriate Kotlin types.
@@ -19,8 +18,7 @@ import kotlinx.serialization.json.Json
  * @param typeRegistry Registry containing metadata about PostgreSQL types.
  */
 internal class PostgresToKotlinConverter(
-    private val typeRegistry: TypeRegistry,
-    private val json: Json
+    private val typeRegistry: TypeRegistry
 ) {
     companion object {
         private val logger = KotlinLogging.logger {}
@@ -73,7 +71,7 @@ internal class PostgresToKotlinConverter(
 
             TypeCategory.DYNAMIC -> {
                 logger.trace { "Converting dynamic DTO value for OID $oid" }
-                convertDynamicType(value)
+                convertDynamicType(value, options)
             }
         }
     }
@@ -243,7 +241,7 @@ internal class PostgresToKotlinConverter(
      * @param value Raw value from database in composite format `("typeName", "jsonData")`.
      * @return Instance of appropriate `data class` with `@DynamicallyMappable` annotation.
      */
-    private fun convertDynamicType(value: String): Any {
+    private fun convertDynamicType(value: String, options: InternalQueryOptions): Any {
         // null handled in convert method
         // json itself cannot be null in composite - this is also consistent with the write where value cannot be null
         var typeName: String? = null
@@ -271,7 +269,7 @@ internal class PostgresToKotlinConverter(
         val serializer = typeRegistry.getDynamicSerializer(typeName)
 
         return try {
-            json.decodeFromString(serializer, jsonDataString)
+            options.json.decodeFromString(serializer, jsonDataString)
         } catch (e: Exception) {
             throw TypeMappingException(
                 TypeMappingExceptionMessage.JSON_DESERIALIZATION_FAILED,

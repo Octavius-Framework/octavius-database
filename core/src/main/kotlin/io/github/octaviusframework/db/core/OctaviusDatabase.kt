@@ -185,7 +185,7 @@ object OctaviusDatabase {
 
         val jsonInstance = createJsonInstance(typeRegistry, jsonConfiguration)
 
-        val kotlinToPostgresConverter = KotlinToPostgresConverter(typeRegistry, dynamicDtoStrategy, jsonInstance)
+        val kotlinToPostgresConverter = KotlinToPostgresConverter(typeRegistry, dynamicDtoStrategy)
         val resolvedListenerConnectionFactory =
             listenerConnectionFactory ?: resolveListenerConnectionFactory(dataSource)
 

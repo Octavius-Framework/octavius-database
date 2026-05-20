@@ -95,8 +95,11 @@ interface DataAccess : QueryOperations, AutoCloseable {
     /**
      * Helper method to manually serialize an object to a DynamicDto using the database's JSON configuration.
      * The object must be annotated with @DynamicallyMappable and @Serializable.
+     *
+     * @param value The object to serialize.
+     * @param json Optional custom JSON configuration to use instead of the database's default.
      */
-    fun toDynamicDto(value: Any): DynamicDto
+    fun toDynamicDto(value: Any, json: Json? = null): DynamicDto
 
     /**
      * Executes a pre-configured [TransactionPlan] as a single, atomic transaction.

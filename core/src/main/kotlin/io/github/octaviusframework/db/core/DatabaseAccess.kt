@@ -68,7 +68,7 @@ internal class DatabaseAccess(
         return DatabaseRawQueryBuilder(queryExecutor, rowMappers, typeRegistry, sql)
     }
 
-    override fun toDynamicDto(value: Any): DynamicDto {
+    override fun toDynamicDto(value: Any, json: Json?): DynamicDto {
         val kClass = value::class
         val typeName = typeRegistry.getDynamicTypeNameForClass(kClass)
             ?: throw TypeMappingException(
@@ -77,7 +77,8 @@ internal class DatabaseAccess(
                 targetType = DynamicallyMappable::class.simpleName
             )
         val serializer = typeRegistry.getDynamicSerializer(typeName)
-        return DynamicDto.from(value, typeName, serializer, json)
+        val jsonToUse = json ?: this.json
+        return DynamicDto.from(value, typeName, serializer, jsonToUse)
     }
 
     //--- Transaction management implementation ---

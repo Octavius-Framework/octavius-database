@@ -58,8 +58,8 @@ class ConverterPerformanceBenchmark {
     fun setup() {
         println("--- ROZPOCZYNANIE KONFIGURACJI BENCHMARKU PARSOWANIA ---")
         typeRegistry = createFakeTypeRegistry()
-        this.converter = PostgresToKotlinConverter(typeRegistry, Json)
-        this.options = InternalQueryOptions(QueryOptions(), typeRegistry)
+        this.converter = PostgresToKotlinConverter(typeRegistry)
+        this.options = InternalQueryOptions(QueryOptions(), typeRegistry, Json)
 
         val oid = typeRegistry.getOidForName(QualifiedName("public","test_project", isArray = true))
 

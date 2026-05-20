@@ -8,7 +8,6 @@ import io.github.octaviusframework.db.api.type.TypeHandler
 import io.github.octaviusframework.db.core.config.DynamicDtoSerializationStrategy
 import io.github.octaviusframework.db.core.type.registry.TypeRegistry
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.serialization.json.Json
 import org.postgresql.util.PGobject
 import kotlin.reflect.KClass
 
@@ -28,14 +27,13 @@ private data class ParameterConversion(val placeholder: String, val value: Any?)
  */
 internal class KotlinToPostgresConverter(
     private val typeRegistry: TypeRegistry,
-    private val dynamicDtoStrategy: DynamicDtoSerializationStrategy = DynamicDtoSerializationStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS,
-    private val json: Json
+    private val dynamicDtoStrategy: DynamicDtoSerializationStrategy = DynamicDtoSerializationStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS
 ) {
     companion object {
         private val logger = KotlinLogging.logger {}
     }
 
-    private val serializer = PgTextSerializer(typeRegistry, dynamicDtoStrategy, json)
+    private val serializer = PgTextSerializer(typeRegistry, dynamicDtoStrategy)
 
     /**
      * Entry point for query transformation. Parses named parameters and converts values.
@@ -201,7 +199,7 @@ internal class KotlinToPostgresConverter(
         val dynamicTypeName = typeRegistry.getDynamicTypeNameForClass(value::class) ?: return null
         val dtSerializer = typeRegistry.getDynamicSerializer(dynamicTypeName)
 
-        val dynamicDto = DynamicDto.from(value, dynamicTypeName, dtSerializer, json)
+        val dynamicDto = DynamicDto.from(value, dynamicTypeName, dtSerializer, options.json)
         return convertParameter(dynamicDto, appendTypeCast, options = options)
     }
 

@@ -43,7 +43,7 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
      * Creates InternalQueryOptions for current query state.
      * Should be called once per terminal method.
      */
-    internal fun internalOptions() = InternalQueryOptions(queryOptions, typeRegistry)
+    internal fun internalOptions() = InternalQueryOptions(queryOptions, typeRegistry, rowMappers.json)
 
     //------------------------------------------------------------------------------------------------------------------
     //                                 ABSTRACT METHOD TO IMPLEMENT

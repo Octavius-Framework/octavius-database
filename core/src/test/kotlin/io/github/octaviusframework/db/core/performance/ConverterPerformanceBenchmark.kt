@@ -6,6 +6,7 @@ import io.github.octaviusframework.db.core.mapping.utils.createFakeTypeRegistry
 import io.github.octaviusframework.db.core.type.InternalQueryOptions
 import io.github.octaviusframework.db.core.type.PostgresToKotlinConverter
 import io.github.octaviusframework.db.core.type.registry.TypeRegistry
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.*
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
@@ -57,7 +58,7 @@ class ConverterPerformanceBenchmark {
     fun setup() {
         println("--- ROZPOCZYNANIE KONFIGURACJI BENCHMARKU PARSOWANIA ---")
         typeRegistry = createFakeTypeRegistry()
-        this.converter = PostgresToKotlinConverter(typeRegistry)
+        this.converter = PostgresToKotlinConverter(typeRegistry, Json)
         this.options = InternalQueryOptions(QueryOptions(), typeRegistry)
 
         val oid = typeRegistry.getOidForName(QualifiedName("public","test_project", isArray = true))

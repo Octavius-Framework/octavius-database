@@ -5,10 +5,10 @@ import io.github.octaviusframework.db.api.exception.TypeMappingException
 import io.github.octaviusframework.db.api.exception.TypeMappingExceptionMessage
 import io.github.octaviusframework.db.api.exception.TypeRegistryException
 import io.github.octaviusframework.db.api.exception.TypeRegistryExceptionMessage
-import io.github.octaviusframework.db.api.serializer.OctaviusJson
 import io.github.octaviusframework.db.api.toDataObject
 import io.github.octaviusframework.db.core.type.registry.*
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.serialization.json.Json
 
 /**
  * Converts values from PostgreSQL (as `String`) to appropriate Kotlin types.
@@ -18,7 +18,10 @@ import io.github.oshai.kotlinlogging.KotlinLogging
  *
  * @param typeRegistry Registry containing metadata about PostgreSQL types.
  */
-internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry) {
+internal class PostgresToKotlinConverter(
+    private val typeRegistry: TypeRegistry,
+    private val json: Json
+) {
     companion object {
         private val logger = KotlinLogging.logger {}
     }
@@ -268,7 +271,7 @@ internal class PostgresToKotlinConverter(private val typeRegistry: TypeRegistry)
         val serializer = typeRegistry.getDynamicSerializer(typeName)
 
         return try {
-            OctaviusJson.decodeFromString(serializer, jsonDataString)
+            json.decodeFromString(serializer, jsonDataString)
         } catch (e: Exception) {
             throw TypeMappingException(
                 TypeMappingExceptionMessage.JSON_DESERIALIZATION_FAILED,

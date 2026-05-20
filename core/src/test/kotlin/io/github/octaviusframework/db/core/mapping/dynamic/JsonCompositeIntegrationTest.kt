@@ -2,7 +2,6 @@ package io.github.octaviusframework.db.core.mapping.dynamic
 
 import io.github.octaviusframework.db.api.builder.toSingleStrict
 import io.github.octaviusframework.db.api.getOrThrow
-import io.github.octaviusframework.db.api.serializer.OctaviusJson
 import io.github.octaviusframework.db.api.type.PgStandardType
 import io.github.octaviusframework.db.api.type.withPgType
 import io.github.octaviusframework.db.core.AbstractIntegrationTest
@@ -50,7 +49,7 @@ class JsonCompositeIntegrationTest : AbstractIntegrationTest() {
         val jsonString = result["product_json"].toString()
 
         // Deserialize using OctaviusJson
-        val product = OctaviusJson.decodeFromString<Product>(jsonString)
+        val product = dataAccess.json.decodeFromString<Product>(jsonString)
 
         assertThat(product.name).isEqualTo("Laptop")
         assertThat(product.price).isEqualByComparingTo(BigDecimal("999.99"))
@@ -79,7 +78,7 @@ class JsonCompositeIntegrationTest : AbstractIntegrationTest() {
             .getOrThrow()
 
         val json = result["product_json"] as JsonElement
-        val product = OctaviusJson.decodeFromJsonElement<Product>(json)
+        val product = dataAccess.json.decodeFromJsonElement<Product>(json)
 
         assertThat(product.id).isEqualTo(10)
         assertThat(product.name).isEqualTo("Mechanical Keyboard")
@@ -102,7 +101,7 @@ class JsonCompositeIntegrationTest : AbstractIntegrationTest() {
         )
 
         // Serialize to JSON string
-        val json = OctaviusJson.encodeToJsonElement(product)
+        val json = dataAccess.json.encodeToJsonElement(product)
 
         // Use json_populate_record to turn JSON back into a product row and verify fields
         val sql = """

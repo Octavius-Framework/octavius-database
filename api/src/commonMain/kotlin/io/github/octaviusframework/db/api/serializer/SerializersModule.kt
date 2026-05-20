@@ -18,19 +18,10 @@ import kotlin.time.Instant
  * This function should be used to configure the [Json] instance
  * when working with Octavius-managed data types.
  */
-fun createOctaviusSerializersModule(): SerializersModule {
-    return SerializersModule {
-        contextual(BigDecimal::class, BigDecimalAsNumberSerializer)
-        contextual(LocalDate::class, LocalDateWithInfinitySerializer)
-        contextual(LocalDateTime::class, LocalDateTimeWithInfinitySerializer)
-        contextual(Instant::class, InstantWithInfinitySerializer)
-    }
-}
+val octaviusSerializersModule = SerializersModule {
+    contextual(BigDecimal::class, BigDecimalAsNumberSerializer)
+    contextual(LocalDate::class, LocalDateWithInfinitySerializer)
+    contextual(LocalDateTime::class, LocalDateTimeWithInfinitySerializer)
+    contextual(Instant::class, InstantWithInfinitySerializer)
 
-/**
- * Default [Json] instance configured with Octavius serializers.
- * 
- * Use this instance when manual serialization/deserialization of `dynamic_dto` 
- * or other database-related JSON content is required.
- */
-val OctaviusJson = Json { serializersModule = createOctaviusSerializersModule() }
+}

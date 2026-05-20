@@ -20,7 +20,7 @@ import java.math.BigDecimal
 class KotlinToPostgresConverterTest {
 
     private val typeRegistry = createFakeTypeRegistry()
-    private val converter = KotlinToPostgresConverter(typeRegistry)
+    private val converter = KotlinToPostgresConverter(typeRegistry, json = Json)
     private val options = InternalQueryOptions.empty(typeRegistry)
 
     @Nested

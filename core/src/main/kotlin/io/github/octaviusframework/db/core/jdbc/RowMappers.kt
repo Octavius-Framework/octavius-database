@@ -9,6 +9,7 @@ import io.github.octaviusframework.db.core.type.InternalQueryOptions
 import io.github.octaviusframework.db.core.type.ResultSetValueExtractor
 import io.github.octaviusframework.db.core.type.registry.TypeRegistry
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.serialization.json.Json
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
@@ -23,9 +24,11 @@ import kotlin.reflect.KType
  */
 @Suppress("FunctionName")
 internal class RowMappers(
-    typeRegistry: TypeRegistry
+    typeRegistry: TypeRegistry,
+    json: Json
 ) {
-    private val valueExtractor = ResultSetValueExtractor(typeRegistry)
+    private val valueExtractor = ResultSetValueExtractor(typeRegistry, json)
+
     companion object {
         private val logger = KotlinLogging.logger {}
     }

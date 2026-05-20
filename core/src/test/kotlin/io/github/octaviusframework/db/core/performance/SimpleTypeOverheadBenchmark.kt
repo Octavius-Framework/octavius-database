@@ -12,6 +12,7 @@ import io.github.octaviusframework.db.core.type.PositionalQuery
 import io.github.octaviusframework.db.core.type.PostgresToKotlinConverter
 import io.github.octaviusframework.db.core.type.registry.TypeRegistry
 import io.github.octaviusframework.db.core.type.registry.TypeRegistryLoader
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.*
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -72,7 +73,7 @@ class SimpleTypeOverheadBenchmark {
                 listOf(),
                 databaseConfig.dbSchemas
             ).load()
-        typesConverter = PostgresToKotlinConverter(typeRegistry)
+        typesConverter = PostgresToKotlinConverter(typeRegistry, Json)
 
 
         try {
@@ -95,7 +96,7 @@ class SimpleTypeOverheadBenchmark {
     fun `run full benchmark comparison`() {
         val sql = "SELECT * FROM simple_type_benchmark LIMIT $TOTAL_ROWS_TO_FETCH"
         val rawMapper = RawJdbcRowMapper()
-        val frameworkMapper = RowMappers(typeRegistry).ColumnNameMapper(
+        val frameworkMapper = RowMappers(typeRegistry, Json).ColumnNameMapper(
             InternalQueryOptions.empty(
                 typeRegistry
             )

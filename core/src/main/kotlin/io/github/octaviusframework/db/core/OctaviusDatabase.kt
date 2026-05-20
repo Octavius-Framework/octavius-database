@@ -6,6 +6,7 @@ import io.github.octaviusframework.db.api.DataAccess
 import io.github.octaviusframework.db.api.exception.InitializationException
 import io.github.octaviusframework.db.api.exception.InitializationExceptionMessage
 import io.github.octaviusframework.db.api.exception.QueryContext
+import io.github.octaviusframework.db.api.serializer.octaviusSerializersModule
 import io.github.octaviusframework.db.api.type.QualifiedName
 import io.github.octaviusframework.db.core.OctaviusDatabase.fromDataSource
 import io.github.octaviusframework.db.core.config.AppInfo
@@ -18,6 +19,8 @@ import io.github.octaviusframework.db.core.type.KotlinToPostgresConverter
 import io.github.octaviusframework.db.core.type.registry.TypeRegistry
 import io.github.octaviusframework.db.core.type.registry.TypeRegistryLoader
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.modules.SerializersModule
 import java.sql.Connection
 import java.sql.DriverManager
 import java.util.*
@@ -53,7 +56,12 @@ object OctaviusDatabase {
      * @return A fully initialized, thread-safe [DataAccess] instance.
      * @throws InitializationException if connection fails or migrations cannot be applied.
      */
-    fun fromConfig(config: DatabaseConfig, transactionProvider: JdbcTransactionProvider? = null, migrationRunner: ((DataSource) -> Unit)? = null): DataAccess {
+    fun fromConfig(
+        config: DatabaseConfig,
+        transactionProvider: JdbcTransactionProvider? = null,
+        migrationRunner: ((DataSource) -> Unit)? = null,
+        jsonConfiguration: ((SerializersModule) -> Json)? = null
+    ): DataAccess {
         logger.info { "Initializing DataSource..." }
         // 1. Configuration-dependent setting of `connectionInitSql`
         val connectionInitSql = if (config.setSearchPath && config.dbSchemas.isNotEmpty()) {
@@ -105,6 +113,7 @@ object OctaviusDatabase {
             showBanner = config.showBanner,
             transactionProvider = transactionProvider,
             migrationRunner = migrationRunner,
+            jsonConfiguration = jsonConfiguration,
             onClose = {
                 logger.info { "Closing internal HikariDataSource..." }
                 dataSource.close()
@@ -147,6 +156,7 @@ object OctaviusDatabase {
         transactionProvider: JdbcTransactionProvider? = null,
         listenerConnectionFactory: (() -> Connection)? = null,
         migrationRunner: ((DataSource) -> Unit)? = null,
+        jsonConfiguration: ((SerializersModule) -> Json)? = null,
         onClose: (() -> Unit)? = null
     ): DataAccess {
         logger.info { "Initializing OctaviusDatabase..." }
@@ -172,8 +182,12 @@ object OctaviusDatabase {
         logger.debug { "Type registry loaded successfully in ${typeRegistryLoadTime.inWholeMilliseconds}ms" }
 
         logger.debug { "Initializing converters" }
-        val kotlinToPostgresConverter = KotlinToPostgresConverter(typeRegistry, dynamicDtoStrategy)
-        val resolvedListenerConnectionFactory = listenerConnectionFactory ?: resolveListenerConnectionFactory(dataSource)
+
+        val jsonInstance = createJsonInstance(typeRegistry, jsonConfiguration)
+
+        val kotlinToPostgresConverter = KotlinToPostgresConverter(typeRegistry, dynamicDtoStrategy, jsonInstance)
+        val resolvedListenerConnectionFactory =
+            listenerConnectionFactory ?: resolveListenerConnectionFactory(dataSource)
 
         if (showBanner) {
             printBanner()
@@ -185,8 +199,21 @@ object OctaviusDatabase {
             typeRegistry,
             kotlinToPostgresConverter,
             resolvedListenerConnectionFactory,
+            jsonInstance,
             onClose
         )
+    }
+
+    private fun createJsonInstance(typeRegistry: TypeRegistry, jsonConfiguration: ((SerializersModule) -> Json)?): Json {
+        val octaviusSerializers = octaviusSerializersModule
+        val enumSerializers = typeRegistry.enumSerializers
+        val combinedModule = SerializersModule {
+            include(octaviusSerializers)
+            include(enumSerializers)
+        }
+        return jsonConfiguration?.invoke(combinedModule) ?: Json {
+            serializersModule = combinedModule
+        }
     }
 
     private fun resolveListenerConnectionFactory(dataSource: DataSource): () -> Connection {
@@ -196,8 +223,8 @@ object OctaviusDatabase {
         }
         logger.warn {
             "Cannot determine raw JDBC URL from the provided DataSource (${dataSource::class.simpleName}). " +
-            "LISTEN connections will use DataSource directly. " +
-            "Pass a custom listenerConnectionFactory to fromDataSource() to avoid this."
+                    "LISTEN connections will use DataSource directly. " +
+                    "Pass a custom listenerConnectionFactory to fromDataSource() to avoid this."
         }
         return { dataSource.connection }
     }

@@ -4,12 +4,9 @@ import io.github.octaviusframework.db.api.annotation.DynamicallyMappable
 import io.github.octaviusframework.db.api.annotation.PgComposite
 import io.github.octaviusframework.db.api.exception.TypeMappingException
 import io.github.octaviusframework.db.api.exception.TypeMappingExceptionMessage
-import io.github.octaviusframework.db.api.serializer.OctaviusJson
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.serializer
-import kotlin.reflect.KClass
-import kotlin.reflect.full.findAnnotation
 
 /**
  * Represents a polymorphic object for database storage, mapping to the `dynamic_dto` PostgreSQL type.
@@ -44,54 +41,14 @@ data class DynamicDto private constructor(
 ) {
     companion object {
         /**
-         * Creates a [DynamicDto] instance from a domain object.
-         *
-         * This factory method uses reflection to find the [DynamicallyMappable] annotation
-         * on the object's class to determine the `typeName` and serializes the object's 
-         * properties into a JSON payload.
-         *
-         * @param value The object to wrap. Must be annotated with [DynamicallyMappable] 
-         *              and `@Serializable`.
-         * @return A constructed [DynamicDto] ready for database operations.
-         * @throws TypeMappingException if annotations are missing or serialization fails.
-         */
-        inline fun <reified T: Any> from(value: T): DynamicDto {
-            @Suppress("UNCHECKED_CAST")
-            val kClass = value::class as KClass<Any>
-            // 1. Find type name (reflection)
-            val annotation = kClass.findAnnotation<DynamicallyMappable>()
-                ?: throw TypeMappingException(
-                    messageEnum = TypeMappingExceptionMessage.JSON_SERIALIZATION_FAILED,
-                    value = kClass.simpleName,
-                    targetType = DynamicallyMappable::class.simpleName
-                )
-
-            // 2. Find serializer
-            val serializer = try {
-                // This is safer than other methods (read won't allow full information anyway)
-                serializer<T>()
-            } catch (e: Exception) {
-                throw TypeMappingException(
-                    messageEnum = TypeMappingExceptionMessage.JSON_SERIALIZATION_FAILED,
-                    targetType = annotation.typeName,
-                    cause = e
-                )
-            }
-
-            // 3. Delegate to optimized version
-            @Suppress("UNCHECKED_CAST")
-            return from(value, annotation.typeName, serializer as KSerializer<Any>)
-        }
-
-        /**
          * [FRAMEWORK PATH]
-         * Creates DTO using an externally provided (cached) serializer.
+         * Creates DTO using an externally provided (cached) serializer and specific Json instance.
          * Zero reflection, maximum performance.
          */
-        fun from(value: Any, typeName: String, serializer: KSerializer<Any>): DynamicDto {
+        fun from(value: Any, typeName: String, serializer: KSerializer<Any>, json: Json): DynamicDto {
             try {
                 // Serialization to JsonElement
-                val jsonPayload = OctaviusJson.encodeToJsonElement(serializer, value)
+                val jsonPayload = json.encodeToJsonElement(serializer, value)
 
                 return DynamicDto(typeName, jsonPayload)
             } catch (e: Exception) {

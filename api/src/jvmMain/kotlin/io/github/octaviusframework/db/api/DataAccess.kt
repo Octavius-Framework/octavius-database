@@ -3,6 +3,9 @@ package io.github.octaviusframework.db.api
 import io.github.octaviusframework.db.api.builder.*
 import io.github.octaviusframework.db.api.notification.PgChannelListener
 import io.github.octaviusframework.db.api.transaction.*
+import kotlinx.serialization.json.Json
+import io.github.octaviusframework.db.api.type.DynamicDto
+import kotlinx.serialization.modules.SerializersModule
 
 /**
  * Defines the contract for basic database operations (CRUD and raw queries).
@@ -78,6 +81,22 @@ interface QueryOperations {
  * Call [close] or use the interface within a `use` block to ensure proper resource cleanup.
  */
 interface DataAccess : QueryOperations, AutoCloseable {
+
+    /**
+     * The JSON configuration used by the database.
+     */
+    val json: Json
+
+    /**
+     * Enum Serializers created by Octavius Database
+     */
+    val enumSerializers: SerializersModule
+
+    /**
+     * Helper method to manually serialize an object to a DynamicDto using the database's JSON configuration.
+     * The object must be annotated with @DynamicallyMappable and @Serializable.
+     */
+    fun toDynamicDto(value: Any): DynamicDto
 
     /**
      * Executes a pre-configured [TransactionPlan] as a single, atomic transaction.

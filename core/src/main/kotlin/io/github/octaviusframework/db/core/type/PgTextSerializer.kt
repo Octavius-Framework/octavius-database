@@ -12,6 +12,7 @@ import io.github.octaviusframework.db.api.type.TypeHandler
 import io.github.octaviusframework.db.core.config.DynamicDtoSerializationStrategy
 import io.github.octaviusframework.db.core.type.registry.TypeRegistry
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.serialization.json.Json
 import kotlin.reflect.KClass
 
 /**
@@ -20,7 +21,8 @@ import kotlin.reflect.KClass
  */
 internal class PgTextSerializer(
     private val typeRegistry: TypeRegistry,
-    private val dynamicDtoStrategy: DynamicDtoSerializationStrategy
+    private val dynamicDtoStrategy: DynamicDtoSerializationStrategy,
+    private val json: Json
 ) {
     companion object {
         private val logger = KotlinLogging.logger {}
@@ -116,7 +118,7 @@ internal class PgTextSerializer(
             if (shouldUseDynamicDto(kClass)) {
                 typeRegistry.getDynamicTypeNameForClass(kClass)?.let { typeName ->
                     logger.trace { "Converting class ${kClass.simpleName} to Dynamic DTO [$typeName]" }
-                    current = DynamicDto.from(current, typeName, typeRegistry.getDynamicSerializer(typeName))
+                    current = DynamicDto.from(current, typeName, typeRegistry.getDynamicSerializer(typeName), json)
                 }
             }
         }

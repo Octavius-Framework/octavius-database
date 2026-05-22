@@ -4,6 +4,7 @@ import io.github.octaviusframework.db.core.mapping.utils.createFakeTypeRegistry
 import io.github.octaviusframework.db.core.type.InternalQueryOptions
 import io.github.octaviusframework.db.core.type.KotlinToPostgresConverter
 import io.github.octaviusframework.db.core.type.registry.TypeRegistry
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.*
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
@@ -50,7 +51,7 @@ class ConverterSerializationBenchmark {
         println("--- ROZPOCZYNANIE KONFIGURACJI BENCHMARKU SERIALIZACJI (Kotlin -> Postgres) ---")
         typeRegistry = createFakeTypeRegistry()
         this.converter = KotlinToPostgresConverter(typeRegistry)
-        this.options = InternalQueryOptions.empty(typeRegistry)
+        this.options = InternalQueryOptions.empty(typeRegistry, Json)
 
         println("\n--- WARM-UP RUN (500 wierszy, wyniki ignorowane) ---")
         val (warmupSql, warmupParams) = buildTestQueryAndParams(500)

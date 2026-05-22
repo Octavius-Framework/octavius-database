@@ -1,6 +1,7 @@
 package io.github.octaviusframework.db.api.builder
 
 import io.github.octaviusframework.db.api.DataResult
+import io.github.octaviusframework.db.api.mapper.DataMapper
 import kotlinx.coroutines.Job
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
@@ -30,22 +31,6 @@ interface AsyncTerminalMethods {
         onResult: (DataResult<Map<String, Any?>>) -> Unit
     ): Job
 
-    // --- Methods returning data class objects ---
-
-    /** Asynchronously maps results to a list of objects and passes them to the onResult callback. */
-    fun <T> toListOf(
-        kType: KType,
-        params: Map<String, Any?> = emptyMap(),
-        onResult: (DataResult<List<T>>) -> Unit
-    ): Job
-
-    /** Asynchronously maps the result to a single object and passes it to the onResult callback. */
-    fun <T> toSingleOf(
-        kType: KType,
-        params: Map<String, Any?> = emptyMap(),
-        onResult: (DataResult<T>) -> Unit
-    ): Job
-
     // --- Methods returning scalar values ---
 
     /** Asynchronously fetches a single value from the first column and passes the result to the onResult callback. */
@@ -69,6 +54,38 @@ interface AsyncTerminalMethods {
         onResult: (DataResult<List<T>>) -> Unit
     ): Job
 
+
+    // --- Methods returning data class objects ---
+
+    /** Asynchronously maps results to a list of objects and passes them to the onResult callback. */
+    fun <T : Any> toListOf(
+        kType: KType,
+        params: Map<String, Any?> = emptyMap(),
+        onResult: (DataResult<List<T>>) -> Unit
+    ): Job
+
+    /** Asynchronously maps the result to a single object and passes it to the onResult callback. */
+    fun <T> toSingleOf(
+        kType: KType,
+        params: Map<String, Any?> = emptyMap(),
+        onResult: (DataResult<T>) -> Unit
+    ): Job
+
+    /** Asynchronously maps the result to a single object using the provided [mapper] and passes it to the onResult callback. */
+    fun <T> toSingleOf(
+        kType: KType,
+        mapper: DataMapper<T & Any>,
+        params: Map<String, Any?> = emptyMap(),
+        onResult: (DataResult<T>) -> Unit
+    ): Job
+
+    /** Asynchronously maps results to a list of objects using the provided [mapper] and passes them to the onResult callback. */
+    fun <T : Any> toListOf(
+        mapper: DataMapper<T>,
+        params: Map<String, Any?> = emptyMap(),
+        onResult: (DataResult<List<T>>) -> Unit
+    ): Job
+
     // --- Modification method ---
 
     /** Asynchronously executes a modification query and passes the result to the onResult callback. */
@@ -77,6 +94,8 @@ interface AsyncTerminalMethods {
         onResult: (DataResult<Int>) -> Unit
     ): Job
 }
+
+// To List / To Single
 
 fun AsyncTerminalMethods.toList(
     vararg params: Pair<String, Any?>,
@@ -93,26 +112,8 @@ fun AsyncTerminalMethods.toSingleStrict(
     onResult: (DataResult<Map<String, Any?>>) -> Unit
 ): Job = toSingleStrict(params.toMap(), onResult)
 
-// Inline extensions
-inline fun <reified T : Any> AsyncTerminalMethods.toListOf(
-    params: Map<String, Any?> = emptyMap(),
-    noinline onResult: (DataResult<List<T>>) -> Unit
-): Job = toListOf(typeOf<T>(), params, onResult)
 
-inline fun <reified T> AsyncTerminalMethods.toSingleOf(
-    params: Map<String, Any?> = emptyMap(),
-    noinline onResult: (DataResult<T>) -> Unit
-): Job = toSingleOf(typeOf<T>(), params, onResult)
-
-inline fun <reified T : Any> AsyncTerminalMethods.toListOf(
-    vararg params: Pair<String, Any?>,
-    noinline onResult: (DataResult<List<T>>) -> Unit
-): Job = toListOf(typeOf<T>(), params.toMap(), onResult)
-
-inline fun <reified T> AsyncTerminalMethods.toSingleOf(
-    vararg params: Pair<String, Any?>,
-    noinline onResult: (DataResult<T>) -> Unit
-): Job = toSingleOf(typeOf<T>(), params.toMap(), onResult)
+// To Field / To Column
 
 inline fun <reified T> AsyncTerminalMethods.toField(
     params: Map<String, Any?> = emptyMap(),
@@ -144,3 +145,45 @@ inline fun <reified T> AsyncTerminalMethods.toColumn(
     vararg params: Pair<String, Any?>,
     noinline onResult: (DataResult<List<T>>) -> Unit
 ): Job = toColumn(typeOf<T>(), params.toMap(), onResult)
+
+// To List Of / To Single Of
+
+inline fun <reified T : Any> AsyncTerminalMethods.toListOf(
+    params: Map<String, Any?> = emptyMap(),
+    noinline onResult: (DataResult<List<T>>) -> Unit
+): Job = toListOf(typeOf<T>(), params, onResult)
+
+inline fun <reified T : Any> AsyncTerminalMethods.toListOf(
+    vararg params: Pair<String, Any?>,
+    noinline onResult: (DataResult<List<T>>) -> Unit
+): Job = toListOf(typeOf<T>(), params.toMap(), onResult)
+
+inline fun <reified T> AsyncTerminalMethods.toSingleOf(
+    params: Map<String, Any?> = emptyMap(),
+    noinline onResult: (DataResult<T>) -> Unit
+): Job = toSingleOf(typeOf<T>(), params, onResult)
+
+inline fun <reified T> AsyncTerminalMethods.toSingleOf(
+    vararg params: Pair<String, Any?>,
+    noinline onResult: (DataResult<T>) -> Unit
+): Job = toSingleOf(typeOf<T>(), params.toMap(), onResult)
+
+// To List Of / To Single Of with mappers
+
+inline fun <reified T : Any> AsyncTerminalMethods.toListOf(
+    mapper: DataMapper<T>,
+    vararg params: Pair<String, Any?>,
+    noinline onResult: (DataResult<List<T>>) -> Unit
+): Job = toListOf(mapper, params.toMap(), onResult)
+
+inline fun <reified T> AsyncTerminalMethods.toSingleOf(
+    mapper: DataMapper<T & Any>,
+    params: Map<String, Any?> = emptyMap(),
+    noinline onResult: (DataResult<T>) -> Unit
+): Job = toSingleOf(typeOf<T>(), mapper, params, onResult)
+
+inline fun <reified T> AsyncTerminalMethods.toSingleOf(
+    mapper: DataMapper<T & Any>,
+    vararg params: Pair<String, Any?>,
+    noinline onResult: (DataResult<T>) -> Unit
+): Job = toSingleOf(typeOf<T>(), mapper, params.toMap(), onResult)

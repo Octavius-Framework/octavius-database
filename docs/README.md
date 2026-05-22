@@ -8,12 +8,12 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 
 | Document                                              | Description                                                                                                                                                        |
 |-------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [Configuration](configuration.md)                     | Initialization, DatabaseConfig, Flyway (optional), core types, Type Registry scanning, DynamicDto strategy                                                         |
+| [Configuration](configuration.md)                     | Initialization, DatabaseConfig, Flyway (optional), core types, Type Registry scanning, JSON Configuration, DynamicDto strategy                                     |
 | [Multiplatform Support](multiplatform.md)             | Sharing DTOs between JVM backend and JS frontend, Multiplatform BigDecimal, Serializers                                                                            |
 | [Lifecycle & Shutdown](lifecycle-and-shutdown.md)     | Proper cleanup, .use {} block, common integration patterns                                                                                                         |
 | [Query Builders](query-builders.md)                   | SELECT (FOR UPDATE), INSERT (ON CONFLICT), UPDATE, DELETE, fragments, `.options()` and builder modes                                                               |
 | [Functions & Procedures](functions-and-procedures.md) | Calling functions and procedures                                                                                                                                   |
-| [Executing Queries](executing-queries.md)             | Terminal methods, DataResult, getOrThrow, async execution, streaming                                                                                               |
+| [Executing Queries](executing-queries.md)             | Terminal methods, DataResult, getOrThrow, async execution, iterative execution                                                                                     |
 | [Parameter Handling](parameter-handling.md)           | Named parameters (@), JSONB operator escaping (?), collections & flattening, unnest and bulk operations                                                            |
 | [Data Mapping](data-mapping.md)                       | toDataMap(), toDataObject(), @MapKey - converting between objects and maps                                                                                         |
 | [ORM-Like Patterns](orm-patterns.md)                  | CRUD patterns, real-world examples, PostgreSQL composite types                                                                                                     |
@@ -54,7 +54,7 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 - [Terminal Methods](executing-queries.md#terminal-methods) - `toList()`, `toListOf()`, `toField()`, `execute()`
 - [DataResult](executing-queries.md#dataresult) - Success/Failure result pattern
 - [Async Execution](executing-queries.md#async-execution) - Coroutine-based async queries
-- [Streaming](executing-queries.md#streaming) - Process large datasets via `asStream`
+- [Iterative Execution](executing-queries.md#iterative-execution) - Process large datasets via `iterate`
 
 ### Data Mapping
 - [toDataObject()](data-mapping.md#todataobject---map-to-data-class) - Map rows to data classes
@@ -80,7 +80,7 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 - [Error Handling](transactions.md#error-handling) - Error handling inside transactions
 
 ### Notifications
-- [Sending Notifications](notifications.md#sending-notifications--notify) - `notify()` via `pg_notify`
+- [Sending Notifications](notifications.md#sending-notifications) - `notify()` via `pg_notify`
 - [Receiving Notifications](notifications.md#receiving-notifications--createchannellistener) - `createChannelListener()` + `Flow<PgNotification>`
 - [Multiple Channels](notifications.md#multiple-channels) - Subscribe to several channels at once
 - [Transactions and NOTIFY](notifications.md#transactions-and-notify) - Notifications respect transaction commit
@@ -115,12 +115,11 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 - [@PgEnum](type-system.md#pgenum) - Map Kotlin enums to PostgreSQL ENUMs
 - [@PgComposite](type-system.md#pgcomposite) - Map data classes to COMPOSITE types
 - [Manual Composite Mapping](type-system.md#manual-composite-mapping-pgcompositemapper) - Manual mapping of composite types
-- [@DynamicallyMappable](type-system.md#dynamicallymappable) - Polymorphic storage with `dynamic_dto`
+- [@DynamicallyMappable](type-system.md#dynamic-types-dynamic_dto) - Polymorphic storage with `dynamic_dto`
 - [Inserting Dynamic Data](type-system.md#inserting-dynamic-data) - How to persist dynamic_dto and polymorphic lists
 - [Custom Type Handlers](type-system.md#custom-type-handlers) - Implement custom serialization for any PostgreSQL type
 - [Global Registration](type-system.md#global-registration-via-globaltypehandler) - `GlobalTypeHandler` and auto-discovery
 - [Per-Query Configuration](type-system.md#per-query-configuration-via-options-) - `.options()` for ad-hoc mapping and handler overrides
-- [Helper Serializers & KMP Types](type-system.md#helper-serializers--multiplatform-types) - Links to multiplatform-specific type details
 
 ### Configuration
 - [Initialization](configuration.md#initialization) - `fromConfig()` and `fromDataSource()`
@@ -129,6 +128,7 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 - [Flyway Migrations](configuration.md#flyway-migrations) - Optional migration runner integration
 - [Core Type Initialization](configuration.md#core-type-initialization) - `dynamic_dto` setup
 - [Type Registry Scanning](configuration.md#type-registry-scanning) - Classpath and database scanning process
+- [JSON Configuration](configuration.md#json-configuration) - Customizing the internal Json instance
 - [DynamicDto Strategy](configuration.md#dynamicdto-serialization-strategy) - Serialization options
 - [Connection Pool](configuration.md#connection-pool) - HikariCP customization
 

@@ -3,13 +3,17 @@ package io.github.octaviusframework.db.core
 import io.github.octaviusframework.db.api.DataAccess
 import io.github.octaviusframework.db.api.DataResult
 import io.github.octaviusframework.db.api.QueryOperations
+import io.github.octaviusframework.db.api.annotation.DynamicallyMappable
 import io.github.octaviusframework.db.api.builder.*
 import io.github.octaviusframework.db.api.exception.DatabaseException
 import io.github.octaviusframework.db.api.exception.FatalDatabaseException
 import io.github.octaviusframework.db.api.exception.OctaviusException
 import io.github.octaviusframework.db.api.exception.QueryContext
+import io.github.octaviusframework.db.api.exception.TypeMappingException
+import io.github.octaviusframework.db.api.exception.TypeMappingExceptionMessage
 import io.github.octaviusframework.db.api.notification.PgChannelListener
 import io.github.octaviusframework.db.api.transaction.*
+import io.github.octaviusframework.db.api.type.DynamicDto
 import io.github.octaviusframework.db.core.builder.*
 import io.github.octaviusframework.db.core.exception.ExceptionTranslator
 import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
@@ -20,6 +24,8 @@ import io.github.octaviusframework.db.core.transaction.TransactionPlanExecutor
 import io.github.octaviusframework.db.core.type.KotlinToPostgresConverter
 import io.github.octaviusframework.db.core.type.registry.TypeRegistry
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.modules.SerializersModule
 import java.sql.Connection
 
 internal class DatabaseAccess(
@@ -28,11 +34,13 @@ internal class DatabaseAccess(
     private val typeRegistry: TypeRegistry,
     kotlinToPostgresConverter: KotlinToPostgresConverter,
     private val listenerConnectionFactory: () -> Connection,
+    override val json: Json,
     private val onClose: (() -> Unit)? = null
 ) : DataAccess {
-    private val rowMappers = RowMappers(typeRegistry)
+    private val rowMappers = RowMappers(typeRegistry, json)
     private val queryExecutor = QueryExecutor(jdbcTemplate, kotlinToPostgresConverter)
-    val transactionPlanExecutor = TransactionPlanExecutor(transactionProvider)
+    private val transactionPlanExecutor = TransactionPlanExecutor(transactionProvider)
+
     // --- QueryOperations implementation (for single queries and transaction usage) ---
 
     override fun select(vararg columns: String): SelectQueryBuilder {
@@ -58,6 +66,19 @@ internal class DatabaseAccess(
 
     override fun rawQuery(sql: String): RawQueryBuilder {
         return DatabaseRawQueryBuilder(queryExecutor, rowMappers, typeRegistry, sql)
+    }
+
+    override fun toDynamicDto(value: Any, json: Json?): DynamicDto {
+        val kClass = value::class
+        val typeName = typeRegistry.getDynamicTypeNameForClass(kClass)
+            ?: throw TypeMappingException(
+                TypeMappingExceptionMessage.JSON_SERIALIZATION_FAILED,
+                value = kClass.simpleName,
+                targetType = DynamicallyMappable::class.simpleName
+            )
+        val serializer = typeRegistry.getDynamicSerializer(typeName)
+        val jsonToUse = json ?: this.json
+        return DynamicDto.from(value, typeName, serializer, jsonToUse)
     }
 
     //--- Transaction management implementation ---
@@ -114,12 +135,17 @@ internal class DatabaseAccess(
         }
     }
 
+    // Notifications
     override fun notify(channel: String, payload: String?): DataResult<Unit> {
-        return rawQuery("SELECT pg_notify(@channel, @payload)").toField<Unit>("channel" to channel, "payload" to payload)
+        return rawQuery("SELECT pg_notify(@channel, @payload)").toField<Unit>(
+            "channel" to channel,
+            "payload" to payload
+        )
     }
 
     override fun notifyStep(channel: String, payload: String?): TransactionStep<Unit> {
-        return rawQuery("SELECT pg_notify(@channel, @payload)").asStep().toField<Unit>("channel" to channel, "payload" to payload)
+        return rawQuery("SELECT pg_notify(@channel, @payload)").asStep()
+            .toField<Unit>("channel" to channel, "payload" to payload)
     }
 
     override fun createChannelListener(): PgChannelListener {
@@ -127,9 +153,12 @@ internal class DatabaseAccess(
         return DatabasePgChannelListener(connection)
     }
 
+    // Other
     override fun close() {
         onClose?.invoke()
     }
+
+    override val enumSerializers: SerializersModule get() = typeRegistry.enumSerializers
 
     companion object {
         private val logger = KotlinLogging.logger {}

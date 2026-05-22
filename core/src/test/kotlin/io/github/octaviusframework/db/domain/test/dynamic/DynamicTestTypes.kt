@@ -26,3 +26,10 @@ data class UserStats(
     val postCount: Int,
     val commentCount: Int
 )
+
+@Serializable
+@DynamicallyMappable("profile_with_enum_dto")
+data class ProfileWithEnum(
+    val status: io.github.octaviusframework.db.domain.test.pgtype.TestStatus,
+    val items: List<io.github.octaviusframework.db.domain.test.pgtype.TestStatus>
+)

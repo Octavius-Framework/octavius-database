@@ -1,10 +1,11 @@
 package io.github.octaviusframework.db.core.builder
 
-import io.github.octaviusframework.db.api.annotation.PgCompositeMapper
+import io.github.octaviusframework.db.api.mapper.PgCompositeMapper
 import io.github.octaviusframework.db.api.builder.QueryOptions
 import io.github.octaviusframework.db.api.builder.QueryOptionsBuilder
 import io.github.octaviusframework.db.api.type.QualifiedName
 import io.github.octaviusframework.db.api.type.TypeHandler
+import kotlinx.serialization.json.Json
 
 internal class DatabaseQueryOptionsBuilder : QueryOptionsBuilder {
 
@@ -13,6 +14,7 @@ internal class DatabaseQueryOptionsBuilder : QueryOptionsBuilder {
     private val customCompositeMappers = mutableMapOf<QualifiedName, PgCompositeMapper<*>>()
 
     private var returnAllCompositesAsMaps = false
+    private var json: Json? = null
 
     override fun registerTypeHandler(handler: TypeHandler<*>): QueryOptionsBuilder = apply {
         typeHandlers.add(handler)
@@ -34,11 +36,16 @@ internal class DatabaseQueryOptionsBuilder : QueryOptionsBuilder {
         returnAllCompositesAsMaps = true
     }
 
+    override fun json(json: Json): QueryOptionsBuilder = apply {
+        this.json = json
+    }
+
     fun build(): QueryOptions = QueryOptions(
         typeHandlers = typeHandlers,
         compositeAsMapTypes = compositeAsMapTypes,
         customCompositeMappers = customCompositeMappers,
-        returnAllCompositesAsMaps = returnAllCompositesAsMaps
+        returnAllCompositesAsMaps = returnAllCompositesAsMaps,
+        json = json
     )
 
     fun copy(): DatabaseQueryOptionsBuilder {
@@ -47,6 +54,7 @@ internal class DatabaseQueryOptionsBuilder : QueryOptionsBuilder {
             compositeAsMapTypes.addAll(compositeAsMapTypes)
             customCompositeMappers.putAll(customCompositeMappers)
             returnAllCompositesAsMaps = this@DatabaseQueryOptionsBuilder.returnAllCompositesAsMaps
+            json = this@DatabaseQueryOptionsBuilder.json
         }
     }
 }

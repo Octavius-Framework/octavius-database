@@ -404,26 +404,35 @@ interface QueryBuilder<T : QueryBuilder<T>> {
     fun async(scope: CoroutineScope, ioDispatcher: CoroutineDispatcher = Dispatchers.IO): AsyncTerminalMethods
 
     /**
-     * Switches the builder to streaming mode, optimal for large datasets.
+     * Switches the builder to iterative mode, optimal for large datasets.
      *
-     * **Requires an active transaction.** Must be called inside a `DataAccess.transaction { }` block —
-     * otherwise PostgreSQL will ignore [fetchSize] and load all rows into RAM.
+     * **Transaction Requirement:**
+     * When [fetchSize] is greater than 0, this method **must** be called inside a `DataAccess.transaction { }` block.
+     * Otherwise, a [BadStatementException][io.github.octaviusframework.db.api.exception.BadStatementException] will be thrown.
+     * This enforcement prevents the PostgreSQL driver from silently ignoring the fetch size and loading
+     * all rows into RAM (which happens when `autoCommit` is true).
+     *
+     * **Backdoor (In-memory processing):**
+     * If you want to use the iterative API for convenience (e.g., deduplication or grouping) on small datasets
+     * and you are okay with loading all rows into RAM, set [fetchSize] to `0`. In this case,
+     * an active transaction is not required.
      *
      * ```kotlin
      * dataAccess.transaction {
      *     select("*").from("census_records")
      *         .where("year = @year")
-     *         .asStream(fetchSize = 500)
-     *         .forEachRow<CensusRecord>("year" to 14) { record ->
+     *         .iterate(fetchSize = 500)
+     *         .forEachRowOf<CensusRecord>("year" to 14) { record ->
      *             processCensusEntry(record)
      *         }
      * }
      * ```
      *
-     * @param fetchSize Number of rows fetched from the database in one batch.
-     * @return New builder instance with streaming terminal methods.
+     * @param fetchSize Number of rows fetched from the database in one batch. Set to 0 to disable cursor-based fetching.
+     * @return New builder instance with iterative terminal methods.
+     * @throws io.github.octaviusframework.db.api.exception.BadStatementException if fetchSize > 0 and no transaction is active.
      */
-    fun asStream(fetchSize: Int = 100): StreamingTerminalMethods
+    fun iterate(fetchSize: Int = 100): IterativeTerminalMethods
 
     /**
      * Creates and returns a deep copy of this builder.

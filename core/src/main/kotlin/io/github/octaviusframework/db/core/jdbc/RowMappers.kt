@@ -1,5 +1,6 @@
 package io.github.octaviusframework.db.core.jdbc
 
+import io.github.octaviusframework.db.api.mapper.DataMapper
 import io.github.octaviusframework.db.api.exception.TypeMappingException
 import io.github.octaviusframework.db.api.exception.TypeMappingExceptionMessage
 import io.github.octaviusframework.db.api.toDataObject
@@ -8,6 +9,7 @@ import io.github.octaviusframework.db.core.type.InternalQueryOptions
 import io.github.octaviusframework.db.core.type.ResultSetValueExtractor
 import io.github.octaviusframework.db.core.type.registry.TypeRegistry
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.serialization.json.Json
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
@@ -22,9 +24,11 @@ import kotlin.reflect.KType
  */
 @Suppress("FunctionName")
 internal class RowMappers(
-    typeRegistry: TypeRegistry
+    typeRegistry: TypeRegistry,
+    val json: Json
 ) {
     private val valueExtractor = ResultSetValueExtractor(typeRegistry)
+
     companion object {
         private val logger = KotlinLogging.logger {}
     }
@@ -104,6 +108,27 @@ internal class RowMappers(
             val result = map.toDataObject(kClass)
             logger.trace { "Successfully mapped row to ${kClass.simpleName}" }
             result
+        }
+    }
+
+    /**
+     * Creates a mapper that converts each row using a provided manual [mapper].
+     *
+     * This is the most efficient way to map rows as it bypasses reflection entirely.
+     */
+    fun <T : Any> CustomObjectMapper(mapper: DataMapper<T>, options: InternalQueryOptions): RowMapper<T> {
+        val baseMapper = ColumnNameMapper(options)
+        return RowMapper { rs ->
+            val map = baseMapper.mapRow(rs)
+            try {
+                mapper.toDataObject(map)
+            } catch (e: Exception) {
+                throw TypeMappingException(
+                    messageEnum = TypeMappingExceptionMessage.OBJECT_MAPPING_FAILED,
+                    rowData = map,
+                    cause = e
+                )
+            }
         }
     }
 }

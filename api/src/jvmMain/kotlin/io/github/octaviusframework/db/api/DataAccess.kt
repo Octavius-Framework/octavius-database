@@ -3,6 +3,9 @@ package io.github.octaviusframework.db.api
 import io.github.octaviusframework.db.api.builder.*
 import io.github.octaviusframework.db.api.notification.PgChannelListener
 import io.github.octaviusframework.db.api.transaction.*
+import kotlinx.serialization.json.Json
+import io.github.octaviusframework.db.api.type.DynamicDto
+import kotlinx.serialization.modules.SerializersModule
 
 /**
  * Defines the contract for basic database operations (CRUD and raw queries).
@@ -78,6 +81,39 @@ interface QueryOperations {
  * Call [close] or use the interface within a `use` block to ensure proper resource cleanup.
  */
 interface DataAccess : QueryOperations, AutoCloseable {
+
+    /**
+     * The custom JSON configuration used internally by the database operations,
+     * especially crucial for `dynamic_dto` serialization.
+     * 
+     * This instance is automatically configured with [octaviusSerializersModule][io.github.octaviusframework.db.api.serializer.octaviusSerializersModule]
+     * as well as dynamically generated serializers for PostgreSQL enums discovered by the TypeRegistry.
+     * It ensures that data serialized or deserialized to/from JSON matches the database format.
+     */
+    val json: Json
+
+    /**
+     * A dynamically generated [SerializersModule] containing contextual serializers for 
+     * all PostgreSQL enums discovered and registered by the database.
+     * 
+     * This module is already included in the [json] property. It is exposed publicly 
+     * in case you need to build your own custom [Json] configuration in the application layer 
+     * that correctly supports database-defined enums.
+     */
+    val enumSerializers: SerializersModule
+
+    /**
+     * Helper method to manually serialize a domain object into a [DynamicDto].
+     * 
+     * By default, it uses the database's internal [Json] configuration, which guarantees that
+     * specific types (like PostgreSQL enums, BigDecimals, or infinity dates) are serialized correctly.
+     * The object must be annotated with [@DynamicallyMappable][io.github.octaviusframework.db.api.annotation.DynamicallyMappable] and [@Serializable][kotlinx.serialization.Serializable].
+     *
+     * @param value The domain object to serialize.
+     * @param json Optional custom JSON configuration to use instead of the database's default [DataAccess.json].
+     * @return A constructed [DynamicDto] ready to be passed to queries.
+     */
+    fun toDynamicDto(value: Any, json: Json? = null): DynamicDto
 
     /**
      * Executes a pre-configured [TransactionPlan] as a single, atomic transaction.

@@ -7,7 +7,7 @@ Octavius Database provides fluent query builders for all CRUD operations. Each b
 - **Named parameters** using `@param` syntax
 - **Multiple terminal methods** for different result types
 - **Async execution** via `async()`
-- **Streaming** for large datasets via `asStream()`
+- **Iterative Execution** for large datasets via `iterate()`
 - **Transaction steps** via `asStep()`
 
 ## Table of Contents
@@ -26,7 +26,7 @@ Octavius Database provides fluent query builders for all CRUD operations. Each b
 - [`.options()` - Query Configuration](#options---query-configuration)
 - [Builder Modes](#builder-modes)
 
-> **Executing Queries**: For terminal methods (`toList()`, `toSingleOf()`, `execute()`, etc.), async execution, and streaming, see [Executing Queries](executing-queries.md).
+> **Executing Queries**: For terminal methods (`toList()`, `toSingleOf()`, `execute()`, etc.), async execution, and iterative execution, see [Executing Queries](executing-queries.md).
 
 ---
 
@@ -696,6 +696,7 @@ See [Transactions](transactions.md) for full documentation.
 
 Execute queries asynchronously using coroutines. See [Executing Queries - Async](executing-queries.md#async-execution).
 
-### `.asStream()` - Streaming
+### `.iterate()` - Iterative Execution
 
-Process large datasets without loading everything into memory. See [Executing Queries - Streaming](executing-queries.md#streaming).
+Process large datasets without loading everything into memory. **Requires an active transaction**, otherwise a `BadStatementException` is thrown to prevent memory exhaustion. However, if you explicitly want to bypass the transaction requirement (allowing PostgreSQL to load the entire result into driver memory), you can set `fetchSize = 0`.
+See [Executing Queries - Iterative Execution](executing-queries.md#iterative-execution).

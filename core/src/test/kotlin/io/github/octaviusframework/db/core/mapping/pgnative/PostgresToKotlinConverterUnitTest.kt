@@ -54,7 +54,7 @@ class PostgresToKotlinConverterUnitTest {
     }
     private val fakeTypeRegistry = createFakeTypeRegistry()
     private val converter = PostgresToKotlinConverter(fakeTypeRegistry)
-    private val options = InternalQueryOptions(QueryOptions(), fakeTypeRegistry)
+    private val options = InternalQueryOptions(QueryOptions(), fakeTypeRegistry, Json)
 
     private fun getOid(name: QualifiedName) = fakeTypeRegistry.getOidForName(name)
 

@@ -1,6 +1,6 @@
 package io.github.octaviusframework.db.core.type
 
-import io.github.octaviusframework.db.api.annotation.PgCompositeMapper
+import io.github.octaviusframework.db.api.mapper.PgCompositeMapper
 import io.github.octaviusframework.db.api.exception.TypeMappingException
 import io.github.octaviusframework.db.api.exception.TypeMappingExceptionMessage
 import io.github.octaviusframework.db.api.exception.TypeRegistryException
@@ -116,7 +116,7 @@ internal class PgTextSerializer(
             if (shouldUseDynamicDto(kClass)) {
                 typeRegistry.getDynamicTypeNameForClass(kClass)?.let { typeName ->
                     logger.trace { "Converting class ${kClass.simpleName} to Dynamic DTO [$typeName]" }
-                    current = DynamicDto.from(current, typeName, typeRegistry.getDynamicSerializer(typeName))
+                    current = DynamicDto.from(current, typeName, typeRegistry.getDynamicSerializer(typeName), options.json)
                 }
             }
         }

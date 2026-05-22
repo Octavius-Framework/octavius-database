@@ -4,8 +4,10 @@ import io.github.octaviusframework.db.api.exception.TypeRegistryException
 import io.github.octaviusframework.db.api.exception.TypeRegistryExceptionMessage
 import io.github.octaviusframework.db.api.type.QualifiedName
 import io.github.octaviusframework.db.api.type.TypeHandler
+import io.github.octaviusframework.db.core.type.PgEnumSerializer
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.modules.SerializersModule
 import kotlin.reflect.KClass
 import kotlin.reflect.full.isSubclassOf
 
@@ -113,6 +115,13 @@ internal class TypeRegistry(
             oid = oid,
             expectedCategory = expected
         )
+    }
+
+    val enumSerializers: SerializersModule = SerializersModule {
+        enumsByOid.values.forEach { enumDef ->
+            @Suppress("UNCHECKED_CAST")
+            contextual(enumDef.kClass as KClass<Any>, PgEnumSerializer(enumDef) as KSerializer<Any>)
+        }
     }
 
     companion object {

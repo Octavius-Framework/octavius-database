@@ -1,9 +1,9 @@
 package io.github.octaviusframework.db.core.builder
 
-import io.github.octaviusframework.db.api.annotation.PgCompositeMapper
 import io.github.octaviusframework.db.api.builder.toColumn
 import io.github.octaviusframework.db.api.builder.toSingle
 import io.github.octaviusframework.db.api.getOrThrow
+import io.github.octaviusframework.db.api.mapper.PgCompositeMapper
 import io.github.octaviusframework.db.api.type.TypeHandler
 import io.github.octaviusframework.db.core.AbstractIntegrationTest
 import io.github.octaviusframework.db.domain.test.pgtype.TestPerson

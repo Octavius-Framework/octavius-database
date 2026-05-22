@@ -12,6 +12,7 @@ This guide covers all configuration options for Octavius Database, including ini
 - [Flyway Migrations](#flyway-migrations)
 - [Core Type Initialization](#core-type-initialization)
 - [Type Registry Scanning](#type-registry-scanning)
+- [JSON Configuration](#json-configuration)
 - [DynamicDto Serialization Strategy](#dynamicdto-serialization-strategy)
 - [Schema Configuration](#schema-configuration)
 - [Using Existing DataSource](#using-existing-datasource)
@@ -35,7 +36,13 @@ val dataAccess = OctaviusDatabase.fromConfig(
         setSearchPath = true,
         packagesToScan = listOf("com.roma.domain", "com.roma.dto")
     ),
-    transactionProvider = null // Optional custom transaction manager
+    transactionProvider = null, // Optional custom transaction manager
+    jsonConfiguration = { module -> 
+        Json { 
+            serializersModule = module
+            ignoreUnknownKeys = true 
+        } 
+    } // Optional custom Json instance configuration
 )
 ```
 
@@ -276,6 +283,31 @@ This metadata is cached in memory for high-performance lookup during query execu
 
 ---
 
+## JSON Configuration
+
+Octavius internally uses `kotlinx.serialization` to serialize and deserialize data to/from PostgreSQL JSONB columns (especially for `dynamic_dto`). By default, it configures a `Json` instance that includes `octaviusSerializersModule` and automatically generated serializers for your `@PgEnum` classes.
+
+You can customize this instance (for example, to ignore unknown keys or change formatting) using the `jsonConfiguration` parameter during initialization:
+
+```kotlin
+val dataAccess = OctaviusDatabase.fromConfig(
+    config = DatabaseConfig(/*...*/),
+    jsonConfiguration = { combinedModule ->
+        Json {
+            serializersModule = combinedModule
+            
+            ignoreUnknownKeys = true
+            encodeDefaults = true
+            explicitNulls = false
+        }
+    }
+)
+```
+
+**Important:** The `combinedModule` provided to the lambda contains both Octavius's internal serializers (like `BigDecimalAsNumberSerializer`) and the dynamically generated enum serializers. You **should** assign it to `serializersModule` in your custom `Json` block to use them with `@Contextual`.
+
+---
+
 ## DynamicDto Serialization Strategy
 
 Controls how classes with `@DynamicallyMappable` are serialized.
@@ -412,7 +444,8 @@ val dataAccess = OctaviusDatabase.fromDataSource(
     dynamicDtoStrategy = DynamicDtoSerializationStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS,
     disableCoreTypeInitialization = false,
     migrationRunner = null, // Pass migration runner if needed
-    transactionProvider = null // Optional custom transaction manager
+    transactionProvider = null, // Optional custom transaction manager
+    jsonConfiguration = null // Optional custom Json configuration
 )
 ```
 

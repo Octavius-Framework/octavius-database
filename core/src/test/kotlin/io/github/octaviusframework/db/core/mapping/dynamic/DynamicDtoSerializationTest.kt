@@ -13,6 +13,8 @@ import io.github.octaviusframework.db.core.config.DynamicDtoSerializationStrateg
 import io.github.octaviusframework.db.core.jdbc.DefaultJdbcTransactionProvider
 import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
 import io.github.octaviusframework.db.domain.test.dynamic.DynamicProfile
+import io.github.octaviusframework.db.domain.test.dynamic.ProfileWithEnum
+import io.github.octaviusframework.db.domain.test.pgtype.TestStatus
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.*
 import java.nio.file.Files
@@ -50,7 +52,13 @@ class DynamicDtoSerializationTest {
         // Używamy nowego skryptu
         jdbcTemplate.execute("DROP SCHEMA IF EXISTS public CASCADE;")
         jdbcTemplate.execute("CREATE SCHEMA public;")
-        val initSql = String(Files.readAllBytes(Paths.get(this::class.java.classLoader.getResource("init-dynamic-serialization-test-db.sql")!!.toURI())))
+        val initSql = String(
+            Files.readAllBytes(
+                Paths.get(
+                    this::class.java.classLoader.getResource("init-dynamic-serialization-test-db.sql")!!.toURI()
+                )
+            )
+        )
         jdbcTemplate.execute(initSql)
         println("Dynamic DTO serialization test DB schema initialized.")
 
@@ -143,8 +151,38 @@ class DynamicDtoSerializationTest {
             if (result is DataResult.Failure) {
                 val queryExecutionError = result.error
                 assertThat(queryExecutionError).isInstanceOf(TypeRegistryException::class.java)
-                throw queryExecutionError
             }
         }
+    }
+
+    @Test
+    fun `should serialize and deserialize DynamicDto with nested enum correctly`() {
+        val originalProfile = ProfileWithEnum(
+            status = TestStatus.Pending,
+            items = listOf(TestStatus.Active, TestStatus.NotStarted)
+        )
+
+        val insertSql = """
+            INSERT INTO dynamic_storage (description, dynamic_data) 
+            VALUES (@desc, @profile) 
+            RETURNING id
+        """.trimIndent()
+
+        val result = dataAccessWithFeature.rawQuery(insertSql)
+            .toField<Int>(
+                "desc" to "Test with enum",
+                "profile" to originalProfile
+            )
+
+        val newId = assertDoesNotThrow { (result as DataResult.Success).value }
+
+        val retrievedData = dataAccessWithFeature.select("dynamic_data")
+            .from("dynamic_storage")
+            .where("id = @id")
+            .toField<ProfileWithEnum>("id" to newId)
+            .let { (it as DataResult.Success).value }
+
+        assertThat(retrievedData).isNotNull
+        assertThat(retrievedData).isEqualTo(originalProfile)
     }
 }

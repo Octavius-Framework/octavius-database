@@ -1,5 +1,6 @@
 package io.github.octaviusframework.db.core.builder
 
+import io.github.octaviusframework.db.api.mapper.DataMapper
 import io.github.octaviusframework.db.api.builder.StepBuilderMethods
 import io.github.octaviusframework.db.api.transaction.TransactionStep
 import kotlin.reflect.KType
@@ -37,11 +38,29 @@ internal class StepBuilder(private val builder: AbstractQueryBuilder<*>) : StepB
         )
     }
 
+    /** Creates TransactionStep with toListOf method using a manual [mapper] */
+    override fun <T : Any> toListOf(params: Map<String, Any?>, mapper: DataMapper<T>): TransactionStep<List<T>> {
+        return TransactionStep(
+            builder = this.builder,
+            executionLogic = { b, p -> (b as AbstractQueryBuilder<*>).toListOf(p, mapper) },
+            params = params
+        )
+    }
+
     /** Creates TransactionStep with toListOf method */
-    override fun <T> toListOf(kType: KType, params: Map<String, Any?>): TransactionStep<List<T>> {
+    override fun <T : Any> toListOf(kType: KType, params: Map<String, Any?>): TransactionStep<List<T>> {
         return TransactionStep(
             builder = this.builder,
             executionLogic = { b, p -> (b as AbstractQueryBuilder<*>).toListOf(kType, p) },
+            params = params
+        )
+    }
+
+    /** Creates TransactionStep with toSingleOf method using a manual [mapper] */
+    override fun <T> toSingleOf(kType: KType, params: Map<String, Any?>, mapper: DataMapper<T & Any>): TransactionStep<T> {
+        return TransactionStep(
+            builder = this.builder,
+            executionLogic = { b, p -> (b as AbstractQueryBuilder<*>).toSingleOf(kType, p, mapper) },
             params = params
         )
     }

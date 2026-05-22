@@ -11,6 +11,9 @@ BEGIN
     RETURN ROW(p_type_name, p_data)::dynamic_dto;
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE TYPE test_status AS ENUM ('active', 'pending', 'not_started');
+
 -----------------
 
 -- 1. Tabela do przechowywania naszych dynamicznych obiektów

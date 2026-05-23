@@ -13,7 +13,7 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 | [Lifecycle & Shutdown](lifecycle-and-shutdown.md)     | Proper cleanup, .use {} block, common integration patterns                                                                                                         |
 | [Query Builders](query-builders.md)                   | SELECT (FOR UPDATE), INSERT (ON CONFLICT), UPDATE, DELETE, fragments, `.options()` and builder modes                                                               |
 | [Functions & Procedures](functions-and-procedures.md) | Calling functions and procedures                                                                                                                                   |
-| [Executing Queries](executing-queries.md)             | Terminal methods, DataResult, getOrThrow, async execution, iterative execution                                                                                     |
+| [Executing Queries](executing-queries.md)             | Terminal methods, DataResult, getOrThrow, iterative execution, coroutines                                                                                          |
 | [Parameter Handling](parameter-handling.md)           | Named parameters (@), JSONB operator escaping (?), collections & flattening, unnest and bulk operations                                                            |
 | [Data Mapping](data-mapping.md)                       | toDataMap(), toDataObject(), @MapKey - converting between objects and maps                                                                                         |
 | [ORM-Like Patterns](orm-patterns.md)                  | CRUD patterns, real-world examples, PostgreSQL composite types                                                                                                     |
@@ -53,8 +53,8 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 ### Executing Queries
 - [Terminal Methods](executing-queries.md#terminal-methods) - `toList()`, `toListOf()`, `toField()`, `execute()`
 - [DataResult](executing-queries.md#dataresult) - Success/Failure result pattern
-- [Async Execution](executing-queries.md#async-execution) - Coroutine-based async queries
 - [Iterative Execution](executing-queries.md#iterative-execution) - Process large datasets via `iterate`
+- [Coroutines & Async](executing-queries.md#asynchronous-execution-coroutines) - Standard Coroutine integrations
 
 ### Data Mapping
 - [toDataObject()](data-mapping.md#todataobject---map-to-data-class) - Map rows to data classes

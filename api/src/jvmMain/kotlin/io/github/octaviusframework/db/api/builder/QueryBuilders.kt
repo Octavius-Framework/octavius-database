@@ -1,8 +1,5 @@
 package io.github.octaviusframework.db.api.builder
 
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 
 /**
  * Controls the waiting behavior when acquiring row-level locks in a SELECT query.
@@ -392,16 +389,6 @@ interface QueryBuilder<T : QueryBuilder<T>> {
      * ```
      */
     fun asStep(): StepBuilderMethods
-
-    /**
-     * Switches the builder to asynchronous mode.
-     * Requires providing a [CoroutineScope] in which callback will be launched.
-     *
-     * @param scope Coroutine scope (typically from ViewModel or request handler) for lifecycle management.
-     * @param ioDispatcher Dispatcher on which the query should be executed.
-     * @return New builder instance with asynchronous terminal methods.
-     */
-    fun async(scope: CoroutineScope, ioDispatcher: CoroutineDispatcher = Dispatchers.IO): AsyncTerminalMethods
 
     /**
      * Switches the builder to iterative mode, optimal for large datasets.

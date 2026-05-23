@@ -50,27 +50,6 @@ class ManualMappingIntegrationTest : AbstractIntegrationTest() {
     }
 
     @Test
-    fun `async toListOf with lambda should map results correctly`() {
-        val latch = CountDownLatch(1)
-        var capturedResult: DataResult<List<Person>>? = null
-
-        runBlocking {
-            dataAccess.select("*").from("manual_map_test").orderBy("id ASC")
-                .async(this).toListOf({ map ->
-                    Person(id = map["id"] as Int, name = map["name"] as String)
-                }) { result ->
-                    capturedResult = result
-                    latch.countDown()
-                }
-        }
-
-        assertTrue(latch.await(5, TimeUnit.SECONDS))
-        assertNotNull(capturedResult)
-        assertTrue(capturedResult is DataResult.Success)
-        assertEquals(3, (capturedResult as DataResult.Success).value.size)
-    }
-
-    @Test
     fun `forEachRowOf with lambda should process results correctly`() {
         val people = mutableListOf<Person>()
         

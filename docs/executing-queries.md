@@ -2,15 +2,15 @@
 
 *A legatus does not merely issue commands — he awaits dispatches confirming their execution, and must know how to respond when a messenger returns with ill tidings. Handle every result. Acknowledge every failure. The Republic depends on it.*
 
-Once you've built a query using the [Query Builders](query-builders.md), you need to execute it and handle the results. This guide covers terminal methods, the `DataResult` pattern, async execution, and iterative execution.
+Once you've built a query using the [Query Builders](query-builders.md), you need to execute it and handle the results. This guide covers terminal methods, the `DataResult` pattern, and iterative execution.
 
 ## Table of Contents
 
 - [Terminal Methods](#terminal-methods)
 - [DataResult](#dataresult)
 - [Working with DataResult](#working-with-dataresult)
-- [Async Execution](#async-execution)
 - [Iterative Execution](#iterative-execution)
+- [Asynchronous Execution (Coroutines)](#asynchronous-execution-coroutines)
 
 ---
 
@@ -285,62 +285,6 @@ val citizen = dataAccess.select("*")
 ```
 
 ---
-
-## Async Execution
-
-Execute queries asynchronously using coroutines.
-
-### Usage
-
-```kotlin
-// Requires a CoroutineScope (e.g., viewModelScope)
-val job = dataAccess.select("*")
-    .from("citizens")
-    .where("tribe = @tribe")
-    .async(viewModelScope)
-    .toListOf<Citizen> { result ->
-        result.onSuccess { citizens ->
-            updateUI(citizens)
-        }.onFailure { error ->
-            showError(error)
-        }
-    }
-
-// Cancel if needed
-job.cancel()
-```
-
-### Available Async Methods
-
-All terminal methods have async counterparts accepting callbacks:
-
-```kotlin
-interface AsyncTerminalMethods {
-    fun toList(params, onResult: (DataResult<List<Map<String, Any?>>>) -> Unit): Job
-    fun toSingle(params, onResult: (DataResult<Map<String, Any?>?>) -> Unit): Job
-    fun toSingleStrict(params, onResult: (DataResult<Map<String, Any?>>) -> Unit): Job
-    fun <T> toListOf(kType, params, onResult: (DataResult<List<T>>) -> Unit): Job
-    fun <T> toListOf(kType, mapper, params, onResult: (DataResult<List<T>>) -> Unit): Job
-    fun <T> toSingleOf(kType, params, onResult: (DataResult<T>) -> Unit): Job
-    fun <T> toSingleOf(kType, mapper, params, onResult: (DataResult<T>) -> Unit): Job
-    fun <T> toField(kType, params, onResult: (DataResult<T>) -> Unit): Job
-    fun <T> toFieldStrict(kType, params, onResult: (DataResult<T>) -> Unit): Job
-    fun <T> toColumn(kType, params, onResult: (DataResult<List<T>>) -> Unit): Job
-    fun execute(params, onResult: (DataResult<Int>) -> Unit): Job
-}
-```
-
-### Custom Dispatcher
-
-```kotlin
-dataAccess.select("*")
-    .from("citizens")
-    .async(scope, ioDispatcher = Dispatchers.Default)
-    .toListOf<Citizen> { /* ... */ }
-```
-
----
-
 ## Iterative Execution
 
 Process large datasets without loading everything into memory.
@@ -383,6 +327,72 @@ dataAccess.transaction {
 ```
 
 ---
+
+## Asynchronous Execution (Coroutines)
+
+Octavius Database is built on top of JDBC, which is fundamentally synchronous and blocking. There is no `.async()` builder that magically makes the driver non-blocking. 
+
+If you are using Kotlin Coroutines (e.g., in Ktor or Compose) and want to execute queries without blocking the main/UI thread, you should use standard Kotlin `withContext` to offload the work to the IO dispatcher.
+
+### Usage in Application Code
+
+The recommended approach is to wrap the blocking database call in `withContext(Dispatchers.IO)`:
+
+```kotlin
+viewModelScope.launch {
+    // 1. On UI/Main thread
+    _state.update { it.copy(isLoading = true) }
+    
+    // 2. Switch to IO thread for blocking database operation
+    val result = withContext(Dispatchers.IO) {
+        dataAccess.select("*")
+            .from("citizens")
+            .toSingleOf<Citizen>()
+    }
+    
+    // 3. Kotlin automatically resumes on the UI/Main thread here!
+    result.onSuccess { citizen -> 
+        _state.update { it.copy(data = citizen, isLoading = false) }
+    }.onFailure {
+        showError(it)
+    }
+}
+```
+
+### Extension Functions for Cleaner Code
+
+If you find yourself writing `withContext(Dispatchers.IO)` frequently in your application layer, you can create simple extension functions in your own project:
+
+```kotlin
+suspend inline fun <reified T : Any> QueryBuilder<*>.awaitSingleOf(
+    vararg params: Pair<String, Any?>
+): DataResult<T> = withContext(Dispatchers.IO) {
+    this@awaitSingleOf.toSingleOf<T>(*params)
+}
+
+suspend inline fun <reified T : Any> QueryBuilder<*>.awaitListOf(
+    vararg params: Pair<String, Any?>
+): DataResult<List<T>> = withContext(Dispatchers.IO) {
+    this@awaitListOf.toListOf<T>(*params)
+}
+```
+
+Which allows you to write:
+```kotlin
+val result = dataAccess.select("*").from("citizens").awaitListOf<Citizen>()
+```
+
+> **Warning: Transactions and Coroutines**
+> Because Octavius Database uses `ThreadLocal` for transaction management, you **must not** switch threads (`withContext`) *inside* a `transaction { }` block, or you will lose the transaction context. If you need a transaction, wrap the entire transaction block inside `withContext(Dispatchers.IO)`, not the other way around:
+> 
+> ```kotlin
+> // CORRECT
+> withContext(Dispatchers.IO) {
+>     dataAccess.transaction {
+>         // ...
+>     }
+> }
+> ```
 
 ## See Also
 

@@ -8,8 +8,6 @@ import io.github.octaviusframework.db.core.jdbc.RowMapper
 import io.github.octaviusframework.db.core.jdbc.RowMappers
 import io.github.octaviusframework.db.core.type.InternalQueryOptions
 import io.github.octaviusframework.db.core.type.registry.TypeRegistry
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.CoroutineScope
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
@@ -316,10 +314,6 @@ internal abstract class AbstractQueryBuilder<R : QueryBuilder<R>>(
         return StepBuilder(this)
     }
 
-
-    override fun async(scope: CoroutineScope, ioDispatcher: CoroutineDispatcher): AsyncTerminalMethods {
-        return AsyncQueryBuilder(this, scope, ioDispatcher)
-    }
 
     override fun iterate(fetchSize: Int): IterativeTerminalMethods {
         return IterativeQueryBuilder(this, fetchSize)

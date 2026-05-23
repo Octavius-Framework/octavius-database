@@ -107,7 +107,7 @@ class JsonCompositeIntegrationTest : AbstractIntegrationTest() {
                             namingStrategy = JsonNamingStrategy.SnakeCase
                         }.decodeFromString<Product>(it)
                     }
-                    override val toPgString: (Any?) -> String = { throw IllegalStateException("Not usede") }
+                    override val toPgString: (Any?) -> String = { throw IllegalStateException("Not used") }
                 })
             }
             .toSingleStrict()

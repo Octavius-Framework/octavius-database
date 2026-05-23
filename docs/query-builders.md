@@ -6,7 +6,6 @@ Octavius Database provides fluent query builders for all CRUD operations. Each b
 - **CTE (Common Table Expressions)** via `with()` and `recursive()`
 - **Named parameters** using `@param` syntax
 - **Multiple terminal methods** for different result types
-- **Async execution** via `async()`
 - **Iterative Execution** for large datasets via `iterate()`
 - **Transaction steps** via `asStep()`
 
@@ -26,7 +25,7 @@ Octavius Database provides fluent query builders for all CRUD operations. Each b
 - [`.options()` - Query Configuration](#options---query-configuration)
 - [Builder Modes](#builder-modes)
 
-> **Executing Queries**: For terminal methods (`toList()`, `toSingleOf()`, `execute()`, etc.), async execution, and iterative execution, see [Executing Queries](executing-queries.md).
+> **Executing Queries**: For terminal methods (`toList()`, `toSingleOf()`, `execute()`, etc.) and iterative execution, see [Executing Queries](executing-queries.md).
 
 ---
 
@@ -691,10 +690,6 @@ val edictIdHandle = plan.add(
 ```
 
 See [Transactions](transactions.md) for full documentation.
-
-### `.async()` - Async Execution
-
-Execute queries asynchronously using coroutines. See [Executing Queries - Async](executing-queries.md#async-execution).
 
 ### `.iterate()` - Iterative Execution
 

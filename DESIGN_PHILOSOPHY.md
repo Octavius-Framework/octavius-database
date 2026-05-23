@@ -151,7 +151,6 @@ val legions = withContext(Dispatchers.IO) {
 
 This is more code than an invisible suspension point, but it's also unambiguous. The reader knows exactly where the thread boundary is, why it's there, and what dispatcher is being used. A library that transparently wraps blocking JDBC calls in coroutines doesn't make them non-blocking — it just hides the blocking behind a `suspend` keyword, which can create a false sense of safety and misplaced confidence in scalability.
 
-The `.async()` builder exists for a specific, narrower use case: fire-and-forget operations initiated from UI code (particularly Compose), where you have a `CoroutineScope` and want to launch a query without awaiting the result inline. It is not a general-purpose coroutine integration.
 
 The `TransactionPlan` and the `transaction { }` block both run on the calling thread using `ThreadLocal` to propagate the connection. This is the same model as Spring's `@Transactional` and JDBC's native transaction management — well-understood, debuggable, and compatible with any thread pool.
 

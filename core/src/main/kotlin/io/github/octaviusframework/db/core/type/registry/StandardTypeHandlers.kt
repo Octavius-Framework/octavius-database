@@ -194,7 +194,10 @@ internal object StandardTypeHandlers {
                     LocalTime::class,
                     { getObject(it, JLocalTime::class.java) },
                     { it.toKotlinLocalTime() },
-                    { LocalTime.parse(it) },
+                    {
+                        if (it == "24:00:00") JLocalTime.MAX.toKotlinLocalTime()
+                        else LocalTime.parse(it)
+                    },
                     toJdbc = { it.toJavaLocalTime() },
                     toPgString = { it.toString() }
                 )

@@ -1,5 +1,6 @@
 package io.github.octaviusframework.db.domain.test.json
 
+import io.github.octaviusframework.db.api.annotation.DynamicallyMappable
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.serialization.Contextual
@@ -8,6 +9,7 @@ import kotlinx.serialization.Serializable
 import java.math.BigDecimal
 import kotlin.time.Instant
 
+@DynamicallyMappable("product")
 @Serializable
 data class Product(
     val id: Int? = null,

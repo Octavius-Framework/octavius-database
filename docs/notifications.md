@@ -170,7 +170,7 @@ The listener can be reused — call `listen()` again to subscribe to new channel
 dataAccess.transaction {
     insertInto("edicts").values(listOf("issuer_id", "text"))
         .execute("issuer_id" to 1, "text" to "Let it be known throughout the provinces...")
-        .getOrElse { return@transaction DataResult.Failure(it) }
+        .getOrElse { return@transaction it }
 
     notify("senate_decrees", "new_edict")  // delivered on commit
     DataResult.Success(Unit)

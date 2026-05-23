@@ -3,12 +3,16 @@ package io.github.octaviusframework.db.core.mapping.dynamic
 import io.github.octaviusframework.db.api.builder.toSingleStrict
 import io.github.octaviusframework.db.api.getOrThrow
 import io.github.octaviusframework.db.api.type.PgStandardType
+import io.github.octaviusframework.db.api.type.TypeHandler
 import io.github.octaviusframework.db.api.type.withPgType
 import io.github.octaviusframework.db.core.AbstractIntegrationTest
 import io.github.octaviusframework.db.domain.test.json.Product
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNamingStrategy
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 import org.assertj.core.api.Assertions.assertThat
@@ -36,6 +40,7 @@ class JsonCompositeIntegrationTest : AbstractIntegrationTest() {
         ('Coffee Mug', 12.50, ARRAY['kitchen', 'home'], '2023-05-15', '2023-05-15 08:30:00+00', '14:30:00');
     """.trimIndent()
 
+    @OptIn(ExperimentalSerializationApi::class)
     @Test
     fun `should map table row to JSON and then to Product with date-time types`() {
         // Query returning JSONB from table row
@@ -58,6 +63,67 @@ class JsonCompositeIntegrationTest : AbstractIntegrationTest() {
         assertThat(product.createdAt).isEqualTo(Instant.parse("2024-01-01T12:00:00Z"))
         assertThat(product.deliveryTime).isEqualTo(LocalTime(10, 0, 0))
     }
+
+
+    @OptIn(ExperimentalSerializationApi::class)
+    @Test
+    fun `should map table row to JSON and then use custom Json instance`() {
+        // Query returning JSONB from table row
+        val sql =
+            "SELECT ARRAY(SELECT dynamic_dto('product' ,row_to_json(p)::jsonb)  FROM products p  WHERE name = 'Laptop') as product_json"
+
+        val result = dataAccess.rawQuery(sql)
+            .options {
+                json(Json(dataAccess.json) {
+                    namingStrategy = JsonNamingStrategy.SnakeCase
+                })
+            }
+            .toSingleStrict()
+            .getOrThrow()
+
+        val product = (result["product_json"] as List<Product>).first()
+
+        assertThat(product.name).isEqualTo("Laptop")
+        assertThat(product.price).isEqualByComparingTo(BigDecimal("999.99"))
+        assertThat(product.tags).containsExactly("electronics", "work")
+        assertThat(product.releaseDate).isEqualTo(LocalDate(2024, 1, 1))
+        assertThat(product.createdAt).isEqualTo(Instant.parse("2024-01-01T12:00:00Z"))
+        assertThat(product.deliveryTime).isEqualTo(LocalTime(10, 0, 0))
+    }
+
+    @OptIn(ExperimentalSerializationApi::class)
+    @Test
+    fun `should map table row to JSON using type handler`() {
+        // Query returning JSONB from table row
+        val sql = "SELECT row_to_json(p)::jsonb as product_json FROM products p WHERE name = 'Laptop'"
+
+        val result = dataAccess.rawQuery(sql)
+            .options {
+                registerTypeHandler(object : TypeHandler<Product> {
+                    override val pgTypeName: String = "jsonb"
+                    override val kotlinClass = Product::class
+                    override val fromPgString: (String) -> Product = {
+                        Json(dataAccess.json) {
+                            namingStrategy = JsonNamingStrategy.SnakeCase
+                        }.decodeFromString<Product>(it)
+                    }
+                    override val toPgString: (Any?) -> String = { throw IllegalStateException("Not usede") }
+                })
+            }
+            .toSingleStrict()
+            .getOrThrow()
+
+
+        val product = result["product_json"] as Product
+
+        assertThat(product.name).isEqualTo("Laptop")
+        assertThat(product.price).isEqualByComparingTo(BigDecimal("999.99"))
+        assertThat(product.tags).containsExactly("electronics", "work")
+        assertThat(product.releaseDate).isEqualTo(LocalDate(2024, 1, 1))
+        assertThat(product.createdAt).isEqualTo(Instant.parse("2024-01-01T12:00:00Z"))
+        assertThat(product.deliveryTime).isEqualTo(LocalTime(10, 0, 0))
+    }
+
 
     @Test
     fun `should map manually built JSON to Product`() {

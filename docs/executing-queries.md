@@ -230,7 +230,7 @@ fun getCampaignWithLegions(campaignId: Int): DataResult<CampaignWithLegions> {
             .from("campaign_legions")
             .where("campaign_id = @campaignId")
             .toListOf<Legion>("campaignId" to campaignId)
-            .getOrElse { return DataResult.Failure(it) }
+            .getOrElse { return it }
 
         CampaignWithLegions(campaign, legions)
     }

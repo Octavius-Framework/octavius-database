@@ -55,7 +55,7 @@ dataAccess.rawQuery("SELECT pg_notify(@channel, @payload)")
 dataAccess.transaction {
     rawQuery("SELECT pg_advisory_lock(@key)")
         .toField<Unit>("key" to lockKey)
-        .getOrElse { return@transaction DataResult.Failure(it) }
+        .getOrElse { return@transaction it }
 
     // ... do work ...
     DataResult.Success(Unit)

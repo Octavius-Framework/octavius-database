@@ -40,7 +40,7 @@ inline fun <T, R> DataResult<T>.map(transform: (T) -> R): DataResult<R> {
  * @param action Action to execute on the Success value.
  * @return The same DataResult for chaining.
  */
-fun <T> DataResult<T>.onSuccess(action: (T) -> Unit): DataResult<T> {
+inline fun <T> DataResult<T>.onSuccess(action: (T) -> Unit): DataResult<T> {
     if (this is DataResult.Success) action(value)
     return this
 }
@@ -51,7 +51,7 @@ fun <T> DataResult<T>.onSuccess(action: (T) -> Unit): DataResult<T> {
  * @param action Action to execute on the Failure error.
  * @return The same DataResult for chaining.
  */
-fun <T> DataResult<T>.onFailure(action: (DatabaseException) -> Unit): DataResult<T> {
+inline fun <T> DataResult<T>.onFailure(action: (DatabaseException) -> Unit): DataResult<T> {
     if (this is DataResult.Failure) action(error)
     return this
 }
@@ -60,7 +60,6 @@ fun <T> DataResult<T>.onFailure(action: (DatabaseException) -> Unit): DataResult
  * Returns the value if the result is Success, or throws an exception if it is Failure.
  *
  * Use with caution - this method breaks safe error processing.
- * Prefer [map], [onSuccess], [onFailure] or [getOrElse] when possible.
  *
  * @return Value of type T from Success.
  * @throws DatabaseException if the result is Failure.
@@ -73,20 +72,28 @@ fun <T> DataResult<T>.getOrThrow(): T {
 }
 
 /**
- * Returns the value if the result is Success, or computes a default value from the error if it is Failure.
+ * Returns the encapsulated value if this instance represents [Success][DataResult.Success]
+ * or the result of [onFailure] function for the encapsulated [Failure][DataResult.Failure] if it is failure.
  *
- * Allows for safe "exit" from DataResult with an always defined value.
- * Example: `result.getOrElse { emptyList() }` will return an empty list in case of error.
+ * This allows for a safe "exit" from the [DataResult] container by providing a fallback value
+ * or performing a non-local return (e.g., in a transaction block).
  *
- * @param R Return value type (supertype of T).
- * @param T Value type in Success.
- * @param onFailure Function computing the default value based on the error.
- * @return Value from Success or result of onFailure function.
+ * Examples:
+ * ```kotlin
+ * val data = result.getOrElse { emptyList() }
+ * //...
+ * val value = result.getOrElse { return it } // Early return the failure
+ * ```
+ *
+ *
+ * @param R The result type.
+ * @param T The type of the value in [Success][DataResult.Success].
+ * @param onFailure A function that receives the [Failure][DataResult.Failure] and returns a value of type [R].
+ * @return The value of type [T] or the result of [onFailure].
  */
-fun <R, T : R> DataResult<T>.getOrElse(onFailure: (Throwable) -> R): R {
+inline fun <R, T : R> DataResult<T>.getOrElse(onFailure: (DataResult.Failure) -> R): R {
     return when (this) {
         is DataResult.Success -> this.value
-        is DataResult.Failure -> onFailure.invoke(this.error)
+        is DataResult.Failure -> onFailure.invoke(this)
     }
 }
-

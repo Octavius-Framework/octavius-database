@@ -39,12 +39,12 @@ val result = dataAccess.transaction {
         .values(listOf("name", "tribe"))
         .returning("id")
         .toField<Int>("name" to "Marcus Tullius", "tribe" to "Cornelia")
-        .getOrElse { return@transaction DataResult.Failure(it) }
+        .getOrElse { return@transaction it }
 
     insertInto("citizen_profiles")
         .values(listOf("citizen_id", "biography"))
         .execute("citizen_id" to citizenId, "biography" to "Born in Arpinum.")
-        .getOrElse { return@transaction DataResult.Failure(it) }
+        .getOrElse { return@transaction it }
 
     DataResult.Success(citizenId)
 }

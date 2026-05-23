@@ -33,7 +33,7 @@ class ComprehensiveBulkInsertBenchmark {
 
     companion object {
         @JvmStatic
-        fun rowCountsProvider(): List<Int> = listOf(10, 20, 50, 100, 200, 500, 1000, 5000, 10000, 15000, 20000)
+        fun rowCountsProvider(): List<Int> = listOf(10, 20, 50, 100, 200, 500, 1000, 5000, 10000, 15000, 20000, 30000)
     }
 
     @BeforeAll

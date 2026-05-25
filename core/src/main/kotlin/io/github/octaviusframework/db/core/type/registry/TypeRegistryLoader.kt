@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
 import kotlin.reflect.KClass
 
 /**
@@ -27,7 +28,8 @@ import kotlin.reflect.KClass
 internal class TypeRegistryLoader(
     jdbcTemplate: JdbcTemplate,
     packagesToScan: List<String>,
-    dbSchemas: List<String>
+    dbSchemas: List<String>,
+    private val jsonProvider: () -> Json
 ) {
     private val classpathScanner = ClasspathTypeScanner(packagesToScan)
     private val databaseScanner = DatabaseTypeScanner(jdbcTemplate, dbSchemas)
@@ -67,7 +69,7 @@ internal class TypeRegistryLoader(
         )
 
         // Merge Standard and Custom Handlers
-        val (handlersByOid, handlersByClass) = mergeHandlers(classpathData.customHandlers, searchPath, nameToSchemaOid)
+        val (handlersByOid, handlersByClass) = mergeHandlers(classpathData.customHandlers, searchPath, nameToSchemaOid, jsonProvider)
 
         // 1. OID MAPS (Reversing allOidNames gives us mapping for ALL types: Base & Array)
         val pgNameToOidMap = databaseData.allOidNames.entries.associate { it.value to it.key }
@@ -241,9 +243,10 @@ internal class TypeRegistryLoader(
     internal fun mergeHandlers(
         customHandlers: List<TypeHandler<*>>,
         searchPath: List<String>,
-        nameToSchemaOid: Map<String, Map<String, Int>>
+        nameToSchemaOid: Map<String, Map<String, Int>>,
+        jsonProvider: () -> Json = { Json }
     ): Pair<Map<Int, TypeHandler<*>>, Map<KClass<*>, TypeHandler<*>>> {
-        val standardHandlers = StandardTypeHandlers.createAll()
+        val standardHandlers = StandardTypeHandlers.createAll(jsonProvider)
         val handlersByOid = mutableMapOf<Int, TypeHandler<*>>()
         val handlersByClass = mutableMapOf<KClass<*>, TypeHandler<*>>()
 

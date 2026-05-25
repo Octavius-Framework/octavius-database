@@ -56,7 +56,7 @@ internal object CoreTypeInitializer {
         BEGIN
             RETURN ROW (p_type_name, p_data)::public.dynamic_dto;
         END;
-        $$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE;
+        $$ LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE;
 
         CREATE OR REPLACE FUNCTION public.to_dynamic_dto(p_type_name TEXT, p_value ANYELEMENT)
             RETURNS public.dynamic_dto AS
@@ -64,7 +64,7 @@ internal object CoreTypeInitializer {
         BEGIN
             RETURN ROW (p_type_name, to_jsonb(p_value))::public.dynamic_dto;
         END;
-        $$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE;
+        $$ LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE;
 
         CREATE OR REPLACE FUNCTION public.to_dynamic_dto(p_type_name TEXT, p_value TEXT)
             RETURNS public.dynamic_dto AS
@@ -72,7 +72,7 @@ internal object CoreTypeInitializer {
         BEGIN
             RETURN ROW (p_type_name, to_jsonb(p_value))::public.dynamic_dto;
         END;
-        $$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE;
+        $$ LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE;
 
         CREATE OR REPLACE FUNCTION public.unwrap_dto_payload(p_dto public.dynamic_dto)
             RETURNS JSONB AS
@@ -80,7 +80,7 @@ internal object CoreTypeInitializer {
         BEGIN
             RETURN p_dto.data_payload;
         END;
-        $$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE;
+        $$ LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE;
     """
 
     /**

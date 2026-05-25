@@ -174,16 +174,19 @@ object OctaviusDatabase {
         migrationRunner?.invoke(dataSource)
 
         logger.debug { "Loading type registry..." }
+        lateinit var jsonInstance: Json
+        val jsonProvider: () -> Json = { jsonInstance }
+
         val typeRegistry: TypeRegistry
         val typeRegistryLoadTime = measureTime {
-            val loader = TypeRegistryLoader(jdbcTemplate, packagesToScan, dbSchemas)
+            val loader = TypeRegistryLoader(jdbcTemplate, packagesToScan, dbSchemas, jsonProvider)
             typeRegistry = loader.load()
         }
         logger.debug { "Type registry loaded successfully in ${typeRegistryLoadTime.inWholeMilliseconds}ms" }
 
         logger.debug { "Initializing converters" }
 
-        val jsonInstance = createJsonInstance(typeRegistry, jsonConfiguration)
+        jsonInstance = createJsonInstance(typeRegistry, jsonConfiguration)
 
         val kotlinToPostgresConverter = KotlinToPostgresConverter(typeRegistry, dynamicDtoStrategy)
         val resolvedListenerConnectionFactory =

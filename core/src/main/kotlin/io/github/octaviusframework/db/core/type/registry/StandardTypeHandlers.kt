@@ -43,7 +43,7 @@ internal object StandardTypeHandlers {
     private const val PG_PLUS_INFINITY = "+infinity"
     private const val PG_MINUS_INFINITY = "-infinity"
 
-    fun createAll(): List<StandardTypeHandler<*>> {
+    fun createAll(jsonProvider: () -> Json): List<StandardTypeHandler<*>> {
         val handlers = mutableListOf<StandardTypeHandler<*>>()
 
         PgStandardType.entries.forEach { pgType ->
@@ -231,9 +231,10 @@ internal object StandardTypeHandlers {
                 PgStandardType.JSON, PgStandardType.JSONB -> fromStringOnly(
                     pgType.typeName,
                     JsonElement::class,
-                    toJdbc = { pgObject(pgType.typeName, it.toString()) },
-                    toPgString = { it.toString() }
-                ) { Json.parseToJsonElement(it) }
+                    toJdbc = { pgObject(pgType.typeName, jsonProvider().encodeToString(JsonElement.serializer(), it)) },
+                    toPgString = {
+                        jsonProvider().encodeToString(it)
+                    }) { jsonProvider().parseToJsonElement(it) }
 
                 // Boolean type
                 PgStandardType.BOOL -> primitive(

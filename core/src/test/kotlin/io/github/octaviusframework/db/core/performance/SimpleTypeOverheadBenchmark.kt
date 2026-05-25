@@ -72,7 +72,7 @@ class SimpleTypeOverheadBenchmark {
                 jdbcTemplate,
                 listOf(),
                 databaseConfig.dbSchemas
-            ).load()
+            ) { Json }.load()
         typesConverter = PostgresToKotlinConverter(typeRegistry)
 
 

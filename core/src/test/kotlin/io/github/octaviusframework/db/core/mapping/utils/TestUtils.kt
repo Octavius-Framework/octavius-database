@@ -7,6 +7,7 @@ import io.github.octaviusframework.db.api.util.CaseConvention
 import io.github.octaviusframework.db.api.util.CaseConverter
 import io.github.octaviusframework.db.core.type.registry.*
 import io.github.octaviusframework.db.domain.test.pgtype.*
+import kotlinx.serialization.json.Json
 import kotlin.reflect.KClass
 
 /**
@@ -176,7 +177,7 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
         "data" to oid("jsonb")
     ))
 
-    val standardHandlers = StandardTypeHandlers.createAll()
+    val standardHandlers = StandardTypeHandlers.createAll { Json }
 
     val handlersByOid = standardHandlers.mapNotNull { handler ->
         val oid = PgStandardType.entries.find { !it.isArray && it.typeName == handler.pgTypeName }?.oid

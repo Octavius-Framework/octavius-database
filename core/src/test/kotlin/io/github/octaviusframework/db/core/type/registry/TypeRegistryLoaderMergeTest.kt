@@ -4,6 +4,7 @@ import io.github.octaviusframework.db.api.exception.TypeRegistryException
 import io.github.octaviusframework.db.api.type.TypeHandler
 import io.github.octaviusframework.db.core.jdbc.JdbcTemplate
 import io.mockk.mockk
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -12,7 +13,7 @@ import kotlin.reflect.KClass
 class TypeRegistryLoaderMergeTest {
 
     private val jdbcTemplate = mockk<JdbcTemplate>()
-    private val loader = TypeRegistryLoader(jdbcTemplate, emptyList(), emptyList())
+    private val loader = TypeRegistryLoader(jdbcTemplate, emptyList(), emptyList()) { Json }
     private val searchPath = listOf("public")
     
     // OID for 'jsonb' is 3802 in PG
@@ -83,7 +84,7 @@ class TypeRegistryLoaderMergeTest {
         val customTrue = createHandler("other_type", TestType::class, isDefault = true)
         val customFalse = createHandler("my_type", TestType::class, isDefault = false)
         
-        val (_, handlersByClass) = loader.mergeHandlers(listOf(customTrue, customFalse), searchPath, nameToSchemaOid)
+        val (_, handlersByClass) = loader.mergeHandlers(listOf(customTrue, customFalse), searchPath, nameToSchemaOid, { Json })
         
         val handler = handlersByClass[TestType::class]
         assertEquals("other_type", handler?.pgTypeName)
@@ -95,7 +96,7 @@ class TypeRegistryLoaderMergeTest {
         val custom2 = createHandler("other_type", TestType::class, isDefault = true)
         
         assertThrows<TypeRegistryException> {
-            loader.mergeHandlers(listOf(custom1, custom2), searchPath, nameToSchemaOid)
+            loader.mergeHandlers(listOf(custom1, custom2), searchPath, nameToSchemaOid, { Json })
         }
     }
 
@@ -105,7 +106,7 @@ class TypeRegistryLoaderMergeTest {
         val custom2 = createHandler("my_type", Int::class)
         
         assertThrows<TypeRegistryException> {
-            loader.mergeHandlers(listOf(custom1, custom2), searchPath, nameToSchemaOid)
+            loader.mergeHandlers(listOf(custom1, custom2), searchPath, nameToSchemaOid) { Json }
         }
     }
 
@@ -114,8 +115,8 @@ class TypeRegistryLoaderMergeTest {
         // Overriding 'jsonb' OID with custom handler
         val custom = createHandler("jsonb", TestType::class)
         
-        val (handlersByOid, _) = loader.mergeHandlers(listOf(custom), searchPath, nameToSchemaOid)
-        
+        val (handlersByOid, _) = loader.mergeHandlers(listOf(custom), searchPath, nameToSchemaOid) { Json }
+
         assertEquals(custom, handlersByOid[jsonbOid])
     }
 }

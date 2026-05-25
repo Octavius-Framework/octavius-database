@@ -11,6 +11,7 @@ Octavius Database uses a custom SQL parser to handle named parameters, providing
 - [Type Inference & Safety](#type-inference--safety)
 - [Collections & Parameter Flattening](#collections--parameter-flattening)
 - [High-Performance Bulk Operations (unnest)](#high-performance-bulk-operations-unnest)
+- [Dynamic Identifiers and SQL Injection](#dynamic-identifiers-and-sql-injection)
 - [Automatic Placeholder Generation](#automatic-placeholder-generation)
 
 ---
@@ -203,6 +204,34 @@ dataAccess.rawQuery("INSERT INTO citizens (name, age) SELECT * FROM unnest(@name
 - **Binary Efficiency:** Strategy 3 uses the native JDBC binary protocol, avoiding the overhead of converting and parsing large text-format literals.
 - **Consistency:** Unlike standard JDBC batching, this method provides consistent high performance regardless of JDBC driver settings (like `reWriteBatchedInserts`).
 - **Low Overhead:** The framework's internal mapping and SQL parsing add negligible latency, staying very close to raw JDBC performance.
+
+---
+
+## Dynamic Identifiers and SQL Injection
+
+While values must always be passed using named parameters (`@param`), SQL does not allow parameterizing structural identifiers like **table names** or **column names**. If you try to execute `SELECT * FROM @table`, PostgreSQL will reject the query.
+
+When you need to build dynamic queries based on external input (for example, dynamic sorting based on a JSON payload from the frontend), directly interpolating raw strings exposes your database to SQL Injection.
+
+To safely construct dynamic SQL strings, Octavius provides the `quoteAsPgIdentifier()` extension function on `String`.
+
+```kotlin
+import io.github.octaviusframework.db.api.quoteAsPgIdentifier
+
+// Example: Safe dynamic sorting based on user input
+fun getCitizens(sortByColumn: String): List<Citizen> {
+    // 1. Convert the raw input into a strictly safe PostgreSQL identifier
+    val safeColumn = sortByColumn.quoteAsPgIdentifier()
+    
+    // 2. Safely interpolate it into the query builder or raw SQL
+    return dataAccess.select("*")
+        .from("citizens")
+        .orderBy("$safeColumn DESC")
+        .toListOf<Citizen>()
+}
+```
+
+This function ensures complete safety when building dynamic SQL. It handles necessary double-quoting, escapes any internal quotes, and proactively throws a `BadStatementException` if it encounters strictly invalid identifier character ( the NUL `\0` byte) — preventing low-level JDBC driver crashes.
 
 ---
 

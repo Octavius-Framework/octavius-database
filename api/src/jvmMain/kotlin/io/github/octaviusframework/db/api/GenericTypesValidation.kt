@@ -18,7 +18,15 @@ import kotlin.reflect.KType
  */
 fun validateValue(value: Any?, targetType: KType): Any? {
     if (value == null) {
-        return null
+        if (targetType.isMarkedNullable) {
+            return null
+        } else {
+            throw TypeMappingException(
+                messageEnum = TypeMappingExceptionMessage.UNEXPECTED_NULL_VALUE,
+                value = null,
+                targetType = targetType.toString()
+            )
+        }
     }
 
     val targetClass = targetType.classifier as KClass<*>
@@ -49,8 +57,8 @@ private fun validateList(value: List<*>, targetType: KType) {
         val listElementType = targetType.arguments.firstOrNull()?.type
             ?: return // For List<*> or when type is unknown, we don't validate further
 
-        val listElementClass = listElementType.classifier as? KClass<*>
-            ?: return // Couldn't determine element class, we give up
+        val listElementClass =
+            listElementType.classifier as? KClass<*> ?: return // Couldn't determine element class, we give up
 
         if (!listElementClass.isInstance(firstNonNullElement)) {
             throw TypeMappingException(
@@ -62,7 +70,7 @@ private fun validateList(value: List<*>, targetType: KType) {
     }
 }
 
-private fun validateMap(value: Map<*,*>, targetType: KType) {
+private fun validateMap(value: Map<*, *>, targetType: KType) {
     val firstNonNullEntry = value.entries.firstOrNull { it.key != null && it.value != null }
 
     if (firstNonNullEntry != null && targetType.arguments.size == 2) {

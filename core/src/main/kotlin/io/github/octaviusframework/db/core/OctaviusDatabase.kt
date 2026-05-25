@@ -7,7 +7,7 @@ import io.github.octaviusframework.db.api.exception.InitializationException
 import io.github.octaviusframework.db.api.exception.InitializationExceptionMessage
 import io.github.octaviusframework.db.api.exception.QueryContext
 import io.github.octaviusframework.db.api.serializer.octaviusSerializersModule
-import io.github.octaviusframework.db.api.type.QualifiedName
+import io.github.octaviusframework.db.api.quoteAsPgIdentifier
 import io.github.octaviusframework.db.core.OctaviusDatabase.fromDataSource
 import io.github.octaviusframework.db.core.config.AppInfo
 import io.github.octaviusframework.db.core.config.DatabaseConfig
@@ -65,7 +65,7 @@ object OctaviusDatabase {
         logger.info { "Initializing DataSource..." }
         // 1. Configuration-dependent setting of `connectionInitSql`
         val connectionInitSql = if (config.setSearchPath && config.dbSchemas.isNotEmpty()) {
-            val schemas = config.dbSchemas.joinToString(", ") { QualifiedName.quoteIdentifier(it) }
+            val schemas = config.dbSchemas.joinToString(", ") { it.quoteAsPgIdentifier() }
             logger.debug { "Setting connectionInitSql to 'SET search_path TO $schemas'" }
             "SET search_path TO $schemas"
         } else {

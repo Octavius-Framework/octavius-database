@@ -69,16 +69,6 @@ internal class RowMappers(
     fun SingleValueMapper(kType: KType, options: InternalQueryOptions): RowMapper<Any?> {
         return RowMapper { rs ->
             val value = valueExtractor.extract(rs, 1, options)
-            if (value == null) {
-                if (!kType.isMarkedNullable) {
-                    throw TypeMappingException(
-                        messageEnum = TypeMappingExceptionMessage.UNEXPECTED_NULL_VALUE,
-                        value = null,
-                        targetType = kType.toString()
-                    )
-                }
-                return@RowMapper null
-            }
 
             validateValue(value, kType)
         }

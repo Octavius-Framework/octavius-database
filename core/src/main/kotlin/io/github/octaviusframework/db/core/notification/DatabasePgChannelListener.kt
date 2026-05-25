@@ -4,7 +4,7 @@ import io.github.octaviusframework.db.api.DataResult
 import io.github.octaviusframework.db.api.exception.QueryContext
 import io.github.octaviusframework.db.api.notification.PgChannelListener
 import io.github.octaviusframework.db.api.notification.PgNotification
-import io.github.octaviusframework.db.api.type.QualifiedName
+import io.github.octaviusframework.db.api.quoteAsPgIdentifier
 import io.github.octaviusframework.db.core.exception.ExceptionTranslator
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineDispatcher
@@ -23,7 +23,7 @@ internal class DatabasePgChannelListener(
     private val pgConnection: PGConnection = connection.unwrap(PGConnection::class.java)
 
     override fun listen(vararg channels: String): DataResult<Unit> {
-        val sql = channels.joinToString("; ") { "LISTEN ${QualifiedName.quoteIdentifier(it)}" }
+        val sql = channels.joinToString("; ") { "LISTEN ${it.quoteAsPgIdentifier()}" }
         return try {
             connection.createStatement().use { stmt ->
                 stmt.execute(sql)
@@ -38,7 +38,7 @@ internal class DatabasePgChannelListener(
     }
 
     override fun unlisten(vararg channels: String): DataResult<Unit> {
-        val sql = channels.joinToString("; ") { "UNLISTEN ${QualifiedName.quoteIdentifier(it)}" }
+        val sql = channels.joinToString("; ") { "UNLISTEN ${it.quoteAsPgIdentifier()}" }
         return try {
             connection.createStatement().use { stmt ->
                 stmt.execute(sql)

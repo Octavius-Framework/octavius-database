@@ -442,7 +442,7 @@ For detailed guides and examples, see the [full documentation](docs/README.md):
 - [Query Builders](docs/query-builders.md) - SELECT (FOR UPDATE), INSERT (ON CONFLICT), UPDATE, DELETE, fragments, `.options()` and builder modes
 - [Functions & Procedures](docs/functions-and-procedures.md) - CALL, SELECT, IN/OUT, PgTyped resolution
 - [Executing Queries](docs/executing-queries.md) - Terminal methods, DataResult matrix, iterative execution
-- [Parameter Handling](docs/parameter-handling.md) - Named parameters (@), JSONB operator escaping (?), collections & flattening, unnest and bulk operations
+- [Parameter Handling](docs/parameter-handling.md) - Named parameters (@), JSONB operator escaping (?), collections & flattening, unnest and bulk operations, identifiers escaping
 - [Data Mapping](docs/data-mapping.md) - toDataMap(), toDataObject(), @MapKey, nested structures
 - [ORM-Like Patterns](docs/orm-patterns.md) - CRUD patterns, real-world examples
 - [Transactions](docs/transactions.md) - Transaction blocks, TransactionPlan, StepHandle, passing data between steps , propagation, isolation, read-only, timeouts, errors and Concurrency & Thread Safety

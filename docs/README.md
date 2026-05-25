@@ -14,7 +14,7 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 | [Query Builders](query-builders.md)                   | SELECT (FOR UPDATE), INSERT (ON CONFLICT), UPDATE, DELETE, fragments, `.options()` and builder modes                                                               |
 | [Functions & Procedures](functions-and-procedures.md) | Calling functions and procedures                                                                                                                                   |
 | [Executing Queries](executing-queries.md)             | Terminal methods, DataResult, getOrThrow, iterative execution, coroutines                                                                                          |
-| [Parameter Handling](parameter-handling.md)           | Named parameters (@), JSONB operator escaping (?), collections & flattening, unnest and bulk operations                                                            |
+| [Parameter Handling](parameter-handling.md)           | Named parameters (@), JSONB operator escaping (?), collections & flattening, unnest and bulk operations, identifiers escaping                                      |
 | [Data Mapping](data-mapping.md)                       | toDataMap(), toDataObject(), @MapKey - converting between objects and maps                                                                                         |
 | [ORM-Like Patterns](orm-patterns.md)                  | CRUD patterns, real-world examples, PostgreSQL composite types                                                                                                     |
 | [Transactions](transactions.md)                       | Transaction blocks, TransactionPlan, StepHandle, passing data between steps , propagation, isolation, read-only, timeouts and errors                               |
@@ -39,11 +39,12 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 
 ### Parameter Handling
 - [Named Parameters Syntax](parameter-handling.md#named-parameters-syntax) - Why `@` is used instead of `:`
-- [JSONB Operators & Question Marks](parameter-handling.md#what-about-the-operator) - Automatic escaping of `?` for JSONB
+- [JSONB Operators & Question Marks](parameter-handling.md#what-about-the--operator) - Automatic escaping of `?` for JSONB
 - [Expansion & Conversion](parameter-handling.md#parameter-expansion--conversion) - How Kotlin values become SQL parameters
 - [Type Inference & Safety](parameter-handling.md#type-inference--safety) - Default resolution and `PgTyped` casts
 - [Collections & Flattening](parameter-handling.md#collections--parameter-flattening) - Handling lists, arrays, and composites
 - [Bulk Operations (unnest)](parameter-handling.md#high-performance-bulk-operations-unnest) - Fastest way to insert/update large datasets
+- [Dynamic Identifiers](parameter-handling.md#dynamic-identifiers-and-sql-injection) - Safe dynamic SQL with quoteAsPgIdentifier
 
 ### Functions and Procedures
 - [Functions](functions-and-procedures.md#functions-create-function) - Calling functions via SELECT

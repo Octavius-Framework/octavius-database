@@ -12,7 +12,7 @@ plugins {
 
 allprojects {
     group = "io.github.octavius-framework"
-    version = "15.2.2"
+    version = "15.2.3"
 }
 
 dokka {

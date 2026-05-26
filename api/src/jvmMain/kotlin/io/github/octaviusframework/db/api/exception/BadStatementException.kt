@@ -22,6 +22,8 @@ enum class BadStatementExceptionMessage {
     INVALID_STATEMENT_STATE,
     /** Iterative query with fetchSize > 0 requires an active transaction. */
     ITERATIVE_REQUIRES_TRANSACTION,
+    /** The requested feature is not supported by the current database provider or configuration. */
+    UNSUPPORTED_FEATURE,
 
     // Class 42 — General Categories
     /** SQL syntax is malformed (PostgreSQL 42601, 42602, etc.). */
@@ -108,6 +110,7 @@ private fun generateDeveloperMessage(
         BadStatementExceptionMessage.DUPLICATE_PARAMETERS -> "Duplicate parameters in query."
         BadStatementExceptionMessage.INVALID_STATEMENT_STATE -> "Statement is in invalid state."
         BadStatementExceptionMessage.ITERATIVE_REQUIRES_TRANSACTION -> "Iterative query with fetchSize > 0 requires an active transaction to work correctly in PostgreSQL."
+        BadStatementExceptionMessage.UNSUPPORTED_FEATURE -> "The requested feature is not supported by the current database provider or configuration."
     }
 }
 

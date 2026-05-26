@@ -51,14 +51,14 @@ class StepDependencyUnitExceptionTest {
         val step2 = TransactionStep<Int>(mockBuilder2, logic2, mapOf("id" to fieldRef))
         plan.add(step2)
 
-        every { mockProvider.execute<Map<StepHandle<*>, Any?>>(any(), any(), any(), any(), any()) } answers {
+        every { mockProvider.execute<Map<StepHandle<*>, Any?>>(any(), any(), any(), any(), any(), any()) } answers {
             val action = lastArg<(TransactionStatus) -> Map<StepHandle<*>, Any?>>()
             action(mockk())
         }
 
         // WHEN & THEN
         assertThatThrownBy {
-            executor.execute(plan, TransactionPropagation.REQUIRED, IsolationLevel.READ_COMMITTED, false, null)
+            executor.execute(plan, TransactionPropagation.REQUIRED, IsolationLevel.READ_COMMITTED, false, null, null)
         }.isInstanceOf(StepDependencyException::class.java)
             .hasMessageContaining(StepDependencyExceptionMessage.COLUMN_NOT_FOUND.name)
     }

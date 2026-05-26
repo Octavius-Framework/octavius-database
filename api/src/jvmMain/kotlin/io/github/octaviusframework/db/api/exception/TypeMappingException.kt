@@ -32,6 +32,8 @@ enum class TypeMappingExceptionMessage {
     /** Critical failure during instantiation of a data class or object mapping. */
     OBJECT_MAPPING_FAILED,
 
+    /** Data class contains a generic type parameter which is not supported by reflection mapping. */
+    UNSUPPORTED_GENERIC_TYPE_IN_DATA_CLASS,
 
     /** JSON deserialization error in dynamic_dto */
     JSON_DESERIALIZATION_FAILED,
@@ -92,6 +94,7 @@ private fun generateDeveloperMessage(
 
         TypeMappingExceptionMessage.INCOMPATIBLE_TYPE -> "Element has an incompatible type. Expected elements compatible with '$targetType', but found an element of type '${value?.let { it::class.simpleName }}'."
         TypeMappingExceptionMessage.OBJECT_MAPPING_FAILED -> "Failed to map data to object of class '$targetType'."
+        TypeMappingExceptionMessage.UNSUPPORTED_GENERIC_TYPE_IN_DATA_CLASS -> "Data classes with generic type parameters are not supported for automatic mapping. Found parameter of type '$targetType'."
         TypeMappingExceptionMessage.MISSING_REQUIRED_PROPERTY -> "Missing required field '$propertyName' (key: '$value') when mapping to class '$targetType'."
         TypeMappingExceptionMessage.JSON_DESERIALIZATION_FAILED -> "Failed to deserialize JSON for dynamic type '$targetType'."
         TypeMappingExceptionMessage.UNSUPPORTED_COMPONENT_TYPE_IN_ARRAY ->

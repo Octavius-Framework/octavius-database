@@ -7,6 +7,8 @@ import io.github.octaviusframework.db.core.builder.AbstractQueryBuilder
 import io.github.octaviusframework.db.core.exception.ExceptionTranslator
 import io.github.octaviusframework.db.core.jdbc.JdbcTransactionProvider
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Executes a series of database operations in a single, atomic transaction.
@@ -32,7 +34,14 @@ internal class TransactionPlanExecutor(
         private val logger = KotlinLogging.logger {}
     }
 
-    fun execute(plan: TransactionPlan, propagation: TransactionPropagation, isolation: IsolationLevel, readOnly: Boolean, timeoutSeconds: Int?): DataResult<TransactionPlanResult> {
+    fun execute(
+        plan: TransactionPlan,
+        propagation: TransactionPropagation,
+        isolation: IsolationLevel,
+        readOnly: Boolean,
+        statementTimeout: Duration?,
+        transactionTimeout: Duration?
+    ): DataResult<TransactionPlanResult> {
         val stepsWithHandles = plan.steps // Retrieve list of (Handle, Step) pairs
         if (stepsWithHandles.isEmpty()) {
             logger.debug { "Executing an empty transaction plan." }
@@ -42,7 +51,13 @@ internal class TransactionPlanExecutor(
             // Step 1: Create a map for quick translation of handles to indices
             val handleToIndexMap = validatePlan(stepsWithHandles)
 
-            val finalResultsMap = transactionProvider.execute(propagation, isolation, readOnly, timeoutSeconds) {
+            val finalResultsMap = transactionProvider.execute(
+                propagation = propagation,
+                isolation = isolation,
+                readOnly = readOnly,
+                statementTimeout = statementTimeout,
+                transactionTimeout = transactionTimeout,
+            ) {
                 executeStepsInTransaction(stepsWithHandles, handleToIndexMap)
             }
 
@@ -73,6 +88,7 @@ internal class TransactionPlanExecutor(
                     )
                 }
             }
+
             is TransactionValue.Transformed<*, *> -> {
                 // Validate what's inside.
                 validateTransactionValue(value.source, currentIndex, handleToIndexMap)
@@ -158,7 +174,7 @@ internal class TransactionPlanExecutor(
                 )
             )
         }
-        
+
         logger.trace { "--> Final params for step $index: $finalParams" }
 
         // Execute step logic
@@ -168,6 +184,7 @@ internal class TransactionPlanExecutor(
                 is DataResult.Success -> {
                     indexedResults[index] = stepResult.value
                 }
+
                 is DataResult.Failure -> {
                     val error = stepResult.error
                     error.withStepIndex(index)
@@ -209,6 +226,7 @@ internal class TransactionPlanExecutor(
                 logger.error(error) { "Transaction failed and was rolled back." }
                 throw error
             }
+
             is DatabaseException -> DataResult.Failure(error)
             else -> {
                 // SQLException
@@ -346,7 +364,12 @@ internal class TransactionPlanExecutor(
             // toList, toColumn, toListOf
             is List<*> -> {
                 if (rowIndex >= this.size) {
-                    throw StepDependencyException(StepDependencyExceptionMessage.ROW_INDEX_OUT_OF_BOUNDS, stepIndex, rowIndex, this.size)
+                    throw StepDependencyException(
+                        StepDependencyExceptionMessage.ROW_INDEX_OUT_OF_BOUNDS,
+                        stepIndex,
+                        rowIndex,
+                        this.size
+                    )
                 }
                 when (val element = this[rowIndex]) {
                     // toList result - an empty map may be returned - no nulls
@@ -359,14 +382,22 @@ internal class TransactionPlanExecutor(
             // toSingle
             is Map<*, *> -> {
                 if (rowIndex > 0) {
-                    throw StepDependencyException(StepDependencyExceptionMessage.INVALID_ROW_ACCESS_ON_NON_LIST, stepIndex, rowIndex)
+                    throw StepDependencyException(
+                        StepDependencyExceptionMessage.INVALID_ROW_ACCESS_ON_NON_LIST,
+                        stepIndex,
+                        rowIndex
+                    )
                 }
                 this as Map<String, Any?>
             }
             // toSingleOf, toField, execute
             else -> {
                 if (rowIndex > 0) {
-                    throw StepDependencyException(StepDependencyExceptionMessage.INVALID_ROW_ACCESS_ON_NON_LIST, stepIndex, rowIndex)
+                    throw StepDependencyException(
+                        StepDependencyExceptionMessage.INVALID_ROW_ACCESS_ON_NON_LIST,
+                        stepIndex,
+                        rowIndex
+                    )
                 }
                 // toSingleOf result (error in converter and type registry when used on non-composite)
                 // toField can be null, but execute cannot

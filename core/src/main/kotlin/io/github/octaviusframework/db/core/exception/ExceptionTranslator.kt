@@ -113,12 +113,17 @@ object ExceptionTranslator {
             }
 
             // Class 25 — Invalid Transaction State
-            state.startsWith("25") -> throw BadStatementException(
-                BadStatementExceptionMessage.INVALID_TRANSACTION_STATE,
-                errorPosition = pgMetadata.position,
-                queryContext = queryContext,
-                cause = sqlEx
-            )
+            state.startsWith("25") -> {
+                if (state == "25P03" || state == "25P04") { // idle_in_transaction_session_timeout or PG 17+ transaction_timeout
+                    return TransactionException(TransactionExceptionMessage.TIMEOUT, queryContext, sqlEx)
+                }
+                throw BadStatementException(
+                    BadStatementExceptionMessage.INVALID_TRANSACTION_STATE,
+                    errorPosition = pgMetadata.position,
+                    queryContext = queryContext,
+                    cause = sqlEx
+                )
+            }
 
             // Class 40 — Transaction Rollback
             state.startsWith("40") -> {

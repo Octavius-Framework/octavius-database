@@ -5,6 +5,7 @@ import io.github.octaviusframework.db.api.transaction.TransactionPropagation
 import java.sql.Connection
 import java.sql.Statement
 import javax.sql.DataSource
+import kotlin.time.Duration
 
 /**
  * Interface for managing database connections and transactions.
@@ -38,14 +39,16 @@ interface JdbcTransactionProvider {
      * @param propagation The transaction propagation behavior (e.g., REQUIRED, REQUIRES_NEW).
      * @param isolation The isolation level to use. [IsolationLevel.DEFAULT] leaves the current state unchanged.
      * @param readOnly Hint to the database for read-only optimization.
-     * @param timeoutSeconds Optional timeout in seconds. Handled differently by implementations.
+     * @param statementTimeout Optional timeout for single statement. Working on in Core.
+     * @param transactionTimeout Optional timeout for the entire transaction (requires PG 17+ in Core).
      * @param block The logic to execute within the transaction.
      */
     fun <T> execute(
         propagation: TransactionPropagation,
         isolation: IsolationLevel = IsolationLevel.DEFAULT,
         readOnly: Boolean = false,
-        timeoutSeconds: Int? = null,
+        statementTimeout: Duration? = null,
+        transactionTimeout: Duration? = null,
         block: (TransactionStatus) -> T
     ): T
 

@@ -5,6 +5,7 @@ import io.github.octaviusframework.db.api.transaction.TransactionPropagation
 import java.sql.Connection
 import java.sql.Statement
 import javax.sql.DataSource
+import kotlin.time.Duration
 
 /**
  * Default implementation of [JdbcTransactionProvider] using [ThreadLocal] to manage transactions.
@@ -58,7 +59,8 @@ internal class DefaultJdbcTransactionProvider(override val dataSource: DataSourc
         propagation: TransactionPropagation,
         isolation: IsolationLevel,
         readOnly: Boolean,
-        timeoutSeconds: Int?,
+        statementTimeout: Duration?,
+        transactionTimeout: Duration?,
         block: (TransactionStatus) -> T
     ): T {
         val stack = getOrCreateStack()
@@ -69,19 +71,19 @@ internal class DefaultJdbcTransactionProvider(override val dataSource: DataSourc
                 if (currentContext != null) {
                     executeExisting(currentContext, block)
                 } else {
-                    executeNew(stack, isolation, readOnly, timeoutSeconds, block)
+                    executeNew(stack, isolation, readOnly, statementTimeout, transactionTimeout, block)
                 }
             }
 
             TransactionPropagation.REQUIRES_NEW -> {
-                executeNew(stack, isolation, readOnly, timeoutSeconds, block)
+                executeNew(stack, isolation, readOnly, statementTimeout, transactionTimeout, block)
             }
 
             TransactionPropagation.NESTED -> {
                 if (currentContext != null) {
                     executeNested(currentContext, block)
                 } else {
-                    executeNew(stack, isolation, readOnly, timeoutSeconds, block)
+                    executeNew(stack, isolation, readOnly, statementTimeout, transactionTimeout, block)
                 }
             }
         }
@@ -108,7 +110,8 @@ internal class DefaultJdbcTransactionProvider(override val dataSource: DataSourc
         stack: MutableList<TransactionContext>,
         isolation: IsolationLevel,
         readOnly: Boolean,
-        timeoutSeconds: Int?,
+        statementTimeout: Duration?,
+        transactionTimeout: Duration?,
         block: (TransactionStatus) -> T
     ): T {
         val connection = dataSource.connection
@@ -117,7 +120,8 @@ internal class DefaultJdbcTransactionProvider(override val dataSource: DataSourc
         val context = try {
             connection.autoCommit = false
             // 1. Configure connection and capture original state for restoration
-            originalState = connection.applyConfigAndSaveState(isolation, readOnly, timeoutSeconds)
+            originalState =
+                connection.applyConfigAndSaveState(isolation, readOnly, statementTimeout, transactionTimeout)
             TransactionContext(connection)
         } catch (e: Throwable) {
             runCatching { connection.close() }
@@ -198,7 +202,7 @@ internal class DefaultJdbcTransactionProvider(override val dataSource: DataSourc
 private class OriginalConnectionState(val isolation: Int, val readOnly: Boolean)
 
 private fun Connection.applyConfigAndSaveState(
-    isolation: IsolationLevel, readOnly: Boolean, timeoutSeconds: Int?
+    isolation: IsolationLevel, readOnly: Boolean, statementTimeout: Duration?, transactionTimeout: Duration?
 ): OriginalConnectionState {
     val state = OriginalConnectionState(this.transactionIsolation, this.isReadOnly)
 
@@ -208,9 +212,19 @@ private fun Connection.applyConfigAndSaveState(
 
     this.isReadOnly = readOnly
 
-    // Implementation of transaction timeout via PostgreSQL LOCAL setting
-    timeoutSeconds?.let {
-        this.createStatement().use { stmt -> stmt.execute("SET LOCAL statement_timeout = '${it}s'") }
+    // Implementation of timeout via PostgreSQL LOCAL setting
+    val queries = mutableListOf<String>()
+    if (statementTimeout != null) {
+        queries.add("SET LOCAL statement_timeout = '${statementTimeout.inWholeMilliseconds}ms'")
+    }
+    if (transactionTimeout != null) {
+        queries.add("SET LOCAL transaction_timeout = '${transactionTimeout.inWholeMilliseconds}ms'")
+    }
+
+    if (queries.isNotEmpty()) {
+        this.createStatement().use { stmt ->
+            stmt.execute(queries.joinToString("; "))
+        }
     }
     return state
 }

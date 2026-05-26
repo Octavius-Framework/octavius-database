@@ -78,7 +78,6 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 - [Transaction Propagation](transactions.md#transaction-propagation) - REQUIRED, REQUIRES_NEW, NESTED
 - [Isolation Levels & Read-Only Mode](transactions.md#isolation-levels--read-only-mode) - IsolationLevel Enum and readOnly
 - [Transaction Timeouts](transactions.md#transaction-timeouts) - Timeouts and implementation details
-- [Error Handling](transactions.md#error-handling) - Error handling inside transactions
 
 ### Notifications
 - [Sending Notifications](notifications.md#sending-notifications) - `notify()` via `pg_notify`

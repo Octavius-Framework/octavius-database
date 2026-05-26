@@ -19,6 +19,7 @@ import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.concurrent.thread
+import kotlin.time.Duration.Companion.seconds
 
 class TransactionConfigurationIntegrationTest: AbstractIntegrationTest() {
 
@@ -32,7 +33,7 @@ class TransactionConfigurationIntegrationTest: AbstractIntegrationTest() {
     @Test
     fun `should enforce transaction timeout using SET LOCAL statement_timeout`() {
         assertThatThrownBy {
-            dataAccess.transaction(timeoutSeconds = 1) {
+            dataAccess.transaction(transactionTimeout = 1.seconds) {
                 rawQuery("SELECT pg_sleep(2)").execute()
             }.getOrThrow()
         }.isInstanceOf(TransactionException::class.java)

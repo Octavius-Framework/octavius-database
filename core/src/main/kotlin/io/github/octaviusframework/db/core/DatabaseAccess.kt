@@ -27,6 +27,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 import java.sql.Connection
+import kotlin.time.Duration
 
 internal class DatabaseAccess(
     jdbcTemplate: JdbcTemplate,
@@ -88,20 +89,22 @@ internal class DatabaseAccess(
         propagation: TransactionPropagation,
         isolation: IsolationLevel,
         readOnly: Boolean,
-        timeoutSeconds: Int?
+        statementTimeout: Duration?,
+        transactionTimeout: Duration?,
     ): DataResult<TransactionPlanResult> {
-        return transactionPlanExecutor.execute(plan, propagation, isolation, readOnly, timeoutSeconds)
+        return transactionPlanExecutor.execute(plan, propagation, isolation, readOnly, statementTimeout, transactionTimeout)
     }
 
     override fun <T> transaction(
         propagation: TransactionPropagation,
         isolation: IsolationLevel,
         readOnly: Boolean,
-        timeoutSeconds: Int?,
+        statementTimeout: Duration?,
+        transactionTimeout: Duration?,
         block: QueryOperations.() -> DataResult<T>
     ): DataResult<T> {
         return try {
-            transactionProvider.execute(propagation, isolation, readOnly, timeoutSeconds) { status ->
+            transactionProvider.execute(propagation, isolation, readOnly, statementTimeout, transactionTimeout) { status ->
                 // `this` is an instance of `QueryOperations`, so we pass it directly.
                 val result = block(this)
 

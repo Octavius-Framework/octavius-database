@@ -1,5 +1,7 @@
 package io.github.octaviusframework.db.spring
 
+import io.github.octaviusframework.db.api.exception.BadStatementException
+import io.github.octaviusframework.db.api.exception.BadStatementExceptionMessage
 import io.github.octaviusframework.db.api.transaction.IsolationLevel
 import io.github.octaviusframework.db.api.transaction.TransactionPropagation
 import io.github.octaviusframework.db.core.jdbc.JdbcTransactionProvider
@@ -11,6 +13,7 @@ import org.springframework.transaction.support.TransactionTemplate
 import java.sql.Connection
 import java.sql.Statement
 import javax.sql.DataSource
+import kotlin.time.Duration
 
 /**
  * Implementation of [JdbcTransactionProvider] that delegates all transaction management to Spring Framework.
@@ -38,9 +41,16 @@ class SpringJdbcTransactionProvider(
         propagation: TransactionPropagation,
         isolation: IsolationLevel,
         readOnly: Boolean,
-        timeoutSeconds: Int?,
+        statementTimeout: Duration?,
+        transactionTimeout: Duration?,
         block: (TransactionStatus) -> T
     ): T {
+        if (statementTimeout != null) {
+            throw BadStatementException(
+                messageEnum = BadStatementExceptionMessage.UNSUPPORTED_FEATURE,
+                cause = UnsupportedOperationException("statementTimeout is not supported when using SpringJdbcTransactionProvider. Please use transactionTimeout instead.")
+            )
+        }
         // Maps Octavius propagation to Spring's TransactionDefinition
         val transactionTemplate = TransactionTemplate(transactionManager).apply {
             propagationBehavior = when (propagation) {
@@ -50,9 +60,9 @@ class SpringJdbcTransactionProvider(
             }
             isolationLevel = isolation.jdbcValue
             isReadOnly = readOnly
-            timeout = timeoutSeconds ?: -1
+            timeout = transactionTimeout?.inWholeSeconds?.toInt() ?: -1
         }
-        
+
         return transactionTemplate.execute { status ->
             val wrappedStatus = TransactionStatus { status.setRollbackOnly() }
             block(wrappedStatus)

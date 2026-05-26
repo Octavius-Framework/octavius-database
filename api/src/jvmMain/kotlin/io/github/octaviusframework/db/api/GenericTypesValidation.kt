@@ -29,7 +29,16 @@ fun validateValue(value: Any?, targetType: KType): Any? {
         }
     }
 
-    val targetClass = targetType.classifier as KClass<*>
+    val classifier = targetType.classifier
+    if (classifier is kotlin.reflect.KTypeParameter) {
+        throw TypeMappingException(
+            messageEnum = TypeMappingExceptionMessage.UNSUPPORTED_GENERIC_TYPE_IN_DATA_CLASS,
+            value = value,
+            targetType = targetType.toString()
+        )
+    }
+
+    val targetClass = classifier as KClass<*>
 
     // --- Validation 1: Check main type ---
     if (!targetClass.isInstance(value)) {

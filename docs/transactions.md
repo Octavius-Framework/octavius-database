@@ -22,7 +22,6 @@ Both approaches support configurable propagation behavior, isolation levels, rea
 - [Transaction Propagation](#transaction-propagation)
 - [Isolation Levels & Read-Only Mode](#isolation-levels--read-only-mode)
 - [Transaction Timeouts](#transaction-timeouts)
-- [Error Handling](#error-handling)
 
 ---
 
@@ -559,23 +558,73 @@ dataAccess.transaction(
 
 ## Transaction Timeouts
 
-You can set a timeout for the entire transaction. If the transaction takes longer than the specified time, it will be automatically aborted.
+Octavius provides precise control over query execution time using `kotlin.time.Duration`. You can configure timeouts at two different levels: for individual statements and for the entire transaction.
 
 ### Usage
 
 ```kotlin
-dataAccess.transaction(timeoutSeconds = 5) {
-    // If operations take > 5s, the transaction fails
-    // ...
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Duration.Companion.milliseconds
+
+dataAccess.transaction(
+    statementTimeout = 500.milliseconds, // Abort if a single query takes > 500ms
+    transactionTimeout = 5.seconds       // Abort if the whole block takes > 5s
+) {
+    // Transaction operations...
+}
+
+```
+
+### Implementation Details & Provider Compatibility
+
+Because database drivers and external frameworks handle timeouts differently, the exact behavior depends on your active `JdbcTransactionProvider`:
+
+#### 1. Statement Timeout (`statementTimeout`)
+
+Limits the maximum execution time for **any single query** within the transaction.
+
+* **Core Engine:** Fully supported. Uses PostgreSQL's native `SET LOCAL statement_timeout` at the start of the transaction. This applies directly at the database engine level, resulting in zero JVM overhead and precise query cancellation.
+* **Spring Integration:** **Not supported.** Throws `BadStatementException` (with `UNSUPPORTED_FEATURE`). Spring's `DataSourceTransactionManager` relies on calculating remaining transaction deadlines and injecting them via `Statement.setQueryTimeout`. Mixing this with strict statement timeouts causes conflicts, so this feature is disabled when using the Spring provider to prevent unpredictable behavior.
+
+#### 2. Transaction Timeout (`transactionTimeout`)
+
+Limits the maximum execution time for the **entire transaction block**, regardless of how many individual queries are executed.
+
+* **Core Engine:** Supported via PostgreSQL's native `SET LOCAL transaction_timeout`. **Note: This requires PostgreSQL 17 or newer.** If you run an older version, the database engine will throw an error when attempting to set this parameter.
+* **Spring Integration:** Fully supported. Maps directly to Spring's transaction deadline logic (`TransactionTemplate.timeout`). Timeouts are enforced by Spring's `DataSourceUtils` on every JDBC `Statement` created within the transaction.
+
+> **💡 Technical Note: Why the difference?**
+>
+> You might wonder why Spring's timeout is "supported" while `statementTimeout` throws an error in the same provider. The reason lies in how the PostgreSQL JDBC driver handles query timeouts. 
+> 
+> Standard JDBC timeouts (`Statement.setQueryTimeout`) are implemented as **JVM-side timers**. When a timeout is set, the driver starts a background `TimerTask` that attempts to send a cancel signal if the query takes too long. As the driver's own source code reveals:
+>
+> ```java
+> // From org.postgresql.jdbc.StatementCancelTimerTask
+> /**
+>  * Timer task that sends statement.cancel() signal...
+>  * We can't reliably cancel the query at the database side anyways, 
+>  * so let's pretend that we tried our best...
+>  */
+> ```
+>
+> Octavius's Core Engine bypasses this JVM overhead by using PostgreSQL's native `SET LOCAL statement_timeout`. This is handled **entirely within the database engine**, making it more reliable, faster, and free of JVM timer management. Spring's architecture is tied to the JDBC-standard approach, which is why Octavius refuses to "fake" a native statement timeout when running under Spring control.
+
+#### 3. Other PostgreSQL Timeouts
+
+PostgreSQL offers several other timeout settings (like `lock_timeout` or `idle_in_transaction_session_timeout`) that are not explicitly part of the `transaction { }` API. To maintain Octavius's SQL-first philosophy, these should be set using raw SQL within the transaction block:
+
+```kotlin
+dataAccess.transaction {
+    // Set custom lock timeout for this transaction only
+    rawQuery("SET LOCAL lock_timeout = '2s'").execute()
+    
+    // Perform operations...
+    update("citizens").set("rank", "Veteran").where("id = 1").execute()
 }
 ```
 
-### Implementation Details
-
-The mechanism used to enforce the timeout depends on your `JdbcTransactionProvider`:
-
-> - **Core Engine**: Octavius uses PostgreSQL's native `SET LOCAL statement_timeout` at the start of the transaction. This applies directly at the database engine level, resulting in zero JVM overhead and precise query cancellation.
-> - **Spring Integration**: If you use the optional `spring-integration` module, timeouts are delegated to Spring's `DataSourceUtils.applyTransactionTimeout(statement, dataSource)` on every JDBC `Statement` created within the transaction. This ensures that the global transaction timeout is correctly propagated and enforced by the JDBC driver (via `Statement.setQueryTimeout`).
+This approach gives you full access to all PostgreSQL tuning parameters without waiting for library-side support.
 
 ---
 

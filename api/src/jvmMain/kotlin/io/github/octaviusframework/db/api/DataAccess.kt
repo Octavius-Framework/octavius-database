@@ -6,6 +6,7 @@ import io.github.octaviusframework.db.api.transaction.*
 import kotlinx.serialization.json.Json
 import io.github.octaviusframework.db.api.type.DynamicDto
 import kotlinx.serialization.modules.SerializersModule
+import kotlin.time.Duration
 
 /**
  * Defines the contract for basic database operations (CRUD and raw queries).
@@ -125,6 +126,14 @@ interface DataAccess : QueryOperations, AutoCloseable {
      * @param plan The pre-built plan containing steps to be executed.
      * @param propagation Specifies how this transaction should behave if another transaction is already active.
      *                    Defaults to [TransactionPropagation.REQUIRED].
+     * @param isolation The isolation level for the transaction.
+     * @param readOnly If true, prevents modifications to the database during this transaction.
+     * @param statementTimeout Aborts any individual statement within this transaction that takes longer
+     * than the specified time. **Note:** Supported only in Core Provider (`SET LOCAL statement_timeout`).
+     * Not supported and throws [io.github.octaviusframework.db.api.exception.BadStatementException] when using Spring integration.
+     * @param transactionTimeout Aborts the entire transaction if it exceeds this time.
+     * In Core Provider, this uses `SET LOCAL transaction_timeout` (Requires PostgreSQL 17+).
+     * In Spring integration, this maps to Spring's transaction deadline logic.
      * @return [DataResult] containing the results of all steps in the plan on success, or a [DatabaseException][io.github.octaviusframework.db.api.exception.DatabaseException] on failure.
      */
     fun executeTransactionPlan(
@@ -132,7 +141,8 @@ interface DataAccess : QueryOperations, AutoCloseable {
         propagation: TransactionPropagation = TransactionPropagation.REQUIRED,
         isolation: IsolationLevel = IsolationLevel.DEFAULT,
         readOnly: Boolean = false,
-        timeoutSeconds: Int? = null,
+        statementTimeout: Duration? = null,
+        transactionTimeout: Duration? = null,
     ): DataResult<TransactionPlanResult>
 
     /**
@@ -154,6 +164,14 @@ interface DataAccess : QueryOperations, AutoCloseable {
      *
      * @param T The return type of the result encapsulated in [DataResult].
      * @param propagation Specifies how this transaction should behave if another transaction is already active.
+     * @param isolation The isolation level for the transaction.
+     * @param readOnly If true, prevents modifications to the database during this transaction.
+     * @param statementTimeout Aborts any individual statement within this transaction that takes longer
+     * than the specified time. **Note:** Supported only in Core Provider (`SET LOCAL statement_timeout`).
+     * Not supported and throws [io.github.octaviusframework.db.api.exception.BadStatementException] when using Spring integration.
+     * @param transactionTimeout Aborts the entire transaction if it exceeds this time.
+     * In Core Provider, this uses `SET LOCAL transaction_timeout` (Requires PostgreSQL 17+).
+     * In Spring integration, this maps to Spring's transaction deadline logic.
      * @param block A lambda providing [QueryOperations] as a receiver for performing database operations within the transaction.
      * @return The result of the block as [DataResult].
      */
@@ -161,7 +179,8 @@ interface DataAccess : QueryOperations, AutoCloseable {
         propagation: TransactionPropagation = TransactionPropagation.REQUIRED,
         isolation: IsolationLevel = IsolationLevel.DEFAULT,
         readOnly: Boolean = false,
-        timeoutSeconds: Int? = null,
+        statementTimeout: Duration? = null,
+        transactionTimeout: Duration? = null,
         block: QueryOperations.() -> DataResult<T>
     ): DataResult<T>
 

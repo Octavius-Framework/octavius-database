@@ -73,6 +73,7 @@ Thrown when a query is semantically or syntactically invalid. This covers both f
 | `AMBIGUOUS_OBJECT`                          | Ambiguous reference to a database object (SQLSTATE Class 42)                      |
 | `DATA_TYPE_ERROR`                           | Data type mismatch or invalid coercion (SQLSTATE Class 42)                        |
 | `INVALID_DEFINITION`                        | Invalid object definition or schema mismatch                                      |
+| `UNSUPPORTED_FEATURE`                       | The requested feature is not supported by the current database provider           |
 
 ```kotlin
 // This throws BadStatementException immediately
@@ -99,6 +100,7 @@ Thrown when data cannot be mapped between PostgreSQL and Kotlin objects. This us
 | `JSON_DESERIALIZATION_FAILED`              | Failed to deserialize JSON for dynamic type                                                                    |
 | `JSON_SERIALIZATION_FAILED`                | Failed to serialize object to JSON format (ensure `@Serializable` is present)                                  |
 | `COMPOSITE_MAPPER_FAILED`                  | Custom `PgCompositeMapper` implementation threw an exception                                                   |
+| `UNSUPPORTED_GENERIC_TYPE_IN_DATA_CLASS`   | Data classes with generic type parameters are not supported for automatic mapping                              |
 
 ### TypeRegistryException
 

@@ -1,14 +1,6 @@
 -- Test SQL dla złożonych struktur danych PostgreSQL
 -- Tworzy przykładowe dane do testowania konwerterów
 
--- Uniwersalny typ-przenośnik - będzie obecny także na zwykłej bazie. Wymagany przez rejestr
-DROP TYPE IF EXISTS dynamic_dto CASCADE;
-CREATE TYPE dynamic_dto AS
-(
-    type_name    TEXT,
-    data_payload JSONB
-);
-
 -- 1. Najpierw tworzymy typy enum
 CREATE TYPE test_status AS ENUM ('active', 'inactive', 'pending', 'not_started');
 CREATE TYPE test_priority AS ENUM ('low', 'medium', 'high', 'critical');

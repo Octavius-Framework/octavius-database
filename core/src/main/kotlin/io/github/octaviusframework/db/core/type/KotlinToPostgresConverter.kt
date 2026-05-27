@@ -83,7 +83,6 @@ internal class KotlinToPostgresConverter(
 
     private fun convertParameter(
         value: Any?,
-        skipDynamicDto: Boolean = false,
         options: InternalQueryOptions
     ): ParameterConversion {
         if (value == null) {
@@ -91,7 +90,7 @@ internal class KotlinToPostgresConverter(
             return ParameterConversion("?", null)
         }
 
-        val (unwrappedValue, pgType, updatedSkipDynamicDto) = unpackPgTyped(value, skipDynamicDto)
+        val (unwrappedValue, pgType, wasPgTyped) = unpackPgTyped(value)
         if (unwrappedValue == null) {
             logger.trace { "Converting null parameter (unwrapped from PgTyped with type $pgType)" }
             val castSuffix = if (pgType != null) "::${pgType.quote()}" else ""
@@ -101,7 +100,7 @@ internal class KotlinToPostgresConverter(
         logger.trace { "Converting parameter of type ${unwrappedValue::class.qualifiedName ?: unwrappedValue::class.simpleName} (explicit type: $pgType)" }
 
         // 1. Try Dynamic DTO conversion
-        if (!updatedSkipDynamicDto) {
+        if (!wasPgTyped) {
             tryConvertAsDynamicDto(unwrappedValue, options)?.let {
                 logger.trace { "Converted parameter as Dynamic DTO" }
                 return it
@@ -138,7 +137,7 @@ internal class KotlinToPostgresConverter(
 
             is List<*> -> {
                 logger.trace { "Handling parameter as List" }
-                handleList(unwrappedValue, updatedSkipDynamicDto, options)
+                handleList(unwrappedValue, options)
             }
 
             is Enum<*> -> {
@@ -150,7 +149,7 @@ internal class KotlinToPostgresConverter(
                 when {
                     unwrappedValue::class.isData -> {
                         logger.trace { "Handling parameter as Composite (Data Class)" }
-                        pgObject(serializer.serializeComposite(unwrappedValue, updatedSkipDynamicDto, options))
+                        pgObject(serializer.serializeComposite(unwrappedValue, options))
                     }
 
                     unwrappedValue::class.isValue -> throw TypeRegistryException(
@@ -170,18 +169,18 @@ internal class KotlinToPostgresConverter(
         return ParameterConversion("?::${resolvedType.quote()}", jdbcValue)
     }
 
-    private fun unpackPgTyped(value: Any, initialSkip: Boolean): Triple<Any?, QualifiedName?, Boolean> {
+    private fun unpackPgTyped(value: Any): Triple<Any?, QualifiedName?, Boolean> {
         var current = value
         var pgType: QualifiedName? = null
-        var skipDynamicDto = initialSkip
+        var wasPgTyped = false
 
         while (current is PgTyped) {
+            wasPgTyped = true
             if (pgType == null) pgType = current.pgType
             val nextValue = current.value ?: return Triple(null, pgType, true)
             current = nextValue
-            skipDynamicDto = true
         }
-        return Triple(current, pgType, skipDynamicDto)
+        return Triple(current, pgType, wasPgTyped)
     }
 
     private fun tryConvertAsDynamicDto(
@@ -213,8 +212,8 @@ internal class KotlinToPostgresConverter(
         return ParameterConversion("?", array)
     }
 
-    private fun handleList(list: List<*>, skipDynamicDto: Boolean, options: InternalQueryOptions): PGobject {
-        return pgObject(serializer.serializeList(list, skipDynamicDto, options))
+    private fun handleList(list: List<*>, options: InternalQueryOptions): PGobject {
+        return pgObject(serializer.serializeList(list, options))
     }
 
     private fun handleEnum(enum: Enum<*>): PGobject {

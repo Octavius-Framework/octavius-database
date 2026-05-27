@@ -1,14 +1,3 @@
--- Usuń starą tabelę, jeśli istnieje, żeby zacząć na czysto
-DROP TABLE IF EXISTS simple_type_benchmark;
-
--- Uniwersalny typ-przenośnik - będzie obecny także na zwykłej bazie. Wymagany przez rejestr
-DROP TYPE IF EXISTS dynamic_dto CASCADE;
-CREATE TYPE dynamic_dto AS
-(
-    type_name    TEXT,
-    data_payload JSONB
-);
-
 -- Stwórz tabelę, której potrzebujemy do testów
 CREATE TABLE simple_type_benchmark
 (

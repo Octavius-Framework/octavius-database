@@ -30,19 +30,19 @@ internal class PgTextSerializer(
     /**
      * Serializes a list into a PostgreSQL array literal (e.g., `{val1,val2}`).
      */
-    fun serializeList(list: List<*>, skipDynamicDto: Boolean, options: InternalQueryOptions): String {
+    fun serializeList(list: List<*>, options: InternalQueryOptions): String {
         logger.trace { "Serializing list with ${list.size} elements" }
         if (list.isEmpty()) return "{}"
 
         return list.joinToString(prefix = "{", postfix = "}", separator = ",") { item ->
-            if (item == null) "NULL" else serializeValue(item, skipDynamicDto, useNullLiteral = true, options)
+            if (item == null) "NULL" else serializeValue(item, useNullLiteral = true, options)
         }
     }
 
     /**
      * Serializes a data class into a PostgreSQL composite literal (e.g., `(val1,val2)`).
      */
-    fun serializeComposite(obj: Any, skipDynamicDto: Boolean, options: InternalQueryOptions): String {
+    fun serializeComposite(obj: Any, options: InternalQueryOptions): String {
         val typeName = typeRegistry.getPgTypeNameForClass(obj::class)
         val oid = typeRegistry.getOidForName(typeName)
         logger.trace { "Serializing composite type $typeName (OID: $oid) from class: ${obj::class.qualifiedName}" }
@@ -80,11 +80,11 @@ internal class PgTextSerializer(
 
         return typeInfo.attributes.keys.joinToString(prefix = "(", postfix = ")", separator = ",") { key ->
             val value = valueMap[key]
-            if (value == null) "" else serializeValue(value, skipDynamicDto, useNullLiteral = false, options)
+            if (value == null) "" else serializeValue(value, useNullLiteral = false, options)
         }
     }
 
-    private fun serializeValue(value: Any, skipDynamicDto: Boolean, useNullLiteral: Boolean, options: InternalQueryOptions): String {
+    private fun serializeValue(value: Any, useNullLiteral: Boolean, options: InternalQueryOptions): String {
         var current = value
         var wasPgTyped = false
 
@@ -111,7 +111,7 @@ internal class PgTextSerializer(
         }
 
         // 2. Try Dynamic DTO automatic conversion
-        if (!wasPgTyped && !skipDynamicDto && current !is DynamicDto) {
+        if (!wasPgTyped && current !is DynamicDto) {
             val kClass = current::class
             if (shouldUseDynamicDto(kClass)) {
                 typeRegistry.getDynamicTypeNameForClass(kClass)?.let { typeName ->
@@ -130,12 +130,12 @@ internal class PgTextSerializer(
                 typeRegistry.getEnumDefinition(oid).enumToValueMap[current] ?: current.name
             }
             is List<*> -> {
-                serializeList(current, skipDynamicDto || wasPgTyped, options)
+                serializeList(current, options)
             }
             else -> {
                 val kClass = current::class
                 when {
-                    kClass.isData -> serializeComposite(current, skipDynamicDto || wasPgTyped, options)
+                    kClass.isData -> serializeComposite(current, options)
                     kClass.isValue -> throw TypeRegistryException(TypeRegistryExceptionMessage.KOTLIN_CLASS_NOT_MAPPED, kClass.qualifiedName ?: kClass.simpleName ?: "unknown", expectedCategory = "DYNAMIC")
                     else -> {
                         logger.trace { "Falling back to toString() for value: $current" }

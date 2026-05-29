@@ -8,6 +8,7 @@ import io.github.octaviusframework.db.api.exception.TypeRegistryExceptionMessage
 import io.github.octaviusframework.db.api.toDataMap
 import io.github.octaviusframework.db.api.type.DynamicDto
 import io.github.octaviusframework.db.api.type.PgTyped
+import io.github.octaviusframework.db.api.type.QualifiedName
 import io.github.octaviusframework.db.api.type.TypeHandler
 import io.github.octaviusframework.db.core.config.DynamicDtoSerializationStrategy
 import io.github.octaviusframework.db.core.type.registry.TypeRegistry
@@ -36,6 +37,73 @@ internal class PgTextSerializer(
 
         return list.joinToString(prefix = "{", postfix = "}", separator = ",") { item ->
             if (item == null) "NULL" else serializeValue(item, useNullLiteral = true, options)
+        }
+    }
+
+    /**
+     * Serializes a map into a PostgreSQL dynamic_map literal (e.g., `({" (oid,key,val) "})`).
+     */
+    fun serializeMap(map: Map<*, *>, options: InternalQueryOptions): String {
+        logger.trace { "Serializing map with ${map.size} elements" }
+
+        val entries = map.entries.map { (key, value) ->
+            if (key == null) throw TypeMappingException(TypeMappingExceptionMessage.VALUE_CONVERSION_FAILED, targetType = "public.dynamic_map", cause = IllegalArgumentException("Map key cannot be null"))
+            if (key !is String) throw TypeMappingException(TypeMappingExceptionMessage.VALUE_CONVERSION_FAILED, targetType = "public.dynamic_map", cause = IllegalArgumentException("Map key must be a String, got ${key::class.qualifiedName ?: key::class.simpleName}"))
+            val keyStr = escapeAndQuote(key)
+
+            if (value == null) {
+                // Use OID 25 (text) for nulls as a safe default
+                "(25,$keyStr,)"
+            } else {
+                val typeName = resolveSqlType(value, options)
+                val oid = typeRegistry.getOidForName(typeName)
+                val valStr = serializeValue(value, useNullLiteral = false, options)
+                "($oid,$keyStr,$valStr)"
+            }
+        }
+
+        val arrayLiteral = serializeList(entries, options)
+        return "(" + escapeAndQuote(arrayLiteral) + ")"
+    }
+
+    fun unpackPgTyped(value: Any): Triple<Any?, QualifiedName?, Boolean> {
+        var current = value
+        var pgType: QualifiedName? = null
+        var wasPgTyped = false
+
+        while (current is PgTyped) {
+            wasPgTyped = true
+            if (pgType == null) pgType = current.pgType
+            val nextValue = current.value ?: return Triple(null, pgType, true)
+            current = nextValue
+        }
+        return Triple(current, pgType, wasPgTyped)
+    }
+
+    fun resolveSqlType(value: Any, options: InternalQueryOptions): QualifiedName {
+        val (unwrappedValue, pgType, _) = unpackPgTyped(value)
+        if (pgType != null) return pgType
+        if (unwrappedValue == null) return QualifiedName("pg_catalog", "text")
+
+        val kClass = unwrappedValue::class
+        return when (unwrappedValue) {
+            is Map<*, *> -> QualifiedName("public", "dynamic_map")
+            is List<*> -> {
+                val firstNonNull = unwrappedValue.firstOrNull { it != null }
+                if (firstNonNull != null) resolveSqlType(firstNonNull, options).asArray()
+                else QualifiedName("pg_catalog", "text", isArray = true)
+            }
+            else -> {
+                when {
+                    shouldUseDynamicDto(kClass) -> typeRegistry.getPgTypeNameForClass(DynamicDto::class)
+                    typeRegistry.isPgType(kClass) -> typeRegistry.getPgTypeNameForClass(kClass)
+                    else -> {
+                        val handler = options.customHandlersByClass[kClass] ?: typeRegistry.getHandlerByClass(kClass)
+                        if (handler != null) QualifiedName(handler.pgSchema, handler.pgTypeName)
+                        else QualifiedName("pg_catalog", "text")
+                    }
+                }
+            }
         }
     }
 
@@ -132,9 +200,17 @@ internal class PgTextSerializer(
             is List<*> -> {
                 serializeList(current, options)
             }
+            is Map<*, *> -> {
+                serializeMap(current, options)
+            }
             else -> {
                 val kClass = current::class
                 when {
+                    kClass.java.isArray -> throw TypeMappingException(
+                        TypeMappingExceptionMessage.VALUE_CONVERSION_FAILED,
+                        value = current,
+                        targetType = kClass.qualifiedName ?: kClass.simpleName ?: "unknown array"
+                    )
                     kClass.isData -> serializeComposite(current, options)
                     kClass.isValue -> throw TypeRegistryException(TypeRegistryExceptionMessage.KOTLIN_CLASS_NOT_MAPPED, kClass.qualifiedName ?: kClass.simpleName ?: "unknown", expectedCategory = "DYNAMIC")
                     else -> {

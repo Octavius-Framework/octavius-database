@@ -26,8 +26,11 @@ Octavius Database provides automatic bidirectional mapping between PostgreSQL an
     - [Inserting Dynamic Data](#inserting-dynamic-data)
     - [Enum Serialization in dynamic_dto](#enum-serialization-in-dynamic_dto)
     - [Helper Serializers](#helper-serializers--multiplatform-types)
-5. [Custom Type Handlers](#custom-type-handlers)
-6. [Object Conversion Utilities](#object-conversion-utilities)
+5. [Ad-Hoc Projections (dynamic_map)](#ad-hoc-projections-dynamic_map)
+    - [Example: Aggregating 1:N Relations Without N+1](#example-aggregating-1n-relations-without-n1)
+    - [Performance Consideration](#performance-consideration)
+6. [Custom Type Handlers](#custom-type-handlers)
+7. [Object Conversion Utilities](#object-conversion-utilities)
 
 ---
 
@@ -453,6 +456,38 @@ It covers:
 - **`BigDecimalAsNumberSerializer`** - Preserving precision in JSONB.
 - **Date/Time Serializers** - Support for PostgreSQL `infinity`.
 - **octaviusSerializersModule** - Pre-configured SerializersModule instance.
+
+---
+
+## Ad-Hoc Projections (dynamic_map)
+
+While `dynamic_dto` is optimized for storing schema-less data in tables using JSONB, `dynamic_map` is an advanced *In-Transit* structure designed for constructing complex, deeply nested entities directly in the `SELECT` clause, while perfectly preserving native PostgreSQL Object Identifiers (`OID`).
+
+* **Use Case:** Internal Form Loaders, complex 1:N relationship aggregations in a single query, or internal server-side processing where you need strict Kotlin types (`Instant`, `UUID`, `Enum`) but don't want to define a static DTO.
+* **Not for standard REST APIs:** If your only goal is to serialize the result to JSON (e.g., via Jackson or `kotlinx.serialization`) and send it to a frontend API, use PostgreSQL's native `jsonb_build_object` instead. JSON serialization converts `UUID`, `Instant`, and `Enum` to strings anyway, so the strict type preservation of `dynamic_map` is wasted, while its parsing overhead is still paid.
+* **Mapping:** Maps directly to `Map<String, Any?>` in Kotlin. Types are natively resolved using registered `TypeHandler`s (both `GlobalTypeHandler` and per-query handlers via `.options {}`), guaranteeing that you get actual `Instant`, `UUID`, or custom `Enums` instead of raw strings.
+* **Warning:** **DO NOT** use `dynamic_map` as a column type in `CREATE TABLE`. OIDs for user-defined types (like enums) change upon database restore/migration, which will corrupt stored data. It is strictly for `SELECT` clauses.
+
+### Example: Aggregating 1:N Relations Without N+1
+
+You can pack a main entity and its 1:N relations into a single query:
+
+```postgresql
+SELECT dynamic_map(
+    'citizen_id' ~> c.id,
+    'social_class' ~> c.social_class,      -- preserves Custom Enum types!
+    'tributes' ~> ARRAY(
+        SELECT dynamic_map('id' ~> t.id, 'amount' ~> t.amount)
+        FROM tributes t WHERE t.citizen_id = c.id
+    )::public.dynamic_map[]
+) AS result
+FROM citizens c WHERE c.id = 1;
+```
+
+### Performance Consideration
+
+While `dynamic_map` is an incredibly powerful surgical tool for resolving single complex entities, it carries a higher CPU/GC overhead compared to standard flat `JOIN` operations. This is because the JDBC driver returns arrays of composites as massive text strings, which the Octavius internal parser must then tokenize and resolve character by character.
+* **Rule of thumb:** Use `dynamic_map` to deeply load a single record (or a few). If you are exporting 100,000 rows, use a standard flat `SELECT` and `groupBy` in Kotlin to avoid Garbage Collection spikes.
 
 ---
 

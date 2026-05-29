@@ -30,7 +30,7 @@ Octavius was built to bring order to the chaotic republic of database interactio
 
 - **Fluent Query Builders** — SELECT, INSERT, UPDATE, DELETE with named parameters, subqueries, and CTE support
 - **Automatic Type Mapping** — PostgreSQL `COMPOSITE`, `ENUM`, `ARRAY` and **Custom Type Handlers** (Global & Per-Query) ↔ Kotlin types
-- **Dynamic Type System** — Polymorphic storage & ad-hoc object mapping with `dynamic_dto`
+- **Dynamic Type System** — Polymorphic storage & ad-hoc object mapping with `dynamic_dto` and `dynamic_map`
 - **Transaction Plans** — Multi-step atomic operations with step dependencies
 - **Dynamic Filters** — Safe, composable `WHERE` clauses with `QueryFragment`
 - **Stored Procedures** — CALL with automatic IN/OUT/INOUT handling, composite & array expansion
@@ -159,11 +159,11 @@ val results = dataAccess.select("*").from("classified_reports")
 ```
 *See [Type System: Per-Query Configuration](docs/type-system.md#per-query-configuration-via-options-) for full details.*
 
-## Dynamic Type System (`dynamic_dto`)
+## Dynamic Type System (`dynamic_dto` & `dynamic_map`)
 
-Octavius provides a powerful bridge between PostgreSQL and Kotlin's type system using the `dynamic_dto` composite type (`type_name TEXT`, `data_payload JSONB`).
-It allows you to map complex, nested, or polymorphic data on the fly without creating strict database schema types for every nested object.
-This type is automatically initialized in the **`public`** schema on startup.
+Octavius provides a powerful bridge between PostgreSQL and Kotlin's type system using the `dynamic_dto` (JSONB-based storage) and `dynamic_map` (ad-hoc projections) composite types.
+They allow you to map complex, nested, or polymorphic data on the fly without creating strict database schema types for every nested object.
+These types are automatically initialized in the **`public`** schema on startup.
 
 
 ### 1. Ad-hoc Object Mapping
@@ -448,7 +448,7 @@ For detailed guides and examples, see the [full documentation](docs/README.md):
 - [Transactions](docs/transactions.md) - Transaction blocks, TransactionPlan, StepHandle, passing data between steps , propagation, isolation, read-only, timeouts, errors and Concurrency & Thread Safety
 - [Notifications](docs/notifications.md) - LISTEN/NOTIFY, PgChannelListener, Flow-based receiving
 - [Error Handling](docs/error-handling.md) - Exception hierarchy, debugging
-- [Type System](docs/type-system.md) - @PgEnum, @PgComposite, @DynamicallyMappable, dynamic data insertion, Custom Type Handlers, GlobalTypeHandler, .options() per-query configs, standard type mappings
+- [Type System](docs/type-system.md) - @PgEnum, @PgComposite, @DynamicallyMappable, dynamic_map projections, dynamic data insertion, Custom Type Handlers, GlobalTypeHandler, .options() per-query configs, standard type mappings
 
 ## Architecture
 

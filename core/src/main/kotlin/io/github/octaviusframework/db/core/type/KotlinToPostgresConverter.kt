@@ -2,7 +2,6 @@ package io.github.octaviusframework.db.core.type
 
 import io.github.octaviusframework.db.api.exception.*
 import io.github.octaviusframework.db.api.type.DynamicDto
-import io.github.octaviusframework.db.api.type.PgTyped
 import io.github.octaviusframework.db.api.type.QualifiedName
 import io.github.octaviusframework.db.api.type.TypeHandler
 import io.github.octaviusframework.db.core.config.DynamicDtoSerializationStrategy
@@ -90,7 +89,7 @@ internal class KotlinToPostgresConverter(
             return ParameterConversion("?", null)
         }
 
-        val (unwrappedValue, pgType, wasPgTyped) = unpackPgTyped(value)
+        val (unwrappedValue, pgType, wasPgTyped) = serializer.unpackPgTyped(value)
         if (unwrappedValue == null) {
             logger.trace { "Converting null parameter (unwrapped from PgTyped with type $pgType)" }
             val castSuffix = if (pgType != null) "::${pgType.quote()}" else ""
@@ -128,7 +127,7 @@ internal class KotlinToPostgresConverter(
 
         // 3. Handle specialized types
         val resolvedType: QualifiedName =
-            pgType ?: resolveSqlType(unwrappedValue, options)
+            pgType ?: serializer.resolveSqlType(unwrappedValue, options)
         val jdbcValue = when (unwrappedValue) {
             is Array<*> -> {
                 logger.trace { "Handling parameter as Array" }
@@ -138,6 +137,11 @@ internal class KotlinToPostgresConverter(
             is List<*> -> {
                 logger.trace { "Handling parameter as List" }
                 handleList(unwrappedValue, options)
+            }
+
+            is Map<*, *> -> {
+                logger.trace { "Handling parameter as Map (Dynamic Map)" }
+                handleMap(unwrappedValue, options)
             }
 
             is Enum<*> -> {
@@ -167,20 +171,6 @@ internal class KotlinToPostgresConverter(
         }
 
         return ParameterConversion("?::${resolvedType.quote()}", jdbcValue)
-    }
-
-    private fun unpackPgTyped(value: Any): Triple<Any?, QualifiedName?, Boolean> {
-        var current = value
-        var pgType: QualifiedName? = null
-        var wasPgTyped = false
-
-        while (current is PgTyped) {
-            wasPgTyped = true
-            if (pgType == null) pgType = current.pgType
-            val nextValue = current.value ?: return Triple(null, pgType, true)
-            current = nextValue
-        }
-        return Triple(current, pgType, wasPgTyped)
     }
 
     private fun tryConvertAsDynamicDto(
@@ -216,6 +206,10 @@ internal class KotlinToPostgresConverter(
         return pgObject(serializer.serializeList(list, options))
     }
 
+    private fun handleMap(map: Map<*, *>, options: InternalQueryOptions): PGobject {
+        return pgObject(serializer.serializeMap(map, options))
+    }
+
     private fun handleEnum(enum: Enum<*>): PGobject {
         val typeName = typeRegistry.getPgTypeNameForClass(enum::class)
         val oid = typeRegistry.getOidForName(typeName)
@@ -227,40 +221,5 @@ internal class KotlinToPostgresConverter(
     private fun pgObject(value: String?) = PGobject().apply {
         this.type = "text"
         this.value = value
-    }
-
-    private fun resolveSqlType(value: Any, options: InternalQueryOptions): QualifiedName {
-        return when (value) {
-            is List<*> -> {
-                val firstNonNull = value.firstOrNull { it != null }
-                if (firstNonNull != null) resolveSqlType(firstNonNull, options).asArray()
-                else QualifiedName("pg_catalog", "text", isArray = true)
-            }
-
-            else -> {
-                val kClass = value::class
-                when {
-                    shouldUseDynamicDto(kClass) -> typeRegistry.getPgTypeNameForClass(DynamicDto::class)
-                    typeRegistry.isPgType(kClass) -> typeRegistry.getPgTypeNameForClass(kClass)
-                    else -> {
-                        val handler = options.customHandlersByClass[kClass] ?: typeRegistry.getHandlerByClass(kClass)
-                        if (handler != null) {
-                            QualifiedName(handler.pgSchema, handler.pgTypeName)
-                        } else {
-                            QualifiedName("pg_catalog", "text")
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private fun shouldUseDynamicDto(kClass: KClass<*>): Boolean {
-        if (typeRegistry.getDynamicTypeNameForClass(kClass) == null) return false
-        return when (dynamicDtoStrategy) {
-            DynamicDtoSerializationStrategy.PREFER_DYNAMIC_DTO -> true
-            DynamicDtoSerializationStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS -> !typeRegistry.isPgType(kClass)
-            else -> false
-        }
     }
 }

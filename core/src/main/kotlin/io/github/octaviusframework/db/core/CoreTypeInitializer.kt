@@ -29,6 +29,27 @@ import io.github.oshai.kotlinlogging.KotlinLogging
  *
  * **Note:**
  * For static, well-defined data structures, a dedicated PostgreSQL `COMPOSITE TYPE` is preferred.
+ *
+ * ## The `dynamic_map` Type
+ *
+ * A specialized transport structure (`dynamic_map_entry[]`) used for returning ad-hoc, untyped maps
+ * from PostgreSQL to Kotlin while **strictly preserving PostgreSQL type information (OIDs)**.
+ * 
+ * **Structure:**
+ * - `type_oid` (oid): The exact PostgreSQL internal Object Identifier of the original value.
+ * - `key` (text): The map key.
+ * - `raw_value` (text): The text-format representation of the value.
+ *
+ * **Purpose:**
+ * Because a raw `Map<String, Any?>` lacks a target Kotlin class for type inference, preserving the OID 
+ * is necessary to allow Octavius's `TypeHandler` architecture to precisely decode each map value into 
+ * its exact Kotlin equivalent (e.g. keeping custom `@PgEnum` instead of falling back to String).
+ * 
+ * **⚠️ DANGER:**
+ * `dynamic_map` is intended purely for data transport (e.g., dynamic projections, pivot tables) and 
+ * temporary persistence (e.g. `TEMP` tables). You should **never** store `dynamic_map` in persistent 
+ * tables because OIDs for custom types are dynamically generated and **will change** across different 
+ * environments or after a database dump/restore, leading to data corruption.
  */
 internal object CoreTypeInitializer {
 
@@ -37,6 +58,7 @@ internal object CoreTypeInitializer {
     private const val CORE_INIT_SQL = """
         DO $$
         BEGIN
+           -- DYNAMIC_DTO
             IF NOT EXISTS (
                 SELECT 1 
                 FROM pg_type t 
@@ -46,6 +68,30 @@ internal object CoreTypeInitializer {
                 CREATE TYPE public.dynamic_dto AS (
                     type_name    text,
                     data_payload jsonb
+                );
+            END IF;
+            -- DYNAMIC_MAP_ENTRY
+            IF NOT EXISTS (
+                SELECT 1 
+                FROM pg_type t 
+                JOIN pg_namespace n ON n.oid = t.typnamespace 
+                WHERE t.typname = 'dynamic_map_entry' AND n.nspname = 'public'
+            ) THEN
+                CREATE TYPE public.dynamic_map_entry AS (
+                    type_oid  oid,
+                    key       text,
+                    raw_value text
+                );
+            END IF;
+            -- DYNAMIC_MAP
+            IF NOT EXISTS (
+                SELECT 1 
+                FROM pg_type t 
+                JOIN pg_namespace n ON n.oid = t.typnamespace 
+                WHERE t.typname = 'dynamic_map' AND n.nspname = 'public'
+            ) THEN
+                CREATE TYPE public.dynamic_map AS (
+                    entries dynamic_map_entry[]
                 );
             END IF;
         END$$;
@@ -81,6 +127,44 @@ internal object CoreTypeInitializer {
             RETURN p_dto.data_payload;
         END;
         $$ LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE;
+
+        CREATE OR REPLACE FUNCTION public.dynamic_map_entry(k text, v anyelement)
+            RETURNS public.dynamic_map_entry AS 
+        $$
+        BEGIN
+            IF k IS NULL THEN
+                RAISE EXCEPTION 'dynamic_map_entry: Key cannot be null';
+            END IF;
+            
+            RETURN (
+                pg_typeof(v)::oid, 
+                k, 
+                CASE WHEN v IS NULL THEN NULL ELSE format('%s', v) END
+            )::public.dynamic_map_entry;
+        END;
+        $$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE;
+
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_operator 
+                WHERE oprname = '~>' AND oprnamespace = 'public'::regnamespace
+            ) THEN
+                CREATE OPERATOR public.~> (
+                    LEFTARG = text,
+                    RIGHTARG = anyelement,
+                    PROCEDURE = public.dynamic_map_entry
+                );
+            END IF;
+        END$$;
+
+        CREATE OR REPLACE FUNCTION public.dynamic_map(VARIADIC items public.dynamic_map_entry[])
+            RETURNS public.dynamic_map AS 
+        $$
+        BEGIN
+            RETURN ROW(items)::public.dynamic_map;
+        END;
+        $$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE STRICT;
     """
 
     /**

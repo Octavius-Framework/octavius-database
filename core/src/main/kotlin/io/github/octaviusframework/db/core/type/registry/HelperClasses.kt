@@ -8,7 +8,7 @@ import kotlin.reflect.KClass
 
 /** Classification of PostgreSQL types for routing to appropriate converters. */
 internal enum class TypeCategory {
-    STANDARD, ENUM, COMPOSITE, ARRAY, DYNAMIC
+    STANDARD, ENUM, COMPOSITE, ARRAY, DYNAMIC_DTO, DYNAMIC_MAP
 }
 
 /** Metadata for a PostgreSQL ENUM type, enabling bidirectional value mapping. */

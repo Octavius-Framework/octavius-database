@@ -182,7 +182,7 @@ Flyway will:
 
 ## Core Type Initialization
 
-On startup, Octavius automatically creates the `dynamic_dto` type and helper functions in the **`public`** PostgreSQL schema.
+On startup, Octavius automatically creates the `dynamic_dto`, `dynamic_map_entry`, `dynamic_map` types, and their helper functions (including the `~>` operator) in the **`public`** PostgreSQL schema.
 
 ### What Gets Created
 
@@ -225,6 +225,48 @@ BEGIN
     RETURN p_dto.data_payload;
 END;
 $$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE;
+
+-- Map entry type for ad-hoc projections
+CREATE TYPE public.dynamic_map_entry AS (
+    type_oid  oid,
+    key       text,
+    raw_value text
+);
+
+-- Map array type
+CREATE TYPE public.dynamic_map AS (
+    entries dynamic_map_entry[]
+);
+
+-- Entry constructor function
+CREATE OR REPLACE FUNCTION public.dynamic_map_entry(k text, v anyelement)
+RETURNS public.dynamic_map_entry AS $$
+BEGIN
+    IF k IS NULL THEN
+        RAISE EXCEPTION 'dynamic_map_entry: Key cannot be null';
+    END IF;
+    RETURN (
+        pg_typeof(v)::oid, 
+        k, 
+        CASE WHEN v IS NULL THEN NULL ELSE format('%s', v) END
+    )::public.dynamic_map_entry;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE;
+
+-- Map constructor function
+CREATE OR REPLACE FUNCTION public.dynamic_map(VARIADIC items public.dynamic_map_entry[])
+RETURNS public.dynamic_map AS $$
+BEGIN
+    RETURN ROW(items)::public.dynamic_map;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE STRICT;
+
+-- The ~> operator for syntax sugar
+CREATE OPERATOR public.~> (
+    LEFTARG = text,
+    RIGHTARG = anyelement,
+    PROCEDURE = public.dynamic_map_entry
+);
 ```
 
 ### Idempotent

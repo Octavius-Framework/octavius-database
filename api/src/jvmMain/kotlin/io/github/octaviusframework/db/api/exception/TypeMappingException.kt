@@ -16,8 +16,8 @@ enum class TypeMappingExceptionMessage {
      */
     UNSUPPORTED_COMPONENT_TYPE_IN_ARRAY,
 
-    /** The internal format of a dynamic_dto column is invalid or corrupted. */
-    INVALID_DYNAMIC_DTO_FORMAT,
+    /** The internal format of a dynamic type (dynamic_dto or dynamic_map) is invalid or corrupted. */
+    INVALID_DYNAMIC_TYPE_FORMAT,
 
     /** Collection element type does not match the expected generic type. */
     INCOMPATIBLE_COLLECTION_ELEMENT_TYPE,
@@ -88,7 +88,7 @@ private fun generateDeveloperMessage(
     return when (messageEnum) {
         TypeMappingExceptionMessage.VALUE_CONVERSION_FAILED -> "Cannot convert value '$value' to type '$targetType'."
         TypeMappingExceptionMessage.ENUM_CONVERSION_FAILED -> "Cannot convert enum value '$value' to type '$targetType'."
-        TypeMappingExceptionMessage.INVALID_DYNAMIC_DTO_FORMAT -> "Invalid dynamic_dto format: '$value'."
+        TypeMappingExceptionMessage.INVALID_DYNAMIC_TYPE_FORMAT -> "Invalid dynamic type format (dynamic_dto or dynamic_map): '$value'."
         TypeMappingExceptionMessage.INCOMPATIBLE_COLLECTION_ELEMENT_TYPE ->
             "An element within a collection has an incorrect type. Expected elements compatible with '$targetType', but found an element of type '${value?.let { it::class.simpleName }}'."
 

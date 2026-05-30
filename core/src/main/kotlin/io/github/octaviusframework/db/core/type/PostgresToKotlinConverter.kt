@@ -69,12 +69,19 @@ internal class PostgresToKotlinConverter(
                 convertCompositeType(value, def, options)
             }
 
-            TypeCategory.DYNAMIC -> {
+            TypeCategory.DYNAMIC_DTO -> {
                 logger.trace { "Converting dynamic DTO value for OID $oid" }
-                convertDynamicType(value, options)
+                convertDynamicDto(value, options)
+            }
+
+            TypeCategory.DYNAMIC_MAP -> {
+                logger.trace { "Converting dynamic map value for OID $oid" }
+                convertDynamicMap(value, options)
             }
         }
     }
+
+
 
     /**
      * Converts standard PostgreSQL types to appropriate Kotlin types.
@@ -238,10 +245,17 @@ internal class PostgresToKotlinConverter(
     /**
      * Deserializes the special `dynamic_dto` type to an appropriate Kotlin class.
      *
-     * @param value Raw value from database in composite format `("typeName", "jsonData")`.
-     * @return Instance of appropriate `data class` with `@DynamicallyMappable` annotation.
+     * The `dynamic_dto` structure is a record/composite with 2 fields:
+     * 1. type_name (String) - Key used to identify the target Kotlin class (via @DynamicallyMappable).
+     * 2. data_payload (JSONB) - The actual serialized data of the object.
+     *
+     * @param value Raw value from database in composite format ("typeName", "jsonData").
+     * @param options Query options for type conversion and JSON serialization.
+     * @return Instance of appropriate data class with @DynamicallyMappable annotation.
+     * @throws TypeRegistryException If the field count is incorrect.
+     * @throws TypeMappingException If the format is invalid or deserialization fails.
      */
-    private fun convertDynamicType(value: String, options: InternalQueryOptions): Any {
+    private fun convertDynamicDto(value: String, options: InternalQueryOptions): Any {
         // null handled in convert method
         // json itself cannot be null in composite - this is also consistent with the write where value cannot be null
         var typeName: String? = null
@@ -260,8 +274,9 @@ internal class PostgresToKotlinConverter(
             expectedCategory = "DYNAMIC"
         )
         if (typeName == null || jsonDataString == null) throw TypeMappingException(
-            TypeMappingExceptionMessage.INVALID_DYNAMIC_DTO_FORMAT,
-            value = value
+            TypeMappingExceptionMessage.INVALID_DYNAMIC_TYPE_FORMAT,
+            value = value,
+            cause = IllegalStateException("type_name or data_payload is null in dynamic_dto")
         )
 
 
@@ -278,6 +293,93 @@ internal class PostgresToKotlinConverter(
                 cause = e
             )
         }
+    }
+
+    /**
+     * Converts a PostgreSQL representation of `dynamic_map` (which is usually a composite type
+     * containing an array of field metadata: OID, name, and string value) into a Kotlin Map.
+     *
+     * The `dynamic_map` structure is record/composite with 1 field:
+     * 1. entries (dynamic_map_entry[]) - An array of metadata items.
+     *
+     * Each item in the array is itself a record with 3 fields:
+     * 1. type_oid (Int) - PostgreSQL type identifier.
+     * 2. key (String) - Field name.
+     * 3. raw_value (String?) - The raw string representation of the value.
+     *
+     * @param value The raw string from PostgreSQL representing the `dynamic_map` composite.
+     * @param options Query options for type conversion.
+     * @return A map of field names to their converted Kotlin values.
+     * @throws TypeRegistryException If the outer field count is incorrect.
+     * @throws TypeMappingException If the format is invalid or required components are null.
+     */
+    private fun convertDynamicMap(value: String, options: InternalQueryOptions): Map<String, Any?> {
+        val result = mutableMapOf<String, Any?>()
+        var arrayStr: String? = null
+        var count = 0
+
+        // The dynamic_map is expected to be a composite containing an array as its first element
+        parseNestedStructure(value, mapNullLiteralToNull = false) { elementValue, _ ->
+            if (count == 0) arrayStr = elementValue
+            count++
+        }
+
+        if (count != 1) {
+            throw TypeRegistryException(
+                TypeRegistryExceptionMessage.WRONG_FIELD_NUMBER_IN_COMPOSITE,
+                typeName = "public.dynamic_map",
+                expectedCategory = "DYNAMIC_MAP"
+            )
+        }
+
+        if (arrayStr == null) {
+            throw TypeMappingException(
+                TypeMappingExceptionMessage.INVALID_DYNAMIC_TYPE_FORMAT,
+                value = value,
+                targetType = "Map<String, Any?>",
+                cause = IllegalStateException("Internal array of dynamic_map is null")
+            )
+        }
+
+        // Parse the internal array of field metadata
+        parseNestedStructure(arrayStr, mapNullLiteralToNull = true) { itemStr, _ ->
+            if (itemStr == null) {
+                throw TypeMappingException(
+                    TypeMappingExceptionMessage.INVALID_DYNAMIC_TYPE_FORMAT,
+                    value = value,
+                    targetType = "Map<String, Any?>",
+                    cause = IllegalStateException("Element in dynamic_map array is null")
+                )
+            }
+
+            var oid: Int? = null
+            var name: String? = null
+            var rawValue: String? = null
+            var fieldCount = 0
+
+            // Each item is a composite: (oid, name, value)
+            parseNestedStructure(itemStr, mapNullLiteralToNull = false) { fieldStr, _ ->
+                when (fieldCount) {
+                    0 -> oid = fieldStr?.toIntOrNull()
+                    1 -> name = fieldStr
+                    2 -> rawValue = fieldStr
+                }
+                fieldCount++
+            }
+
+            if (fieldCount == 3 && oid != null && name != null) {
+                result[name] = convert(rawValue, oid, options)
+            } else {
+                throw TypeMappingException(
+                    TypeMappingExceptionMessage.INVALID_DYNAMIC_TYPE_FORMAT,
+                    value = itemStr,
+                    targetType = "Map<String, Any?>",
+                    cause = IllegalStateException("Invalid dynamic_map item structure (fieldCount=$fieldCount, oid=$oid, name=$name)")
+                )
+            }
+        }
+
+        return result
     }
 
     /**

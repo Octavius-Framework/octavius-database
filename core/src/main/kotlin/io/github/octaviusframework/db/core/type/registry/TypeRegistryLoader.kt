@@ -321,13 +321,18 @@ internal class TypeRegistryLoader(
         val map = mutableMapOf<Int, TypeCategory>()
 
         val dynamicDtoOid = finalComposites[DYNAMIC_DTO_QUALIFIED_NAME]?.oid
+        val dynamicMapOid = finalComposites[DYNAMIC_MAP_QUALIFIED_NAME]?.oid
 
         allOids.forEach { map[it] = TypeCategory.STANDARD }
 
         arrays.forEach { map[it] = TypeCategory.ARRAY }
         enums.forEach { map[it] = TypeCategory.ENUM }
         composites.forEach { oid ->
-            map[oid] = if (oid == dynamicDtoOid) TypeCategory.DYNAMIC else TypeCategory.COMPOSITE
+            map[oid] = when (oid) {
+                dynamicDtoOid -> TypeCategory.DYNAMIC_DTO
+                dynamicMapOid -> TypeCategory.DYNAMIC_MAP
+                else -> TypeCategory.COMPOSITE
+            }
         }
 
         return map
@@ -336,5 +341,6 @@ internal class TypeRegistryLoader(
     companion object {
         private val logger = KotlinLogging.logger {}
         private val DYNAMIC_DTO_QUALIFIED_NAME = QualifiedName("public", "dynamic_dto")
+        private val DYNAMIC_MAP_QUALIFIED_NAME = QualifiedName("public", "dynamic_map")
     }
 }

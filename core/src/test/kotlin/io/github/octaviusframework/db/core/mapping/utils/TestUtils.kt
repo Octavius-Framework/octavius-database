@@ -90,7 +90,7 @@ internal fun createFakeTypeRegistry(): TypeRegistry {
             kClass = kClass
         )
 
-        oidCategoryMap[oid] = if (typeName == "dynamic_dto") TypeCategory.DYNAMIC else TypeCategory.COMPOSITE
+        oidCategoryMap[oid] = if (typeName == "dynamic_dto") TypeCategory.DYNAMIC_DTO else TypeCategory.COMPOSITE
         classToPgNameMap[kClass] = qualifiedName
         pgNameToOidMap[qualifiedName] = oid
     }

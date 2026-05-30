@@ -20,7 +20,7 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 | [Transactions](transactions.md)                       | Transaction blocks, TransactionPlan, StepHandle, passing data between steps , propagation, isolation, read-only, timeouts and errors                               |
 | [Notifications](notifications.md)                     | PostgreSQL LISTEN/NOTIFY, PgChannelListener, Flow-based receiving                                                                                                  |
 | [Error Handling](error-handling.md)                   | Fatal Developer Errors (Thrown) vs. Database Errors (Returned), Exception hierarchy                                                                                |
-| [Type System](type-system.md)                         | @PgEnum, @PgComposite, @DynamicallyMappable, dynamic data insertion, Custom Type Handlers, GlobalTypeHandler, .options() per-query configs, standard type mappings |
+| [Type System](type-system.md)                         | @PgEnum, @PgComposite, @DynamicallyMappable, dynamic_map projections, dynamic data insertion, Custom Type Handlers, GlobalTypeHandler, .options() per-query configs, standard type mappings |
 
 ## Quick Links
 
@@ -117,6 +117,7 @@ Detailed documentation for Octavius Database - an SQL-first data access layer fo
 - [Manual Composite Mapping](type-system.md#manual-composite-mapping-pgcompositemapper) - Manual mapping of composite types
 - [@DynamicallyMappable](type-system.md#dynamic-types-dynamic_dto) - Polymorphic storage with `dynamic_dto`
 - [Inserting Dynamic Data](type-system.md#inserting-dynamic-data) - How to persist dynamic_dto and polymorphic lists
+- [Ad-Hoc Projections](type-system.md#ad-hoc-projections-dynamic_map) - Resolving complex 1:N relations with `dynamic_map`
 - [Custom Type Handlers](type-system.md#custom-type-handlers) - Implement custom serialization for any PostgreSQL type
 - [Global Registration](type-system.md#global-registration-via-globaltypehandler) - `GlobalTypeHandler` and auto-discovery
 - [Per-Query Configuration](type-system.md#per-query-configuration-via-options-) - `.options()` for ad-hoc mapping and handler overrides

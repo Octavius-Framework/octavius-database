@@ -48,7 +48,7 @@ Automatic conversion works out-of-the-box for the following types. Note that if 
 | `numeric`                   | `BigDecimal`    |                                                  |
 | `text`, `varchar`, `bpchar` | `String`        |                                                  |
 | `bool`                      | `Boolean`       |                                                  |
-| `uuid`                      | `UUID`          | `java.util.UUID`                                 |
+| `uuid`                      | `Uuid`          | `kotlin.uuid.Uuid`                               |
 | `bytea`                     | `ByteArray`     |                                                  |
 | `jsonb`, `json`             | `JsonElement`   | `kotlinx.serialization.json`                     |
 | `void`                      | `Unit`          | Return type of void functions (e.g. `pg_notify`) |
@@ -66,7 +66,7 @@ Arrays of all standard types are supported and naturally map to `List<T>`:
 |------------|----------------|
 | `int4[]`   | `List<Int>`    |
 | `text[]`   | `List<String>` |
-| `uuid[]`   | `List<UUID>`   |
+| `uuid[]`   | `List<Uuid>`   |
 | etc.       | `List<T>`      |
 
 ### Infinity Values for Date/Time
@@ -463,9 +463,9 @@ It covers:
 
 While `dynamic_dto` is optimized for storing schema-less data in tables using JSONB, `dynamic_map` is an advanced *In-Transit* structure designed for constructing complex, deeply nested entities directly in the `SELECT` clause, while perfectly preserving native PostgreSQL Object Identifiers (`OID`).
 
-* **Use Case:** Internal Form Loaders, complex 1:N relationship aggregations in a single query, or internal server-side processing where you need strict Kotlin types (`Instant`, `UUID`, `Enum`) but don't want to define a static DTO.
-* **Not for standard REST APIs:** If your only goal is to serialize the result to JSON (e.g., via Jackson or `kotlinx.serialization`) and send it to a frontend API, use PostgreSQL's native `jsonb_build_object` instead. JSON serialization converts `UUID`, `Instant`, and `Enum` to strings anyway, so the strict type preservation of `dynamic_map` is wasted, while its parsing overhead is still paid.
-* **Mapping:** Maps directly to `Map<String, Any?>` in Kotlin. Types are natively resolved using registered `TypeHandler`s (both `GlobalTypeHandler` and per-query handlers via `.options {}`), guaranteeing that you get actual `Instant`, `UUID`, or custom `Enums` instead of raw strings.
+* **Use Case:** Internal Form Loaders, complex 1:N relationship aggregations in a single query, or internal server-side processing where you need strict Kotlin types (`Instant`, `Uuid`, `Enum`) but don't want to define a static DTO.
+* **Not for standard REST APIs:** If your only goal is to serialize the result to JSON (e.g., via Jackson or `kotlinx.serialization`) and send it to a frontend API, use PostgreSQL's native `jsonb_build_object` instead. JSON serialization converts `Uuid`, `Instant`, and `Enum` to strings anyway, so the strict type preservation of `dynamic_map` is wasted, while its parsing overhead is still paid.
+* **Mapping:** Maps directly to `Map<String, Any?>` in Kotlin. Types are natively resolved using registered `TypeHandler`s (both `GlobalTypeHandler` and per-query handlers via `.options {}`), guaranteeing that you get actual `Instant`, `Uuid`, or custom `Enums` instead of raw strings.
 * **Warning:** **DO NOT** use `dynamic_map` as a column type in `CREATE TABLE`. OIDs for user-defined types (like enums) change upon database restore/migration, which will corrupt stored data. It is strictly for `SELECT` clauses.
 
 ### Example: Aggregating 1:N Relations Without N+1

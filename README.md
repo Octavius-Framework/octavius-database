@@ -100,7 +100,7 @@ Automatic conversion between PostgreSQL and Kotlin types.
 | `numeric`                 | `BigDecimal`    |                                                  |
 | `text`, `varchar`, `char` | `String`        |                                                  |
 | `bool`                    | `Boolean`       |                                                  |
-| `uuid`                    | `UUID`          | `java.util.UUID`                                 |
+| `uuid`                    | `Uuid`          | `kotlin.uuid.Uuid`                               |
 | `bytea`                   | `ByteArray`     |                                                  |
 | `json`, `jsonb`           | `JsonElement`   | `kotlinx.serialization.json`                     |
 | `void`                    | `Unit`          | Return type of void functions (e.g. `pg_notify`) |

@@ -17,6 +17,7 @@ import java.util.*
 import kotlin.time.Duration
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
+import kotlin.uuid.Uuid
 
 /**
  * Błyskawiczne testy jednostkowe dla PostgresToKotlinConverter.
@@ -64,7 +65,7 @@ class PostgresToKotlinConverterUnitTest {
         assertThat(converter.convert(GOLDEN_STRING_SIMPLE_NUMBER, getOid(QualifiedName("pg_catalog","int4")), options)).isEqualTo(42)
         assertThat(converter.convert(GOLDEN_STRING_SIMPLE_BOOL, getOid(QualifiedName("pg_catalog","bool")), options)).isEqualTo(true)
         assertThat(converter.convert(GOLDEN_STRING_SIMPLE_JSON, getOid(QualifiedName("pg_catalog","jsonb")), options)).isEqualTo(Json.parseToJsonElement(GOLDEN_STRING_SIMPLE_JSON) as JsonObject)
-        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_UUID, getOid(QualifiedName("pg_catalog","uuid")), options)).isEqualTo(UUID.fromString("7b14b7bb-625c-408c-b5ff-ccd2233747dc"))
+        assertThat(converter.convert(GOLDEN_STRING_SIMPLE_UUID, getOid(QualifiedName("pg_catalog","uuid")), options)).isEqualTo(Uuid.parse("7b14b7bb-625c-408c-b5ff-ccd2233747dc"))
         assertThat(converter.convert(GOLDEN_STRING_SIMPLE_DATE, getOid(QualifiedName("pg_catalog","date")), options)).isEqualTo(LocalDate.parse("2024-01-15"))
     }
 

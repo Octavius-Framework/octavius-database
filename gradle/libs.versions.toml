@@ -1,6 +1,6 @@
 [versions]
 dokka = "2.2.0"
-kotlin = "2.3.21"
+kotlin = "2.4.0"
 kotlinx-coroutines = "1.11.0"
 kotlinx-serialization = "1.11.0"
 kotlinx-datetime = "0.8.0"
@@ -9,13 +9,13 @@ classgraph = "4.8.184"
 postgres = "42.7.11"
 hikari = "7.0.2"
 spring-jdbc = "7.0.7"
-flyway = "12.1.1"
+flyway = "12.8.0"
 # test/log
-junit = "6.0.3"
+junit = "6.1.0"
 assertj-core = "4.0.0-M1"
-mockk = "1.14.9"
-logback = "1.5.32"
-kotlin-logging = "8.0.02"
+mockk = "1.14.11"
+logback = "1.5.34"
+kotlin-logging = "8.0.4"
 
 [libraries]
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }

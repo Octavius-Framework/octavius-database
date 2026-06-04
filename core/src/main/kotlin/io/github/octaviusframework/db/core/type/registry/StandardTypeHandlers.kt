@@ -16,6 +16,8 @@ import java.util.*
 import kotlin.reflect.KClass
 import kotlin.time.*
 import kotlin.time.Instant
+import kotlin.uuid.Uuid
+import kotlin.uuid.toKotlinUuid
 import java.time.LocalDate as JLocalDate
 import java.time.LocalDateTime as JLocalDateTime
 import java.time.LocalTime as JLocalTime
@@ -247,9 +249,9 @@ internal object StandardTypeHandlers {
                 // UUID type
                 PgStandardType.UUID -> standard(
                     pgType.typeName,
-                    UUID::class,
-                    { getObject(it) as UUID? },
-                    parser = UUID::fromString
+                    Uuid::class,
+                    { (getObject(it) as UUID?)?.toKotlinUuid() },
+                    parser = Uuid::parse
                 )
 
                 // Binary data (bytea hex encoding)

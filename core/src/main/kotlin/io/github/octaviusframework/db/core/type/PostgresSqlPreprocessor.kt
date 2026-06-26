@@ -215,8 +215,16 @@ internal object PostgresSqlPreprocessor {
             if (sql[i] == '\\') {
                 i++
             } else if (sql[i] == '\'') {
-                // This is the end of the literal
-                return i
+                // Note: We MUST handle doubled single quotes ('') here explicitly.
+                // Unlike standard string literals (skipUntil) which can lazily return the first quote
+                // and let the main loop re-enter the string context on the second quote, E-strings
+                // would lose their 'E' context and incorrectly parse the rest as a standard string.
+                if (i + 1 < sql.length && sql[i + 1] == '\'') {
+                    i++ // Skip the second quote
+                } else {
+                    // This is the end of the literal
+                    return i
+                }
             }
             i++
         }

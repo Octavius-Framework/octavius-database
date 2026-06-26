@@ -89,6 +89,14 @@ internal class PostgresSqlPreprocessorTest {
         }
 
         @Test
+        fun `should ignore parameter inside E-string literal with double single quotes`() {
+            val sql = """SELECT E'ignore this ''escaped param \'@ignored\'' FROM t WHERE id = @real"""
+            val result = PostgresSqlPreprocessor.parse(sql)
+            assertThat(result).hasSize(1)
+            assertThat(result).containsExactly(ParsedParameter("real", 69, 74))
+        }
+
+        @Test
         fun `should ignore parameters inside double-quoted identifiers`() {
             val sql = """SELECT "col@with@at" FROM "table@name" WHERE "real_col" = @realParam"""
             val result = PostgresSqlPreprocessor.parse(sql)
@@ -210,7 +218,7 @@ internal class PostgresSqlPreprocessorTest {
 
         @Test
         fun `should NOT escape question marks inside E-string literals`() {
-            val sql = "SELECT E'escaped \\' quote and question?' FROM t WHERE col ? 'key'"
+            val sql = """SELECT E'escaped \' quote and question?' FROM t WHERE col ? 'key'"""
             val result = PostgresSqlPreprocessor.escapeQuestionMarks(sql)
             assertThat(result).isEqualTo("SELECT E'escaped \\' quote and question?' FROM t WHERE col ?? 'key'")
         }

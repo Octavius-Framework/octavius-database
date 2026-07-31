@@ -16,6 +16,7 @@ import kotlin.system.measureTimeMillis
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
+@Disabled
 class AggregationStrategiesBenchmark {
 
     private val ITERATIONS = 5

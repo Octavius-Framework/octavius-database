@@ -7,12 +7,26 @@
 [![KDoc API](https://img.shields.io/badge/KDoc-api-7F52FF?logo=kotlin&logoColor=white)](https://octavius-framework.github.io/octavius-database/api)
 [![KDoc Core](https://img.shields.io/badge/KDoc-core-7F52FF?logo=kotlin&logoColor=white)](https://octavius-framework.github.io/octavius-database/core)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.octavius-framework/database-core.svg?label=Maven%20Central)](https://central.sonatype.com/search?namespace=io.github.octavius-framework)
+[![Status](https://img.shields.io/badge/status-deprecated-red)](https://github.com/Octavius-Framework/octavius-postgresql)
 
 *It's not an ORM. It's a **ROME** (Relational-Object Mapping Engine). Because all queries lead to ROME.*
 
 </div>
 
 ---
+
+> [!WARNING]
+> **This project is legacy and is no longer actively developed.** It has been superseded by
+> **[octavius-postgresql](https://github.com/Octavius-Framework/octavius-postgresql)** — a PostgreSQL driver that
+> speaks Wire Protocol v3.2 directly, a client (data access layer) built on top of it, and a migrator, published
+> as separate artifacts.
+>
+> Much of what lives here exists to work around pgjdbc — text-protocol composites, enums the library had to be
+> taught about, a stateful `ResultSet`, no named parameters — and the new driver answers all of that natively.
+> What was left over is the client, deliberately a much smaller thing than a port would have been.
+>
+> Nothing is being taken away: the released artifacts stay on Maven Central and the code below still works. But
+> new work happens in `octavius-postgresql`, and new projects should start there.
 
 ## Philosophy (The Pax Romana of Data)
 
@@ -458,3 +472,7 @@ For detailed guides and examples, see the [full documentation](docs/README.md):
 | `core`               | JVM           | **Zero-dependency** core engine. Pure JDBC & HikariCP.                                 |
 | `spring-integration` | JVM           | Optional integration for Spring Boot (`@Transactional` support).                       |
 | `flyway-integration` | JVM           | Optional migration runner integration.                                                 |
+
+---
+
+*This library is legacy — superseded by [octavius-postgresql](https://github.com/Octavius-Framework/octavius-postgresql).*

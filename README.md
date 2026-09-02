@@ -28,6 +28,150 @@
 > Nothing is being taken away: the released artifacts stay on Maven Central and the code below still works. But
 > new work happens in `octavius-postgresql`, and new projects should start there.
 
+## Where Everything Went
+
+---
+
+Nothing here was dropped for want of a home. Most of it was a workaround for pgjdbc and the new driver answers
+it natively; the rest moved, and a few things changed shape enough to be worth a sentence.
+
+| Here                                                                                                                                                      | There                                                                                                                                                                                  |
+|:----------------------------------------------------------------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `SelectQueryBuilder` and the other three — `with()`, `recursive()`, `fromSubquery`, `page`, `forUpdate`, `onConflict`, `fromSelect`, `using`, `returning` | [The four builders](https://github.com/Octavius-Framework/octavius-postgresql/blob/master/docs/client/queries.md#the-four-builders), method for method                                 |
+| `QueryFragment`, `withParam`, `join`                                                                                                                      | [`QueryFragment`](https://github.com/Octavius-Framework/octavius-postgresql/blob/master/docs/client/queries.md#queryfragment)                                                          |
+| `dynamic_dto`                                                                                                                                             | [`dynamic_dto`](https://github.com/Octavius-Framework/octavius-postgresql/blob/master/docs/client/dynamic-dto.md) — same idea, a real composite instead of a text-protocol one         |
+| `dynamic_map`                                                                                                                                             | plain `ROW(...)` — see below                                                                                                                                                           |
+| `.options { }`                                                                                                                                            | [per-query converters](https://github.com/Octavius-Framework/octavius-postgresql/blob/master/docs/client/queries.md#per-query-converters) — see below                                  |
+| `TypeHandler<T>`, `GlobalTypeHandler<T>`                                                                                                                  | `ResultConverter` + `ParameterConverter` — see below                                                                                                                                   |
+| `@MapKey`                                                                                                                                                 | `@PgName`, and it applies in both directions                                                                                                                                           |
+| `@PgEnum`, `@PgComposite`, `@DynamicallyMappable`                                                                                                         | `@PgEnumType`, `@PgCompositeType`, `@DynamicallyMappable`, scanned by [`client-scanner`](https://github.com/Octavius-Framework/octavius-postgresql/blob/master/docs/client/scanner.md) |
+| `toDataObject()`, `toDataMap()`                                                                                                                           | [the same two](https://github.com/Octavius-Framework/octavius-postgresql/blob/master/docs/driver/composites-reflection.md#maps-in-and-out-todataobject-and-todatamap)                  |
+| `DataMapper`, `.toListOf { map -> … }`                                                                                                                    | a `ResultConverter<Row, T>` — see below                                                                                                                                                |
+| `TransactionPlan`, `TransactionStep`, `StepHandle`                                                                                                        | [Transaction Plans](https://github.com/Octavius-Framework/octavius-postgresql/blob/master/docs/client/plans.md), and every failure names its step on the exception's `path`            |
+| `PgChannelListener`                                                                                                                                       | [LISTEN / NOTIFY](https://github.com/Octavius-Framework/octavius-postgresql/blob/master/docs/driver/listen-notify.md)                                                                  |
+| CALL with IN/OUT/INOUT                                                                                                                                    | [Functions and Procedures](https://github.com/Octavius-Framework/octavius-postgresql/blob/master/docs/driver/functions-procedures.md)                                                  |
+| bulk `unnest`                                                                                                                                             | [Bulk Writes](https://github.com/Octavius-Framework/octavius-postgresql/blob/master/docs/driver/bulk-writes.md)                                                                        |
+| `DataResult`, `quoteAsPgIdentifier`, `PgTyped`/`withPgType`, `QualifiedName`, `CaseConvention`                                                            | the same names                                                                                                                                                                         |
+| `flyway-integration`                                                                                                                                      | [`migrations`](https://github.com/Octavius-Framework/octavius-postgresql/blob/master/docs/migrations/README.md), which is its own migrator rather than an adapter                      |
+| `spring-integration`                                                                                                                                      | [`driver-spring-integration`](https://github.com/Octavius-Framework/octavius-postgresql/blob/master/docs/driver/spring-integration.md)                                                 |
+| `api` and `core`, split by platform                                                                                                                       | `pg-model` for what is multiplatform, `driver` and `client` for the rest                                                                                                               |
+
+### `dynamic_map` was a workaround, and the workaround is gone
+
+An anonymous `record` did come back — over the **text protocol**, which is the whole of the problem. What
+arrived was strings, the per-field OIDs having been dropped on the way, and a map with no target class has
+nothing else to infer a type from. So `dynamic_map` carried the OID as *data*:
+
+```sql
+CREATE TYPE public.dynamic_map_entry AS (type_oid oid, key text, raw_value text);
+```
+
+One entry per key, each stating its own type, which is what let a `TypeHandler` decode a `timestamptz` or a
+custom enum instead of handing back the text. And it is exactly why the type could never be stored: those OIDs
+sit in the rows, and a user-defined type's OID is not the same one after a dump and restore.
+
+Registering types on the connection was the other road, and technically open — but it would have had to be
+wired into every physical connection a pool hands out, which with HikariCP in front is not something to look
+forward to maintaining.
+
+The new driver speaks the binary protocol, so a record's fields arrive with their OIDs in the row description
+and there is nothing left to work around. A `ROW(...)` in the `SELECT` clause is read as a map with its types
+intact — no type to install, no `~>` operator, and no warning to attach, an anonymous record having nowhere to
+rot:
+
+```kotlin
+session.createNativeQuery(
+    """
+    SELECT ROW(
+        'id', c.id,
+        'tributes', ARRAY(SELECT ROW('amount', t.amount) FROM tributes t WHERE t.citizen_id = c.id)
+    ) AS r
+    FROM citizens c WHERE c.id = 1
+    """
+).fetchFieldStrict<Map<String, Any?>>()
+
+// {id=1, tributes=[{amount=40}, {amount=15}]}
+```
+
+The 1:N aggregation `dynamic_map` was built for works the same way, and so does the part that mattered: a
+`date` comes back a `LocalDate`, a `uuid` a `Uuid`, a `timestamptz` an `Instant`. See
+[the raw forms](https://github.com/Octavius-Framework/octavius-postgresql/blob/master/docs/driver/composites-reflection.md#the-raw-forms-pgcomposite-and-pgrecord).
+
+### `QueryOptions` became one mechanism instead of five fields
+
+`.options { }` carried five different things. Four of them are one thing now — a converter registered on a
+query, ahead of the session's and discarded with it:
+
+| `QueryOptions` field          | Now                                                                   |
+|:------------------------------|:----------------------------------------------------------------------|
+| `typeHandlers`                | `registerResultConverter` / `registerParameterConverter` on the query |
+| `json`                        | `dynamicTypes.resultConverter(json)`, registered the same way         |
+| `customCompositeMappers`      | a converter narrowed on `sourceType.name`                             |
+| `returnCompositeAsMap(name)`  | `compositesAsMaps(name)`                                              |
+| `returnAllCompositesAsMaps()` | `compositesAsMaps()`                                                  |
+
+The last two are [one function](https://github.com/Octavius-Framework/octavius-postgresql/blob/master/docs/driver/composites-reflection.md#reading-them-all-as-maps)
+with an overload that takes several names at once. One difference worth knowing: it claims a value only where
+the caller asked for `Any` or `Map`, so naming a class in the same query still answers with the class, and a
+data class is untouched below its own surface. Here the option won over everything, including a declared
+property type.
+
+### `DataMapper` became a converter keyed on `Row`
+
+`toListOf(params, mapper)` handed the library a function and got a `List<T>` back. The same shape is a
+`ResultConverter` whose source class is `Row`: `fetchObjects<T>()` hands the whole row to the converters, so
+one that claims `Row` is called once per row and is exactly where the mapper stood.
+
+```kotlin
+object CitizenFromRow : ResultConverter<Row, Citizen> {
+    override val supportedSourceClass = Row::class
+
+    override fun canConvert(sourceClass: KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext) =
+        expectedType.classifier == Citizen::class
+
+    override fun convert(source: Row, expectedType: KType, sourceType: PgType, context: DeserializationContext) =
+        Citizen(source.get("name"), source.get("province"))
+}
+
+session.createNativeQuery("SELECT name, province FROM citizens")
+    .registerResultConverter(CitizenFromRow)
+    .fetchObjects<Citizen>()
+```
+
+Two things it gains on the way. `forEachObject` runs through the same converter, so the mapping streams rather
+than only filling a list. And the registration can go on the session's `typeManager` instead of on the query —
+then `fetchObjects<Citizen>()` maps that way everywhere, which is not something a per-call mapper could say.
+
+The reflective mapping is still there for the ordinary case: a `data class` whose properties match the columns
+needs no converter at all, which is what most `DataMapper`s were written to do by hand.
+
+### `TypeHandler` split in two, and is not scanned
+
+One interface doing both directions became two — `ResultConverter` and `ParameterConverter` — each deciding for
+itself what it claims through `canConvert`, which is what lets one narrow on the PostgreSQL type as well as on
+the Kotlin one. Register on the session's `typeManager` for the old `GlobalTypeHandler`, or on a single query
+for the old per-query one.
+
+The one thing that does not carry over: **`client-scanner` does not pick them up off the classpath.** A
+`TypeHandler` here was resolved from a map keyed by OID and class — one per type, no overlap, no order to get
+wrong — which made scanning them safe. There, converters are consulted newest-first and a later one wins, so
+registration order is the only override mechanism there is, and a classpath scan has no defined order. They are
+registered by hand, in one place, on purpose:
+[What It Does Not Scan](https://github.com/Octavius-Framework/octavius-postgresql/blob/master/docs/client/scanner.md#what-it-does-not-scan).
+
+### What is gone rather than moved
+
+- **`?` escaping for JSONB operators.** Parameters are `@name` and reach the wire as `$1`, so a `?` in the SQL
+  is never anything but a `?`.
+- **`disableCoreTypeInitialization`.** Nothing is created behind your back to begin with — `dynamic_dto` goes
+  in a migration, or in an explicit `install()`.
+- **`showBanner`.** There is no startup the library owns: you hand it a `DataSource`, `install()` is a call you
+  make, and the migrator is a library rather than a command. Nowhere left to print one. 🫡
+
+### The one thing that came with it unchanged
+
+*It's not an ORM. It's a **ROME**.* Written here, and far too good to leave behind.
+
 ## Philosophy (The Pax Romana of Data)
 
 *Just as Augustus brought order to a republic torn apart by the chaos of unchecked power, Octavius brings order to the chaotic republic of database interactions. The Senate of abstraction is dissolved. SQL rules supreme.*
